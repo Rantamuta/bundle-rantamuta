@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const Telnet = require('ranvier-telnet');
@@ -76,12 +77,15 @@ module.exports = {
             try {
               await listener(session, data);
             } catch (err) {
-              Logger.error(err.stack || err.message);
+              /** @type {{ stack?: string, message?: string }} */
+              const listenerError = err;
+              Logger.error(listenerError.stack || listenerError.message || 'Unknown listener error');
             }
           }
         });
 
         stream.on('close', async () => {
+          /** @type {InstanceType<import('ranvier').Player> | null} */
           const player = session.player;
           if (!player || player.__pruned) {
             return;
@@ -90,14 +94,18 @@ module.exports = {
           try {
             await state.PlayerManager.save(player);
           } catch (err) {
-            Logger.warn(err.message);
+            /** @type {{ message?: string }} */
+            const saveError = err;
+            Logger.warn(saveError.message || 'Unknown save error');
           }
 
           state.PlayerManager.removePlayer(player, false);
         });
 
         stream.on('error', err => {
-          Logger.error(err.stack || err.message);
+          /** @type {{ stack?: string, message?: string }} */
+          const socketError = err;
+          Logger.error(socketError.stack || socketError.message || 'Unknown socket error');
         });
 
         stream.write('Welcome, what is your name? ');

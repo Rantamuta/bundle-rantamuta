@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const assert = require('assert');
@@ -119,7 +120,7 @@ function createFixture(options = {}) {
     output,
     run: args => {
       const execute = put.command({});
-      return execute(args, player, 'put');
+      return execute(args, player);
     },
     roomHasItem: item => player.room.hasItem(item),
     containerHasItem: item => chest.inventory.has(item.uuid),
@@ -159,7 +160,7 @@ describe('bundle-rantamuta put command guardrails', function () {
     fixture.player.addItem(fixture.sword);
     fixture.player.room.addItem(fixture.chest);
 
-    const result = await fixture.run('rusty sword in old chest');
+    const result = /** @type {{ classification: string, errorEnvelope: unknown }} */ (/** @type {unknown} */ (await fixture.run('rusty sword in old chest')));
 
     assert.ok(result, 'put command should return a result object');
     assert.strictEqual(result.classification, 'success');
@@ -173,7 +174,7 @@ describe('bundle-rantamuta put command guardrails', function () {
     const fixture = createFixture();
     fixture.player.room.addItem(fixture.chest);
 
-    const result = await fixture.run('rusty sword in old chest');
+    const result = /** @type {{ classification: string, errorEnvelope: unknown }} */ (/** @type {unknown} */ (await fixture.run('rusty sword in old chest')));
 
     assert.ok(result, 'put command should return a result object');
     assert.strictEqual(result.classification, 'invalid context/target');
@@ -195,7 +196,7 @@ describe('bundle-rantamuta put command guardrails', function () {
     const fixture = createFixture();
     fixture.player.addItem(fixture.sword);
 
-    const result = await fixture.run('rusty sword in old chest');
+    const result = /** @type {{ classification: string, errorEnvelope: unknown }} */ (/** @type {unknown} */ (await fixture.run('rusty sword in old chest')));
 
     assert.ok(result, 'put command should return a result object');
     assert.strictEqual(result.classification, 'invalid context/target');
@@ -221,7 +222,7 @@ describe('bundle-rantamuta put command guardrails', function () {
     fixture.player.room.addItem(fixture.chest);
     fixture.chest.addItem(existingItem);
 
-    const result = await fixture.run('rusty sword in old chest');
+    const result = /** @type {{ classification: string, errorEnvelope: unknown }} */ (/** @type {unknown} */ (await fixture.run('rusty sword in old chest')));
 
     assert.ok(result, 'put command should return a result object');
     assert.strictEqual(result.classification, 'forbidden/blocked');

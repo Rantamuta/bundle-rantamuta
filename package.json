@@ -1,0 +1,17 @@
+{
+  "name": "bundle-rantamuta",
+  "version": "1.0.0",
+  "description": "This is the reference bundle for the Rantamuta MUD engine, which means that it contains both recommended conventions and a base bundle on which you can build your own MUD.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
