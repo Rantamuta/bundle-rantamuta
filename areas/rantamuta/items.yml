@@ -1,0 +1,14 @@
+- id: rustySword
+  name: "rusty sword"
+  roomDesc: "A rusty sword lies here."
+  description: "An old rusty sword with a chipped edge."
+  keywords: [ "rusty", "sword" ]
+  type: "WEAPON"
+
+- id: oldChest
+  name: "old chest"
+  roomDesc: "An old chest sits here."
+  description: "A heavy old chest reinforced with iron bands."
+  keywords: [ "old", "chest" ]
+  type: "CONTAINER"
+  maxItems: 2

@@ -19,7 +19,7 @@ test('scenario runner help exits successfully', () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Usage:/);
-  assert.match(result.stdout, /--commandsFile/);
+  assert.match(result.stdout, /--scenario/);
   assert.match(result.stdout, /--command/);
 });
 
@@ -34,13 +34,17 @@ test('scenario runner executes command lines in order and continues on unknown c
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
 });
 
-test('scenario runner command file ignores comments and blank lines', () => {
+test('scenario runner .scenario file parses directives and ignores comments/blank lines', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
-  const commandsPath = path.join(tmpDir, 'scenario.commands');
+  const scenarioPath = path.join(tmpDir, 'test.scenario');
 
-  fs.writeFileSync(commandsPath, '# comment\n\nunknown-alpha\n\n# another\nunknown-beta\n', 'utf8');
+  fs.writeFileSync(
+    scenarioPath,
+    '# comment\n\ncommand: unknown-alpha\n\nseedInventory: rantamuta:rustySword\n# another\ncommand: unknown-beta\n',
+    'utf8'
+  );
 
-  const result = runScenario(['--commandsFile', commandsPath, '--failOnUnknown']);
+  const result = runScenario(['--scenario', scenarioPath, '--failOnUnknown']);
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
@@ -50,11 +54,11 @@ test('scenario runner command file ignores comments and blank lines', () => {
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
 });
 
-test('scenario runner reports error for missing --commandsFile value', () => {
-  const result = runScenario(['--commandsFile']);
+test('scenario runner reports error for missing --scenario value', () => {
+  const result = runScenario(['--scenario']);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Missing value for --commandsFile/);
+  assert.match(result.stderr, /Missing value for --scenario/);
 });
 
 test('scenario runner reports error for missing --command value', () => {
@@ -62,6 +66,38 @@ test('scenario runner reports error for missing --command value', () => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing value for --command/);
+});
+
+test('scenario runner reports error for missing --seedInventory value', () => {
+  const result = runScenario(['--seedInventory']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Missing value for --seedInventory/);
+});
+
+test('scenario runner reports error for missing --seedRoomItem value', () => {
+  const result = runScenario(['--seedRoomItem']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Missing value for --seedRoomItem/);
+});
+
+test('scenario runner reports error for unknown .scenario directive', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
+  const scenarioPath = path.join(tmpDir, 'invalid.scenario');
+  fs.writeFileSync(scenarioPath, 'unknownDirective: value\n', 'utf8');
+
+  const result = runScenario(['--scenario', scenarioPath]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown scenario directive "unknownDirective"/);
+});
+
+test('scenario runner rejects legacy --commandsFile flag', () => {
+  const result = runScenario(['--commandsFile', 'legacy.commands']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--commandsFile is not supported\. Use --scenario <path>\./);
 });
 
 test('scenario runner legacy --command/--args fallback builds one command line', () => {
@@ -104,4 +140,41 @@ test('scenario runner --throughInput keeps unknown-command output stable for mal
   assert.match(result.stdout, /\[run\] 1\/1: put in old chest/);
   assert.match(result.stdout, /Unknown command\./);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=1, failed=1\)/);
+});
+
+test('scenario runner seeds inventory and room items before command execution', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
+  const scenarioPath = path.join(tmpDir, 'seed.scenario');
+  fs.writeFileSync(
+    scenarioPath,
+    [
+      'room: rantamuta:start',
+      'seedInventory: rantamuta:rustySword',
+      'seedRoomItem: rantamuta:oldChest',
+      'command: look',
+      '',
+    ].join('\n'),
+    'utf8'
+  );
+
+  const result = runScenario(['--json', '--scenario', scenarioPath]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  const seedEvents = payload.events.filter(event => event.type === 'seed');
+
+  assert.equal(seedEvents.length, 2);
+  assert.deepEqual(seedEvents[0], {
+    type: 'seed',
+    scope: 'inventory',
+    entityReference: 'rantamuta:rustySword',
+    itemName: 'rusty sword',
+  });
+  assert.deepEqual(seedEvents[1], {
+    type: 'seed',
+    scope: 'room',
+    entityReference: 'rantamuta:oldChest',
+    itemName: 'old chest',
+    room: 'rantamuta:start',
+  });
 });
