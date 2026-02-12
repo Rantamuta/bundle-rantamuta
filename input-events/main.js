@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const io = require('../lib/session/io');
