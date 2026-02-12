@@ -40,7 +40,7 @@ test('scenario runner .scenario file parses directives and ignores comments/blan
 
   fs.writeFileSync(
     scenarioPath,
-    '# comment\n\ncommand: unknown-alpha\n\nseedInventory: rantamuta:rustySword\n# another\ncommand: unknown-beta\n',
+    '# comment\n\ncommand: unknown-alpha\n\nseedInventory: test:rustySword\n# another\ncommand: unknown-beta\n',
     'utf8'
   );
 
@@ -113,7 +113,7 @@ test('scenario runner legacy --command/--args fallback builds one command line',
 test('scenario runner --throughInput executes via input events and reports unknown text commands', () => {
   const result = runScenario([
     '--throughInput',
-    '--room', 'rantamuta:start',
+    '--room', 'test:room',
     '--command', 'look',
     '--command', 'east',
     '--failOnUnknown',
@@ -122,7 +122,7 @@ test('scenario runner --throughInput executes via input events and reports unkno
   assert.equal(result.status, 1, result.stderr || result.stdout);
   assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
   assert.match(result.stdout, /\[run\] 1\/2: look/);
-  assert.match(result.stdout, /Rantamuta/);
+  assert.match(result.stdout, /Test Room/);
   assert.match(result.stdout, /\[run\] 2\/2: east/);
   assert.match(result.stdout, /Unknown command\./);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=1, failed=1\)/);
@@ -131,7 +131,7 @@ test('scenario runner --throughInput executes via input events and reports unkno
 test('scenario runner --throughInput keeps unknown-command output stable for malformed relation text', () => {
   const result = runScenario([
     '--throughInput',
-    '--room', 'rantamuta:start',
+    '--room', 'test:room',
     '--command', 'put in old chest',
     '--failOnUnknown',
   ]);
@@ -148,9 +148,9 @@ test('scenario runner seeds inventory and room items before command execution', 
   fs.writeFileSync(
     scenarioPath,
     [
-      'room: rantamuta:start',
-      'seedInventory: rantamuta:rustySword',
-      'seedRoomItem: rantamuta:oldChest',
+      'room: test:room',
+      'seedInventory: test:rustySword',
+      'seedRoomItem: test:oldChest',
       'command: look',
       '',
     ].join('\n'),
@@ -167,14 +167,14 @@ test('scenario runner seeds inventory and room items before command execution', 
   assert.deepEqual(seedEvents[0], {
     type: 'seed',
     scope: 'inventory',
-    entityReference: 'rantamuta:rustySword',
+    entityReference: 'test:rustySword',
     itemName: 'rusty sword',
   });
   assert.deepEqual(seedEvents[1], {
     type: 'seed',
     scope: 'room',
-    entityReference: 'rantamuta:oldChest',
+    entityReference: 'test:oldChest',
     itemName: 'old chest',
-    room: 'rantamuta:start',
+    room: 'test:room',
   });
 });

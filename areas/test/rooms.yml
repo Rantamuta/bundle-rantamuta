@@ -1,0 +1,3 @@
+- id: room
+  title: "Test Room"
+  description: "Deterministic room used by automated scenario tests."
