@@ -7,6 +7,7 @@ const {
   Logger,
   Player,
 } = require('ranvier');
+const { parseInput } = require('../lib/parse-input');
 
 const NAME_PATTERN = /^[a-zA-Z0-9]+$/;
 
@@ -110,14 +111,21 @@ async function enterGame(state, session) {
 
 async function handleCommand(state, session, input) {
   const player = session.player;
-  const parts = input.split(/\s+/);
-  const commandName = (parts.shift() || '').toLowerCase();
-  const args = parts.join(' ');
+  const parsedInput = parseInput(input);
 
-  if (!commandName) {
+  if (parsedInput.classification === 'unknown intent') {
     Broadcast.prompt(player);
     return;
   }
+
+  if (parsedInput.classification === 'semantic error') {
+    Broadcast.sayAt(player, 'Unknown command.');
+    Broadcast.prompt(player);
+    return;
+  }
+
+  const commandName = parsedInput.intentToken;
+  const args = parsedInput.normalizedInput.split(' ').slice(1).join(' ');
 
   const match = state.CommandManager.find(commandName, true);
   if (!match || !match.command) {
