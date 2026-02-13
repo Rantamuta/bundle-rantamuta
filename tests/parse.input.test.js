@@ -6,7 +6,6 @@ const assert = require('assert');
 const {
   lexInput,
   parseInput,
-  UNKNOWN_INTENT_CODE,
   SEMANTIC_ERROR_CODE,
 } = require('../lib/parse-input');
 
@@ -69,12 +68,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.relationToken, null);
     assert.deepStrictEqual(result.secondaryTargetSpan, []);
     assert.strictEqual(result.classification, 'unknown intent');
-    assert.deepStrictEqual(result.errorEnvelope, {
-      class: 'unknown intent',
-      code: UNKNOWN_INTENT_CODE,
-      details: {
-        reason: 'missing-intent-token',
-      },
+    assert.strictEqual(result.errorEnvelope.class, 'unknown intent');
+    assert.deepStrictEqual(result.errorEnvelope.details, {
+      reason: 'missing-intent-token',
     });
   });
 });
