@@ -129,7 +129,7 @@ test('scenario runner --throughInput executes via input events and reports unkno
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=1, failed=1\)/);
 });
 
-test('scenario runner --throughInput keeps unknown-command output stable for malformed relation text', () => {
+test('scenario runner --throughInput routes malformed put relation text to put validation', () => {
   const result = runScenario([
     '--throughInput',
     '--room', 'test:room',
@@ -137,10 +137,10 @@ test('scenario runner --throughInput keeps unknown-command output stable for mal
     '--failOnUnknown',
   ]);
 
-  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /\[run\] 1\/1: put in old chest/);
-  assert.match(result.stdout, /Unknown command\./);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=1, failed=1\)/);
+  assert.match(result.stdout, /Put what\?/);
+  assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=0, failed=0\)/);
 });
 
 test('scenario runner seeds inventory and room items before command execution', () => {

@@ -72,6 +72,12 @@ describe('bundle-rantamuta command-dispatch', function () {
     assert.strictEqual(args[0], '');
     assert.strictEqual(args[1], player);
     assert.strictEqual(args[2], 'l');
+    assert.deepStrictEqual(args[3] && args[3].parsedInput, {
+      actorInput: 'look',
+      normalizedInput: 'look',
+      intentToken: 'look',
+    });
+    assert.strictEqual(args[3] && args[3].rawInput, 'look');
   });
 
   it('executes command when CommandManager.find returns a direct command', async function () {
