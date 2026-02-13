@@ -23,6 +23,21 @@ function asPlayer(value) {
   return /** @type {Player} */ (value);
 }
 
+/**
+ * @param {*} value
+ * @param {Player} player
+ * @returns {GameState}
+ */
+function withPlayerManager(value, player) {
+  const base = value && typeof value === 'object' ? value : {};
+  return asGameState({
+    ...base,
+    PlayerManager: {
+      getPlayer: () => player,
+    },
+  });
+}
+
 describe('bundle-rantamuta command-dispatch', function () {
   it('executes command when CommandManager.find returns { command, alias }', async function () {
     let executeArgs = null;
@@ -32,16 +47,16 @@ describe('bundle-rantamuta command-dispatch', function () {
       },
     };
 
-    const state = asGameState({
-      CommandManager: {
-        find: () => ({ command, alias: 'l' }),
-      },
-    });
-
     const player = asPlayer({
       __pruned: false,
       socket: { writable: false },
     });
+
+    const state = withPlayerManager({
+      CommandManager: {
+        find: () => ({ command, alias: 'l' }),
+      },
+    }, player);
 
     await handleCommand(state, { player }, 'look');
 
@@ -60,16 +75,16 @@ describe('bundle-rantamuta command-dispatch', function () {
       },
     };
 
-    const state = asGameState({
-      CommandManager: {
-        find: () => command,
-      },
-    });
-
     const player = asPlayer({
       __pruned: false,
       socket: { writable: false },
     });
+
+    const state = withPlayerManager({
+      CommandManager: {
+        find: () => command,
+      },
+    }, player);
 
     await handleCommand(state, { player }, 'look');
 
@@ -89,16 +104,16 @@ describe('bundle-rantamuta command-dispatch', function () {
       },
     };
 
-    const state = asGameState({
-      CommandManager: {
-        find: () => ({ command, alias: 'look' }),
-      },
-    });
-
     const player = asPlayer({
       __pruned: false,
       socket: { writable: false },
     });
+
+    const state = withPlayerManager({
+      CommandManager: {
+        find: () => ({ command, alias: 'look' }),
+      },
+    }, player);
 
     await handleCommand(state, { player }, 'look');
     assert.strictEqual(called, true);
@@ -121,16 +136,16 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({ ok: true, plan }),
       };
 
-      const state = asGameState({
-        CommandManager: {
-          find: () => ({ command, alias: 'look' }),
-        },
-      });
-
       const player = asPlayer({
         __pruned: false,
         socket: { writable: false },
       });
+
+      const state = withPlayerManager({
+        CommandManager: {
+          find: () => ({ command, alias: 'look' }),
+        },
+      }, player);
 
       await handleCommand(state, { player }, 'look');
 
@@ -159,16 +174,16 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({ ok: false, error: { message: 'Nope.' } }),
       };
 
-      const state = asGameState({
-        CommandManager: {
-          find: () => ({ command, alias: 'look' }),
-        },
-      });
-
       const player = asPlayer({
         __pruned: false,
         socket: { writable: false },
       });
+
+      const state = withPlayerManager({
+        CommandManager: {
+          find: () => ({ command, alias: 'look' }),
+        },
+      }, player);
 
       await handleCommand(state, { player }, 'look');
 
@@ -193,16 +208,16 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => 'not-a-command-result-envelope',
       };
 
-      const state = asGameState({
-        CommandManager: {
-          find: () => ({ command, alias: 'look' }),
-        },
-      });
-
       const player = asPlayer({
         __pruned: false,
         socket: { writable: false },
       });
+
+      const state = withPlayerManager({
+        CommandManager: {
+          find: () => ({ command, alias: 'look' }),
+        },
+      }, player);
 
       await handleCommand(state, { player }, 'look');
 
