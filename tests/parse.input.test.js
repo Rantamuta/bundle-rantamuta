@@ -6,7 +6,6 @@ const assert = require('assert');
 const {
   lexInput,
   parseInput,
-  SEMANTIC_ERROR_CODE,
 } = require('../lib/parse-input');
 
 describe('bundle-rantamuta parse-input', function () {
@@ -21,11 +20,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'look');
     assert.strictEqual(result.normalizedInput, 'look');
     assert.strictEqual(result.intentToken, 'look');
-    assert.deepStrictEqual(result.primaryTargetSpan, []);
-    assert.strictEqual(result.relationToken, null);
-    assert.deepStrictEqual(result.secondaryTargetSpan, []);
-    assert.strictEqual(result.classification, 'success');
-    assert.strictEqual(result.errorEnvelope, null);
+    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
 
   it('parses relation-form input into primary/relation/secondary spans', function () {
@@ -37,40 +34,25 @@ describe('bundle-rantamuta parse-input', function () {
     assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
     assert.strictEqual(result.relationToken, 'in');
     assert.deepStrictEqual(result.secondaryTargetSpan, ['old', 'chest']);
-    assert.strictEqual(result.classification, 'success');
-    assert.strictEqual(result.errorEnvelope, null);
   });
 
-  it('classifies malformed relation form as semantic error', function () {
+  it('parses malformed relation form shape without semantic classification', function () {
     const result = parseInput('put in old chest');
 
     assert.strictEqual(result.intentToken, 'put');
     assert.deepStrictEqual(result.primaryTargetSpan, []);
     assert.strictEqual(result.relationToken, 'in');
     assert.deepStrictEqual(result.secondaryTargetSpan, ['old', 'chest']);
-    assert.strictEqual(result.classification, 'semantic error');
-    assert.deepStrictEqual(result.errorEnvelope, {
-      class: 'semantic error',
-      code: SEMANTIC_ERROR_CODE,
-      details: {
-        intentToken: 'put',
-        relationToken: 'in',
-        missingSpan: 'primaryTargetSpan',
-      },
-    });
   });
 
-  it('classifies empty input as unknown intent', function () {
+  it('returns raw and normalized input for empty command text', function () {
     const result = parseInput('   ');
 
-    assert.strictEqual(result.intentToken, null);
-    assert.deepStrictEqual(result.primaryTargetSpan, []);
-    assert.strictEqual(result.relationToken, null);
-    assert.deepStrictEqual(result.secondaryTargetSpan, []);
-    assert.strictEqual(result.classification, 'unknown intent');
-    assert.strictEqual(result.errorEnvelope.class, 'unknown intent');
-    assert.deepStrictEqual(result.errorEnvelope.details, {
-      reason: 'missing-intent-token',
-    });
+    assert.strictEqual(result.actorInput, '   ');
+    assert.strictEqual(result.normalizedInput, '');
+    assert.strictEqual(result.intentToken, undefined);
+    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
 });
