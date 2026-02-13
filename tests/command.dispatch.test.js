@@ -16,6 +16,9 @@ function asGameState(value) {
 }
 
 /**
+ * Test-only helper: cast a lightweight player stub to the Player type
+ * expected by handleCommand/session typing.
+ *
  * @param {*} value
  * @returns {Player}
  */
@@ -24,6 +27,10 @@ function asPlayer(value) {
 }
 
 /**
+ * Test-only helper: build a minimal GameState stub that includes
+ * PlayerManager.getPlayer(...) so command-dispatch active-player checks can
+ * run without constructing a full engine GameState.
+ *
  * @param {*} value
  * @param {Player} player
  * @returns {GameState}
