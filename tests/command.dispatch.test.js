@@ -1084,4 +1084,166 @@ describe('bundle-rantamuta command-dispatch', function () {
       ranvier.Broadcast.prompt = originalPrompt;
     }
   });
+
+  it('renders take-specific missing-direct prompt for bare take input', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room: { items: new Set() },
+        isInventoryFull: () => false,
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take');
+
+      assert.ok(messages.includes('Take what?'));
+      assert.ok(!messages.includes('You can\'t do that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('blocks take in capture when inventory is full', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const coin = { uuid: 'coin-100', name: 'coin', keywords: ['coin'] };
+      const room = {
+        items: new Set([coin]),
+        addItem() { },
+        removeItem() { },
+      };
+      coin.room = room;
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => true,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take coin');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('You are carrying too much.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('runs take through entity-resolution and commits transfer plan', async function () {
+    const takeDef = require('../commands/take');
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const room = {
+        items: new Set(),
+        addItem(item) {
+          this.items.add(item);
+          item.room = this;
+          item.carriedBy = null;
+        },
+        removeItem(item) {
+          this.items.delete(item);
+          item.room = null;
+        },
+      };
+      const coin = { uuid: 'coin-200', name: 'gold coin', keywords: ['gold', 'coin'], room, carriedBy: null };
+      room.items.add(coin);
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem(item) {
+          this.inventory.set(item.uuid, item);
+          item.carriedBy = this;
+          item.room = null;
+        },
+        removeItem(item) {
+          this.inventory.delete(item.uuid);
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take coin');
+
+      assert.ok(committedPlan);
+      assert.deepStrictEqual(committedPlan.operations, [{
+        type: 'transferItem',
+        item: coin,
+        from: room,
+        to: player,
+      }]);
+    } finally {
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
 });
