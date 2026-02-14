@@ -717,6 +717,84 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('supports mixed bubble payload with transferItem and render lines', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const messages = [];
+    const inventory = new Set();
+    const roomItems = new Set();
+    const item = { uuid: 'spike-1', name: 'spike of heroism' };
+
+    const player = asPlayer({
+      name: 'Tester',
+      room: {
+        title: 'Sanctum',
+        description: 'A quiet sanctum.',
+        addItem(added) {
+          roomItems.add(added);
+        },
+        removeItem(removed) {
+          roomItems.delete(removed);
+        },
+      },
+      addItem(added) {
+        inventory.add(added);
+      },
+      removeItem(removed) {
+        inventory.delete(removed);
+      },
+      socket: { writable: false },
+    });
+
+    inventory.add(item);
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+
+    try {
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          bubbleReactions: [
+            () => ({
+              operations: [
+                {
+                  type: 'transferItem',
+                  item,
+                  from: player,
+                  to: player.room,
+                },
+              ],
+              render: {
+                lines: ['The spike hums.'],
+              },
+            }),
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.strictEqual(inventory.has(item), false);
+      assert.strictEqual(roomItems.has(item), true);
+      assert.deepStrictEqual(messages, [
+        '<bold>Sanctum</bold>',
+        'A quiet sanctum.',
+        'The spike hums.',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+    }
+  });
+
   it('suppresses bubble render lines when commit fails', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
