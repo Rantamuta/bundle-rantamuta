@@ -1,4 +1,91 @@
 - id: start
   title: "Rantamuta"
-  description: "This is the reference starting point. From here, we can build anything."
+  description: "A legacy launch point that now leads to the square."
+  exits:
+    - roomId: rantamuta:square
+      direction: north
 
+- id: square
+  title: "Rantamuta Square"
+  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north."
+  exits:
+    - roomId: rantamuta:start
+      direction: south
+    - roomId: rantamuta:bell_courtyard
+      direction: north
+
+- id: bell_courtyard
+  title: "Bell Courtyard"
+  description: "Broken flagstones ring a weathered bell-shrine. Cold air drifts from deeper ruins."
+  exits:
+    - roomId: rantamuta:square
+      direction: south
+    - roomId: rantamuta:bell_nave
+      direction: north
+    - roomId: rantamuta:bell_crypt
+      direction: east
+  items:
+    - id: rantamuta:waxSeal
+
+- id: bell_nave
+  title: "Bell Nave"
+  description: "Dusty pews face a shattered alcove where a reliquary still waits."
+  exits:
+    - roomId: rantamuta:bell_courtyard
+      direction: south
+    - roomId: rantamuta:bell_stair
+      direction: up
+  items:
+    - id: rantamuta:prayerStone
+    - id: rantamuta:reliquary
+
+- id: bell_stair
+  title: "Bell Stair"
+  description: "A narrow spiral stair wraps around ancient masonry toward the belfry."
+  exits:
+    - roomId: rantamuta:bell_nave
+      direction: down
+    - roomId: rantamuta:bell_belfry
+      direction: up
+
+- id: bell_belfry
+  title: "Bell Belfry"
+  description: "Ragged ropes sway around a cracked bell suspended over the town below."
+  exits:
+    - roomId: rantamuta:bell_stair
+      direction: down
+    - roomId: rantamuta:bell_crypt
+      direction: west
+  items:
+    - id: rantamuta:crackedBell
+
+- id: bell_crypt
+  title: "Bell Crypt"
+  description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
+  exits:
+    - roomId: rantamuta:bell_courtyard
+      direction: west
+    - roomId: rantamuta:bell_belfry
+      direction: east
+    - roomId: rantamuta:resonance_chamber
+      direction: down
+      metadata:
+        gate:
+          denyMessage: "A dull stone slab blocks the descent."
+          requiredPlacements:
+            - containerRef: rantamuta:crackedBell
+              itemRef: rantamuta:bronzeClapper
+            - containerRef: rantamuta:reliquary
+              itemRef: rantamuta:waxSeal
+            - containerRef: rantamuta:stoneBasin
+              itemRef: rantamuta:prayerStone
+  items:
+    - id: rantamuta:bronzeClapper
+    - id: rantamuta:stoneBasin
+
+- id: resonance_chamber
+  title: "Resonance Chamber"
+  description: "A hidden chamber thrums with harmonic tone. The ritual has awakened the old tower."
+  exits:
+    - roomId: rantamuta:bell_crypt
+      direction: up

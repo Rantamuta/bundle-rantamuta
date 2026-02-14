@@ -89,4 +89,13 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.intentToken, 'look');
     assert.deepStrictEqual(result.primaryTargetSpan, ['at', 'rusty', 'sword']);
   });
+
+  it('parses go down as direct movement text, not as relation form', function () {
+    const result = parseInput('go down');
+
+    assert.strictEqual(result.intentToken, 'go');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['down']);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
+  });
 });

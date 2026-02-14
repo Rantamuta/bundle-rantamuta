@@ -1713,6 +1713,153 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('vetoes wrong ritual offering at capture for put indirect target policy', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const wrongItem = {
+        uuid: 'wax-1',
+        entityReference: 'rantamuta:waxSeal',
+        name: 'wax seal',
+        keywords: ['wax', 'seal'],
+      };
+      const bell = {
+        uuid: 'bell-1',
+        entityReference: 'rantamuta:crackedBell',
+        name: 'cracked bell',
+        keywords: ['cracked', 'bell'],
+        type: 'CONTAINER',
+        maxItems: 1,
+        inventory: new Map(),
+        metadata: {
+          puzzle: {
+            putPolicy: {
+              acceptedItemRef: 'rantamuta:bronzeClapper',
+              rejectMessage: 'That does not belong in the bell.',
+              successRender: 'The cracked bell hums with a low resonance.',
+            },
+          },
+        },
+        addItem() { },
+        removeItem() { },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[wrongItem.uuid, wrongItem]]),
+        room: { items: new Set([bell]) },
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put wax seal in cracked bell');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('That does not belong in the bell.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('renders ritual flavor line from put bubble reaction on correct offering', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const clapper = {
+        uuid: 'clapper-1',
+        entityReference: 'rantamuta:bronzeClapper',
+        name: 'bronze clapper',
+        keywords: ['bronze', 'clapper'],
+      };
+      const bell = {
+        uuid: 'bell-2',
+        entityReference: 'rantamuta:crackedBell',
+        name: 'cracked bell',
+        keywords: ['cracked', 'bell'],
+        type: 'CONTAINER',
+        maxItems: 1,
+        inventory: new Map(),
+        metadata: {
+          puzzle: {
+            putPolicy: {
+              acceptedItemRef: 'rantamuta:bronzeClapper',
+              rejectMessage: 'That does not belong in the bell.',
+              successRender: 'The cracked bell hums with a low resonance.',
+            },
+          },
+        },
+        addItem() { },
+        removeItem() { },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[clapper.uuid, clapper]]),
+        room: { items: new Set([bell]) },
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put bronze clapper in cracked bell');
+
+      assert.ok(messages.includes('You put the bronze clapper in the cracked bell.'));
+      assert.ok(messages.includes('The cracked bell hums with a low resonance.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('renders put-specific missing-direct prompt for bare put input', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
@@ -2297,6 +2444,166 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       assert.strictEqual(mutatorCalled, false);
       assert.ok(messages.includes('The portcullis is down.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('blocks go down using gate metadata until required placements exist', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'rantamuta:resonance_chamber',
+        title: 'Resonance Chamber',
+        description: 'A hidden chamber.',
+        items: new Set(),
+        getDoor: () => null,
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'rantamuta:bell_crypt',
+          getExits: () => [{
+            direction: 'down',
+            roomId: destination.entityReference,
+            metadata: {
+              gate: {
+                denyMessage: 'A dull stone slab blocks the descent.',
+                requiredPlacements: [
+                  { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+                ],
+              },
+            },
+          }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const crackedBell = {
+        entityReference: 'rantamuta:crackedBell',
+        inventory: new Map(),
+      };
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+        ItemManager: { items: new Set([crackedBell]) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go down');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('A dull stone slab blocks the descent.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('allows go down when gate required placements are satisfied', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'rantamuta:resonance_chamber',
+        title: 'Resonance Chamber',
+        description: 'A hidden chamber.',
+        items: new Set(),
+        getDoor: () => null,
+      };
+      const clapper = { entityReference: 'rantamuta:bronzeClapper' };
+      const crackedBell = {
+        entityReference: 'rantamuta:crackedBell',
+        inventory: new Map([['clapper-1', clapper]]),
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'rantamuta:bell_crypt',
+          getExits: () => [{
+            direction: 'down',
+            roomId: destination.entityReference,
+            metadata: {
+              gate: {
+                denyMessage: 'A dull stone slab blocks the descent.',
+                requiredPlacements: [
+                  { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+                ],
+              },
+            },
+          }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+        ItemManager: { items: new Set([crackedBell, clapper]) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go down');
+
+      assert.deepStrictEqual(committedPlan, {
+        operations: [
+          {
+            type: 'movePlayer',
+            player,
+            toRoom: destination,
+          },
+        ],
+      });
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;

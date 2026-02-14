@@ -82,6 +82,63 @@ function displayLabel(span, entity, fallback) {
   return displayName(entity, fallback);
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeRef(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * @param {*} indirectTarget
+ * @returns {{ acceptedItemRef?: string, rejectMessage?: string, successRender?: string } | null}
+ */
+function getPutPolicy(indirectTarget) {
+  const metadata = indirectTarget && indirectTarget.metadata && typeof indirectTarget.metadata === 'object'
+    ? indirectTarget.metadata
+    : null;
+  const puzzle = metadata && metadata.puzzle && typeof metadata.puzzle === 'object'
+    ? metadata.puzzle
+    : null;
+  const putPolicy = puzzle && puzzle.putPolicy && typeof puzzle.putPolicy === 'object'
+    ? puzzle.putPolicy
+    : null;
+
+  return putPolicy || null;
+}
+
+/**
+ * @param {*} directTarget
+ * @param {*} indirectTarget
+ * @returns {{ ok: true } | { ok: false, message: string }}
+ */
+function evaluatePutPolicy(directTarget, indirectTarget) {
+  const policy = getPutPolicy(indirectTarget);
+  if (!policy) {
+    return { ok: true };
+  }
+
+  const acceptedItemRef = normalizeRef(policy.acceptedItemRef);
+  if (!acceptedItemRef) {
+    return { ok: true };
+  }
+
+  const directRef = normalizeRef(directTarget && directTarget.entityReference);
+  if (directRef === acceptedItemRef) {
+    return { ok: true };
+  }
+
+  const message = typeof policy.rejectMessage === 'string' && policy.rejectMessage.length > 0
+    ? policy.rejectMessage
+    : 'You can\'t put that there.';
+
+  return {
+    ok: false,
+    message,
+  };
+}
+
 module.exports = {
   aliases: ['place', 'drop'],
   metadata: {
@@ -120,6 +177,51 @@ module.exports = {
       PUT_INVALID_SOURCE: 'You cannot move that right now.',
       PUT_INVALID_TARGET: 'You cannot put that there.',
     },
+    captureChecks: [
+      (context) => {
+        const resolution = context && context.entityResolution;
+        if (!resolution || resolution.ruleKey !== 'directIndirect') {
+          return { ok: true };
+        }
+
+        const policyResult = evaluatePutPolicy(resolution.directTarget, resolution.indirectTarget);
+        if (!policyResult.ok) {
+          return {
+            ok: false,
+            vetoInfo: {
+              code: 'FORBIDDEN_BLOCKED',
+              message: policyResult.message,
+            },
+          };
+        }
+
+        return { ok: true };
+      },
+    ],
+    bubbleReactions: [
+      (context) => {
+        const resolution = context && context.entityResolution;
+        if (!resolution || resolution.ruleKey !== 'directIndirect') {
+          return null;
+        }
+
+        const policy = getPutPolicy(resolution.indirectTarget);
+        if (!policy || typeof policy.successRender !== 'string' || !policy.successRender.length) {
+          return null;
+        }
+
+        const policyResult = evaluatePutPolicy(resolution.directTarget, resolution.indirectTarget);
+        if (!policyResult.ok) {
+          return null;
+        }
+
+        return {
+          render: {
+            lines: [policy.successRender],
+          },
+        };
+      },
+    ],
   },
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;

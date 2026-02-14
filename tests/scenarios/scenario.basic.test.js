@@ -195,6 +195,81 @@ test('scenario runner --throughInput canonicalizes x <thing> and surfaces look f
   assert.match(result.stdout, /You can't do that\./);
 });
 
+test('scenario runner --throughInput bell area entry from square and return path', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'rantamuta:square',
+    '--command', 'go north',
+    '--command', 'go south',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/3: go north/);
+  assert.match(result.stdout, /Bell Courtyard/);
+  assert.match(result.stdout, /\[run\] 2\/3: go south/);
+  assert.match(result.stdout, /\[run\] 3\/3: look/);
+  assert.match(result.stdout, /Rantamuta Square/);
+});
+
+test('scenario runner --throughInput blocks crypt descent before ritual completion', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'rantamuta:square',
+    '--command', 'go north',
+    '--command', 'go east',
+    '--command', 'go down',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 3\/3: go down/);
+  assert.match(result.stdout, /A dull stone slab blocks the descent\./);
+});
+
+test('scenario runner --throughInput bell target vetoes wrong put item', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'rantamuta:square',
+    '--command', 'go north',
+    '--command', 'take wax seal',
+    '--command', 'go east',
+    '--command', 'put wax seal in stone basin',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 4\/4: put wax seal in stone basin/);
+  assert.match(result.stdout, /The basin's runes remain dark\./);
+});
+
+test('scenario runner --throughInput bell ritual full path unlocks resonance chamber', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'rantamuta:square',
+    '--command', 'go north',
+    '--command', 'take wax seal',
+    '--command', 'go north',
+    '--command', 'take prayer stone',
+    '--command', 'put wax seal in reliquary',
+    '--command', 'go up',
+    '--command', 'go up',
+    '--command', 'go west',
+    '--command', 'take bronze clapper',
+    '--command', 'put prayer stone in stone basin',
+    '--command', 'go east',
+    '--command', 'put bronze clapper in cracked bell',
+    '--command', 'go west',
+    '--command', 'go down',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /The reliquary warms beneath your hands\./);
+  assert.match(result.stdout, /Ripples of light shimmer across the basin\./);
+  assert.match(result.stdout, /The cracked bell hums with a low resonance\./);
+  assert.match(result.stdout, /\[run\] 14\/15: go down/);
+  assert.match(result.stdout, /Resonance Chamber/);
+});
+
 test('scenario runner --throughInput traverses lab loop with go and returns to Test Lab', () => {
   const result = runScenario([
     '--throughInput',

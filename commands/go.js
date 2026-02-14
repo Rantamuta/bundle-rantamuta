@@ -15,6 +15,114 @@ function fail(code, details) {
   };
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeRef(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * @param {*} state
+ * @returns {Array<*>}
+ */
+function allItems(state) {
+  const manager = state && state.ItemManager;
+  if (!manager || !manager.items || typeof manager.items.values !== 'function') {
+    return [];
+  }
+
+  return Array.from(manager.items.values());
+}
+
+/**
+ * @param {*} state
+ * @param {string} entityRef
+ * @returns {* | null}
+ */
+function findItemByEntityRef(state, entityRef) {
+  const needle = normalizeRef(entityRef);
+  if (!needle) {
+    return null;
+  }
+
+  for (const item of allItems(state)) {
+    if (normalizeRef(item && item.entityReference) === needle) {
+      return item;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {*} container
+ * @param {string} itemRef
+ * @returns {boolean}
+ */
+function containerHasItemRef(container, itemRef) {
+  const needle = normalizeRef(itemRef);
+  if (!needle) {
+    return false;
+  }
+
+  const inventory = container && container.inventory;
+  if (!inventory || typeof inventory.values !== 'function') {
+    return false;
+  }
+
+  for (const item of inventory.values()) {
+    if (normalizeRef(item && item.entityReference) === needle) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @param {*} state
+ * @param {*} directTarget
+ * @returns {{ ok: true } | { ok: false, message: string } | null}
+ */
+function evaluateExitGate(state, directTarget) {
+  const metadata = directTarget && directTarget.metadata && typeof directTarget.metadata === 'object'
+    ? directTarget.metadata
+    : null;
+  const gate = metadata && metadata.gate && typeof metadata.gate === 'object'
+    ? metadata.gate
+    : null;
+
+  if (!gate) {
+    return null;
+  }
+
+  const requirements = Array.isArray(gate.requiredPlacements) ? gate.requiredPlacements : [];
+  const denyMessage = typeof gate.denyMessage === 'string' && gate.denyMessage.length > 0
+    ? gate.denyMessage
+    : 'You can\'t go that way.';
+
+  if (!requirements.length) {
+    return { ok: true };
+  }
+
+  for (const requirement of requirements) {
+    const containerRef = requirement && requirement.containerRef;
+    const itemRef = requirement && requirement.itemRef;
+    const container = findItemByEntityRef(state, containerRef);
+    if (!container) {
+      return { ok: false, message: denyMessage };
+    }
+
+    if (!containerHasItemRef(container, itemRef)) {
+      return { ok: false, message: denyMessage };
+    }
+  }
+
+  return { ok: true };
+}
+
 module.exports = {
   metadata: {
     entityResolution: {
@@ -36,6 +144,28 @@ module.exports = {
       GO_EXIT_LOCKED: 'The way is locked.',
       GO_DESTINATION_MISSING: 'You can\'t go that way.',
     },
+    captureChecks: [
+      (context) => {
+        const resolution = context && context.entityResolution;
+        if (!resolution || resolution.ruleKey !== 'direct') {
+          return { ok: true };
+        }
+
+        const directTarget = resolution.directTarget;
+        const gateResult = evaluateExitGate(context && context.state, directTarget);
+        if (gateResult && gateResult.ok === false) {
+          return {
+            ok: false,
+            vetoInfo: {
+              code: 'FORBIDDEN_BLOCKED',
+              message: gateResult.message,
+            },
+          };
+        }
+
+        return { ok: true };
+      },
+    ],
   },
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
