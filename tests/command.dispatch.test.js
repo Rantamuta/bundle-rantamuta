@@ -1068,6 +1068,86 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('runs direct put through entity-resolution and commits room-drop plan', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+    const messages = [];
+
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const roomItems = new Set();
+      const room = {
+        items: roomItems,
+        addItem(item) {
+          roomItems.add(item);
+          item.room = this;
+          item.carriedBy = null;
+        },
+        removeItem(item) {
+          roomItems.delete(item);
+          if (item.room === this) {
+            item.room = null;
+          }
+        },
+      };
+      const apple = { uuid: 'apple-1', name: 'practice apple', keywords: ['practice', 'apple'] };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room,
+        addItem(item) {
+          this.inventory.set(item.uuid, item);
+          item.carriedBy = this;
+          item.room = null;
+        },
+        removeItem(item) {
+          this.inventory.delete(item.uuid);
+          if (item.carriedBy === this) {
+            item.carriedBy = null;
+          }
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple');
+
+      assert.ok(committedPlan);
+      assert.deepStrictEqual(committedPlan.operations, [{
+        type: 'transferItem',
+        item: apple,
+        from: player,
+        to: room,
+      }]);
+      assert.ok(messages.includes('You put the apple down.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('renders put-specific missing-direct prompt for bare put input', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');

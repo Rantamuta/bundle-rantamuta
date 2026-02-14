@@ -42,14 +42,35 @@ function createContainer(def = {}) {
 
 function createPlayer(def = {}) {
   const inventory = new Map((def.inventoryItems || []).map(item => [item.uuid, item]));
+  const roomItems = new Set(def.roomItems || []);
+  const room = {
+    items: roomItems,
+    addItem(item) {
+      roomItems.add(item);
+      item.room = room;
+      item.carriedBy = null;
+    },
+    removeItem(item) {
+      roomItems.delete(item);
+      if (item.room === room) {
+        item.room = null;
+      }
+    },
+  };
+
   return {
     inventory,
-    room: { items: new Set(def.roomItems || []) },
+    room,
     addItem(item) {
       inventory.set(item.uuid, item);
+      item.carriedBy = this;
+      item.room = null;
     },
     removeItem(item) {
       inventory.delete(item.uuid);
+      if (item.carriedBy === this) {
+        item.carriedBy = null;
+      }
     },
   };
 }
@@ -63,6 +84,19 @@ function executePut(player, directTarget, indirectTarget) {
       indirectTarget,
       relationTokenRaw: 'in',
       relationTokenCanonical: 'in',
+    },
+  });
+}
+
+function executePutDirect(player, directTarget, directSpan = []) {
+  const execute = putCommand.command({});
+  return execute('', player, null, {
+    entityResolution: {
+      ruleKey: 'direct',
+      directTarget,
+      directSpan,
+      relationTokenRaw: null,
+      relationTokenCanonical: null,
     },
   });
 }
@@ -104,6 +138,39 @@ describe('bundle-rantamuta put command', function () {
     });
     assert.deepStrictEqual(result.render, {
       lines: ['You put the rusty sword in the old chest.'],
+    });
+  });
+
+  it('returns drop-to-room plan for direct put and does not mutate directly', function () {
+    const apple = createItem({
+      uuid: 'apple-1',
+      name: 'practice apple',
+      keywords: ['practice', 'apple'],
+      type: 'OBJECT',
+    });
+    const player = createPlayer({ inventoryItems: [apple] });
+
+    const result = executePutDirect(player, apple, ['apple']);
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(player.inventory.has(apple.uuid), true);
+    assert.strictEqual(player.room.items.has(apple), false);
+    assert.deepStrictEqual(result.plan, {
+      operations: [
+        {
+          type: 'transferItem',
+          item: apple,
+          from: player,
+          to: player.room,
+        },
+      ],
+    });
+    assert.deepStrictEqual(result.render, {
+      lines: ['You put the apple down.'],
     });
   });
 

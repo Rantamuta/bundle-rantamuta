@@ -83,10 +83,15 @@ function displayLabel(span, entity, fallback) {
 }
 
 module.exports = {
-  aliases: ['insert', 'place', 'stuff', 'hide'],
+  aliases: ['place', 'drop'],
   metadata: {
     entityResolution: {
       rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['player.inventory'],
+          },
+        },
         directIndirect: {
           acceptedRelations: ['in', 'into'],
           scopeProfile: {
@@ -118,11 +123,42 @@ module.exports = {
   },
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
-    if (!resolution || resolution.ruleKey !== 'directIndirect') {
+    if (!resolution || (resolution.ruleKey !== 'direct' && resolution.ruleKey !== 'directIndirect')) {
       return fail('FORM_NOT_SUPPORTED');
     }
 
     const item = resolution.directTarget;
+
+    if (!isValidTransferContainer(player)) {
+      return fail('PUT_INVALID_SOURCE');
+    }
+
+    if (resolution.ruleKey === 'direct') {
+      const room = player && player.room;
+      if (!isValidTransferContainer(room)) {
+        return fail('PUT_INVALID_TARGET');
+      }
+
+      return {
+        ok: true,
+        plan: {
+          operations: [
+            {
+              type: 'transferItem',
+              item,
+              from: player,
+              to: room,
+            },
+          ],
+        },
+        render: {
+          lines: [
+            `You put the ${displayLabel(resolution.directSpan, item, 'item')} down.`,
+          ],
+        },
+      };
+    }
+
     const target = resolution.indirectTarget;
 
     if (!isContainerItem(target)) {
@@ -139,10 +175,6 @@ module.exports = {
 
     if (!hasContainerCapacity(target)) {
       return fail('PUT_TARGET_FULL');
-    }
-
-    if (!isValidTransferContainer(player)) {
-      return fail('PUT_INVALID_SOURCE');
     }
 
     if (!isValidTransferContainer(target)) {

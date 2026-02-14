@@ -1,6 +1,8 @@
 // @ts-check
 'use strict';
 
+const { ItemType } = require('ranvier');
+
 /**
  * @param {string} code
  * @param {Record<string, *>} [details]
@@ -21,6 +23,28 @@ function isTransferContainer(value) {
   return !!value &&
     typeof value.addItem === 'function' &&
     typeof value.removeItem === 'function';
+}
+
+/**
+ * Containers are non-takeable by default unless explicitly marked takeable.
+ *
+ * @param {*} item
+ * @returns {boolean}
+ */
+function isTakeable(item) {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+  if (metadata.takeable === true) {
+    return true;
+  }
+  if (metadata.takeable === false) {
+    return false;
+  }
+
+  return item.type !== ItemType.CONTAINER && item.type !== 'CONTAINER';
 }
 
 /**
@@ -133,6 +157,7 @@ module.exports = {
         direct: 'Which item do you mean?',
       },
       TAKE_CARRY_TOO_MUCH: 'You are carrying too much.',
+      TAKE_NOT_TAKEABLE: 'You can\'t take that.',
       TAKE_NOT_REACHABLE: 'You cannot reach that.',
       TAKE_INVALID_SOURCE: 'You cannot take that right now.',
       TAKE_INVALID_TARGET: 'You cannot carry that right now.',
@@ -159,6 +184,10 @@ module.exports = {
     }
 
     const item = resolution.directTarget;
+    if (!isTakeable(item)) {
+      return fail('TAKE_NOT_TAKEABLE');
+    }
+
     if (!isReachableForTake(item, player)) {
       return fail('TAKE_NOT_REACHABLE');
     }
