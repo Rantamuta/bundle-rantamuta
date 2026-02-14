@@ -1077,7 +1077,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             (context) => {
               bubbleInvoked = true;
               assert.strictEqual(context.entityResolution.ruleKey, 'intransitive');
@@ -1136,7 +1136,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => ({ render: { lines: ['Bubble line one', 'Bubble line two'] } }),
           ],
         },
@@ -1195,7 +1195,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => ({
               operations: [{ type: 'noop' }],
               render: { lines: ['Mixed bubble line'] },
@@ -1264,7 +1264,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => ({
               operations: [
                 {
@@ -1331,7 +1331,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => ({ render: { lines: ['Bubble line should not render'] } }),
           ],
         },
@@ -1380,7 +1380,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => ({ render: { lines: ['bubble-a'] } }),
             () => ({ render: { lines: ['bubble-b'] } }),
           ],
@@ -1434,7 +1434,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const command = {
         metadata: {
           ...lookDef.metadata,
-          bubbleReactions: [
+          reactions: [
             () => null,
             () => undefined,
           ],
@@ -1473,7 +1473,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
-          bubbleReactions: [
+          reactions: [
             () => ({ type: 'noop' }),
           ],
         },
@@ -1713,7 +1713,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('vetoes wrong ritual offering at capture for put indirect target policy', async function () {
+  it('vetoes wrong ritual offering via indirect target allowAction hook', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1748,14 +1748,17 @@ describe('bundle-rantamuta command-dispatch', function () {
         type: 'CONTAINER',
         maxItems: 1,
         inventory: new Map(),
-        metadata: {
-          puzzle: {
-            putPolicy: {
-              acceptedItemRef: 'rantamuta:bronzeClapper',
-              rejectMessage: 'That does not belong in the bell.',
-              successRender: 'The cracked bell hums with a low resonance.',
-            },
-          },
+        allowAction(action, context) {
+          if (!action || action.verbId !== 'put' || action.role !== 'indirect') {
+            return undefined;
+          }
+
+          const direct = context && context.entityResolution && context.entityResolution.directTarget;
+          if (direct && direct.entityReference === 'rantamuta:bronzeClapper') {
+            return undefined;
+          }
+
+          return 'That does not belong in the bell.';
         },
         addItem() { },
         removeItem() { },
@@ -1788,7 +1791,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('renders ritual flavor line from put bubble reaction on correct offering', async function () {
+  it('renders ritual flavor line from indirect target bubbleEvent hook on correct offering', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1820,14 +1823,21 @@ describe('bundle-rantamuta command-dispatch', function () {
         type: 'CONTAINER',
         maxItems: 1,
         inventory: new Map(),
-        metadata: {
-          puzzle: {
-            putPolicy: {
-              acceptedItemRef: 'rantamuta:bronzeClapper',
-              rejectMessage: 'That does not belong in the bell.',
-              successRender: 'The cracked bell hums with a low resonance.',
+        bubbleEvent(action, context) {
+          if (!action || action.verbId !== 'put' || action.role !== 'indirect') {
+            return null;
+          }
+
+          const direct = context && context.entityResolution && context.entityResolution.directTarget;
+          if (!direct || direct.entityReference !== 'rantamuta:bronzeClapper') {
+            return null;
+          }
+
+          return {
+            render: {
+              lines: ['The cracked bell hums with a low resonance.'],
             },
-          },
+          };
         },
         addItem() { },
         removeItem() { },

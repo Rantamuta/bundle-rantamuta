@@ -25,6 +25,7 @@
   description: "The old bell is split along one side, silent and inert."
   keywords: [ "cracked", "bell" ]
   type: "CONTAINER"
+  script: ritualPutTarget
   maxItems: 1
   metadata:
     permissions:
@@ -42,6 +43,7 @@
   description: "An ornate reliquary with a shallow circular recess."
   keywords: [ "reliquary" ]
   type: "CONTAINER"
+  script: ritualPutTarget
   maxItems: 1
   metadata:
     permissions:
@@ -59,6 +61,7 @@
   description: "A circular basin whose runes seem to shimmer at the edge of sight."
   keywords: [ "stone", "basin" ]
   type: "CONTAINER"
+  script: ritualPutTarget
   maxItems: 1
   metadata:
     permissions:
