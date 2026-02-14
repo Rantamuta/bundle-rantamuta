@@ -46,7 +46,7 @@ function withPlayerManager(value, player) {
 }
 
 describe('bundle-rantamuta command-dispatch', function () {
-  it('executes command when CommandManager.find returns { command, alias }', async function () {
+  it('executes command when CommandManager.find returns an exact alias match', async function () {
     let executeArgs = null;
     const command = {
       execute: async (...args) => {
@@ -65,7 +65,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       },
     }, player);
 
-    await handleCommand(state, { player }, 'look');
+    await handleCommand(state, { player }, 'l');
 
     assert.ok(executeArgs);
     const args = /** @type {Array<*>} */ (executeArgs);
@@ -73,14 +73,18 @@ describe('bundle-rantamuta command-dispatch', function () {
     assert.strictEqual(args[1], player);
     assert.strictEqual(args[2], 'l');
     assert.deepStrictEqual(args[3] && args[3].parsedInput, {
-      actorInput: 'look',
-      normalizedInput: 'look',
-      intentToken: 'look',
+      actorInput: 'l',
+      normalizedInput: 'l',
+      intentToken: 'l',
     });
-    assert.strictEqual(args[3] && args[3].rawInput, 'look');
+    assert.strictEqual(args[3] && args[3].rawInput, 'l');
   });
 
-  it('executes command when CommandManager.find returns a direct command', async function () {
+  it('does not execute command when CommandManager.find cannot prove exact-key match', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
     let executeArgs = null;
     const command = {
       execute: async (...args) => {
@@ -90,7 +94,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     const player = asPlayer({
       __pruned: false,
-      socket: { writable: false },
+      socket: {
+        writable: true,
+        write: () => { },
+      },
+      interpolatePrompt: () => '> ',
     });
 
     const state = withPlayerManager({
@@ -99,13 +107,15 @@ describe('bundle-rantamuta command-dispatch', function () {
       },
     }, player);
 
-    await handleCommand(state, { player }, 'look');
-
-    assert.ok(executeArgs);
-    const args = /** @type {Array<*>} */ (executeArgs);
-    assert.strictEqual(args[0], '');
-    assert.strictEqual(args[1], player);
-    assert.strictEqual(args[2], null);
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    try {
+      await handleCommand(state, { player }, 'look');
+      assert.strictEqual(executeArgs, null);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
   });
 
   it('passes phase context through ranvier command wrappers', async function () {
