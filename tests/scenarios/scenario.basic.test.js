@@ -168,7 +168,7 @@ test('scenario runner --throughInput put apple in chest narrates successful put'
   assert.match(result.stdout, /You put the apple in the chest\./);
 });
 
-test('scenario runner --throughInput unknown inventory shorthand "i" falls back to What?', () => {
+test('scenario runner --throughInput inventory shorthand "i" renders inventory output', () => {
   const result = runScenario([
     '--throughInput',
     '--room', 'test:lab',
@@ -177,7 +177,7 @@ test('scenario runner --throughInput unknown inventory shorthand "i" falls back 
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /\[run\] 1\/1: i/);
-  assert.match(result.stdout, /What\?/);
+  assert.match(result.stdout, /You have nothing\./);
 });
 
 test('scenario runner --throughInput routes malformed put relation text to put validation', () => {

@@ -1790,6 +1790,91 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('runs inventory through entity-resolution and renders empty inventory message', async function () {
+    const inventoryDef = require('../commands/inventory');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+    const messages = [];
+
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: inventoryDef.metadata,
+        execute: inventoryDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inventory' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inventory');
+
+      assert.deepStrictEqual(committedPlan, { operations: [{ type: 'noop' }] });
+      assert.ok(messages.includes('You have nothing.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('runs inventory alias "i" through entity-resolution and renders inventory lines', async function () {
+    const inventoryDef = require('../commands/inventory');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const apple = { uuid: 'apple-300', name: 'apple', keywords: ['apple'] };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: inventoryDef.metadata,
+        execute: inventoryDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'i' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'i');
+
+      assert.ok(messages.includes('You are carrying:'));
+      assert.ok(messages.includes('- apple'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
   it('blocks take in capture when inventory is full', async function () {
     const takeDef = require('../commands/take');
     const ranvierPath = require.resolve('ranvier');
