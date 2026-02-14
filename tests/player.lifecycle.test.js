@@ -10,6 +10,10 @@ describe('bundle-rantamuta player-lifecycle', function () {
       room: {
         title: 'Test Lab',
         description: 'A practice room for manually testing item pickup and placement.',
+        exits: [
+          { direction: 'north' },
+          { direction: 'west' },
+        ],
         items: new Set([
           { roomDesc: 'A practice apple rests here.' },
           { name: 'practice chest' },
@@ -65,6 +69,7 @@ describe('bundle-rantamuta player-lifecycle', function () {
     assert.deepStrictEqual(roomLines, [
       [player, '<bold>Test Lab</bold>'],
       [player, 'A practice room for manually testing item pickup and placement.'],
+      [player, 'Exits: north, west'],
       [player, 'A practice apple rests here.'],
       [player, 'You see practice chest here.'],
     ]);

@@ -139,6 +139,7 @@ test('scenario runner --throughInput can look in test:lab', () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /\[run\] 1\/1: look/);
   assert.match(result.stdout, /Test Lab/);
+  assert.match(result.stdout, /Exits: north, west/);
   assert.match(result.stdout, /A practice apple rests here\./);
   assert.match(result.stdout, /A practice chest waits here\./);
 });

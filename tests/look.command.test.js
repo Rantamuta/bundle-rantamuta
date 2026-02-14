@@ -97,6 +97,10 @@ describe('bundle-rantamuta look command', function () {
       room: {
         title: 'Item Room',
         description: 'Room with items.',
+        exits: [
+          { direction: 'north' },
+          { direction: 'east' },
+        ],
         items: new Set([
           { roomDesc: 'A brass key glints here.' },
           { name: 'plain box' },
@@ -117,9 +121,34 @@ describe('bundle-rantamuta look command', function () {
         lines: [
           '<bold>Item Room</bold>',
           'Room with items.',
+          'Exits: north, east',
           'A brass key glints here.',
           'You see plain box here.',
         ],
+      },
+    });
+  });
+
+  it('omits exit line when room has no exits', function () {
+    const execute = lookCommand.command({});
+    const player = createPlayer({
+      room: {
+        title: 'Quiet Room',
+        description: 'No exits here.',
+      },
+    });
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'intransitive' },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        lines: ['<bold>Quiet Room</bold>', 'No exits here.'],
       },
     });
   });
