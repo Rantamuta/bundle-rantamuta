@@ -116,7 +116,7 @@ test('scenario runner --throughInput executes via input events and reports unkno
     '--throughInput',
     '--room', 'test:room',
     '--command', 'look',
-    '--command', 'east',
+    '--command', 'eastward',
     '--failOnUnknown',
   ]);
 
@@ -124,7 +124,7 @@ test('scenario runner --throughInput executes via input events and reports unkno
   assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
   assert.match(result.stdout, /\[run\] 1\/2: look/);
   assert.match(result.stdout, /Test Room/);
-  assert.match(result.stdout, /\[run\] 2\/2: east/);
+  assert.match(result.stdout, /\[run\] 2\/2: eastward/);
   assert.match(result.stdout, /What\?/);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=1, failed=1\)/);
 });
@@ -141,6 +141,58 @@ test('scenario runner --throughInput can look in test:lab', () => {
   assert.match(result.stdout, /Test Lab/);
   assert.match(result.stdout, /A practice apple rests here\./);
   assert.match(result.stdout, /A practice chest waits here\./);
+});
+
+test('scenario runner --throughInput canonicalizes l to look', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'l',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: l/);
+  assert.match(result.stdout, /Test Lab/);
+  assert.match(result.stdout, /A practice apple rests here\./);
+  assert.match(result.stdout, /A practice chest waits here\./);
+});
+
+test('scenario runner --throughInput canonicalizes east to go east', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:labWest',
+    '--command', 'east',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/2: east/);
+  assert.match(result.stdout, /\[run\] 2\/2: look/);
+  assert.match(result.stdout, /Test Lab/);
+});
+
+test('scenario runner --throughInput canonicalizes n to go north', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'n',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: n/);
+  assert.match(result.stdout, /Lab North Walk/);
+});
+
+test('scenario runner --throughInput canonicalizes x <thing> and surfaces look form failure', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'x chest',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: x chest/);
+  assert.match(result.stdout, /You can't do that\./);
 });
 
 test('scenario runner --throughInput traverses lab loop with go and returns to Test Lab', () => {

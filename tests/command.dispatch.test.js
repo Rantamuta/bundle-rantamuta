@@ -46,7 +46,7 @@ function withPlayerManager(value, player) {
 }
 
 describe('bundle-rantamuta command-dispatch', function () {
-  it('executes command when CommandManager.find returns an exact alias match', async function () {
+  it('executes canonicalized shorthand through exact-key command lookup', async function () {
     let executeArgs = null;
     const command = {
       execute: async (...args) => {
@@ -61,7 +61,8 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     const state = withPlayerManager({
       CommandManager: {
-        find: () => ({ command, alias: 'l' }),
+        commands: new Map([['look', command]]),
+        get: key => key === 'look' ? command : null,
       },
     }, player);
 
@@ -71,11 +72,12 @@ describe('bundle-rantamuta command-dispatch', function () {
     const args = /** @type {Array<*>} */ (executeArgs);
     assert.strictEqual(args[0], '');
     assert.strictEqual(args[1], player);
-    assert.strictEqual(args[2], 'l');
+    assert.strictEqual(args[2], null);
     assert.deepStrictEqual(args[3] && args[3].parsedInput, {
       actorInput: 'l',
-      normalizedInput: 'l',
-      intentToken: 'l',
+      canonicalInput: 'look',
+      normalizedInput: 'look',
+      intentToken: 'look',
     });
     assert.strictEqual(args[3] && args[3].rawInput, 'l');
   });
@@ -1949,6 +1951,146 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('canonicalizes n and executes go north through full dispatch pipeline', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'test:labNorth',
+        title: 'Lab North Walk',
+        description: 'A narrow corridor north of the test lab.',
+        items: new Set(),
+        getDoor: () => null,
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'test:lab',
+          getExits: () => [{ direction: 'north', roomId: destination.entityReference }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map([['go', command]]),
+          get: key => key === 'go' ? command : null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'n');
+
+      assert.deepStrictEqual(committedPlan, {
+        operations: [
+          {
+            type: 'movePlayer',
+            player,
+            toRoom: destination,
+          },
+        ],
+      });
+      assert.ok(messages.includes('<bold>Lab North Walk</bold>'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('canonicalizes east and executes go east', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'test:labEast',
+        title: 'Lab East Walk',
+        description: 'A narrow corridor east of the test lab.',
+        items: new Set(),
+        getDoor: () => null,
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'test:lab',
+          getExits: () => [{ direction: 'east', roomId: destination.entityReference }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map([['go', command]]),
+          get: key => key === 'go' ? command : null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'east');
+
+      assert.deepStrictEqual(committedPlan, {
+        operations: [
+          {
+            type: 'movePlayer',
+            player,
+            toRoom: destination,
+          },
+        ],
+      });
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('runs go through entity-resolution and commits movePlayer plan', async function () {
     const goDef = require('../commands/go');
     const ranvierPath = require.resolve('ranvier');
@@ -2086,6 +2228,205 @@ describe('bundle-rantamuta command-dispatch', function () {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
       mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('applies go capture veto message for east shorthand canonicalization', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'test:gate',
+        title: 'Gate Room',
+        description: 'A blocked gate.',
+        items: new Set(),
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'test:lab',
+          getExits: () => [{
+            direction: 'east',
+            roomId: destination.entityReference,
+            metadata: {
+              permissions: {
+                verbs: {
+                  go: 'The portcullis is down.',
+                },
+              },
+            },
+          }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map([['go', command]]),
+          get: key => key === 'go' ? command : null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'east');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The portcullis is down.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('canonicalizes l to look and renders room output', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Render Room',
+          description: 'Render description',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: lookDef.metadata,
+        execute: lookDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map([['look', command]]),
+          get: key => key === 'look' ? command : null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'l');
+
+      assert.ok(messages.includes('<bold>Render Room</bold>'));
+      assert.ok(messages.includes('Render description'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('canonicalizes x <thing> to look at <thing> and returns look form failure', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Render Room',
+          description: 'Render description',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: lookDef.metadata,
+        execute: lookDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map([['look', command]]),
+          get: key => key === 'look' ? command : null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'x chest');
+
+      assert.ok(messages.includes('You can\'t do that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('keeps unknown behavior for non-canonicalized input', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        socket: { writable: false },
+      });
+
+      const state = withPlayerManager({
+        CommandManager: {
+          commands: new Map(),
+          get: () => null,
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'eastward');
+
+      assert.ok(messages.includes('What?'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
     }
   });
 
