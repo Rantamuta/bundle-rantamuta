@@ -12,3 +12,18 @@
   keywords: [ "old", "chest" ]
   type: "CONTAINER"
   maxItems: 2
+
+- id: labApple
+  name: "practice apple"
+  roomDesc: "A practice apple rests here."
+  description: "A plain apple used for command feel-testing."
+  keywords: [ "practice", "apple" ]
+  type: "OBJECT"
+
+- id: labChest
+  name: "practice chest"
+  roomDesc: "A practice chest waits here."
+  description: "A lightweight chest meant for put/take testing."
+  keywords: [ "practice", "chest" ]
+  type: "CONTAINER"
+  maxItems: 4

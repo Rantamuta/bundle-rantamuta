@@ -90,4 +90,37 @@ describe('bundle-rantamuta look command', function () {
       },
     });
   });
+
+  it('includes room item descriptions in render lines', function () {
+    const execute = lookCommand.command({});
+    const player = createPlayer({
+      room: {
+        title: 'Item Room',
+        description: 'Room with items.',
+        items: new Set([
+          { roomDesc: 'A brass key glints here.' },
+          { name: 'plain box' },
+        ]),
+      },
+    });
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'intransitive' },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        lines: [
+          '<bold>Item Room</bold>',
+          'Room with items.',
+          'A brass key glints here.',
+          'You see plain box here.',
+        ],
+      },
+    });
+  });
 });

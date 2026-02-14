@@ -30,7 +30,7 @@ test('scenario runner executes command lines in order and continues on unknown c
   assert.equal(result.status, 1);
   assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
   assert.match(result.stdout, /\[run\] 1\/2: unknown-first/);
-  assert.match(result.stdout, /Unknown command\./);
+  assert.match(result.stdout, /What\?/);
   assert.match(result.stdout, /\[run\] 2\/2: unknown-second/);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
 });
@@ -50,7 +50,7 @@ test('scenario runner .scenario file parses directives and ignores comments/blan
   assert.equal(result.status, 1);
   assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
   assert.match(result.stdout, /\[run\] 1\/2: unknown-alpha/);
-  assert.match(result.stdout, /Unknown command\./);
+  assert.match(result.stdout, /What\?/);
   assert.match(result.stdout, /\[run\] 2\/2: unknown-beta/);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
 });
@@ -107,7 +107,7 @@ test('scenario runner legacy --command/--args fallback builds one command line',
   assert.equal(result.status, 0);
   assert.match(result.stdout, /\[info\] scenario starting \(commands=1\)/);
   assert.match(result.stdout, /\[run\] 1\/1: legacy-unknown abc def/);
-  assert.match(result.stdout, /Unknown command\./);
+  assert.match(result.stdout, /What\?/);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=1, failed=0\)/);
 });
 
@@ -125,8 +125,59 @@ test('scenario runner --throughInput executes via input events and reports unkno
   assert.match(result.stdout, /\[run\] 1\/2: look/);
   assert.match(result.stdout, /Test Room/);
   assert.match(result.stdout, /\[run\] 2\/2: east/);
-  assert.match(result.stdout, /Unknown command\./);
+  assert.match(result.stdout, /What\?/);
   assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=1, failed=1\)/);
+});
+
+test('scenario runner --throughInput can look in test:lab', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: look/);
+  assert.match(result.stdout, /Test Lab/);
+  assert.match(result.stdout, /A practice apple rests here\./);
+  assert.match(result.stdout, /A practice chest waits here\./);
+});
+
+test('scenario runner --throughInput get apple narrates successful take', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'get apple',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: get apple/);
+  assert.match(result.stdout, /You take the apple\./);
+});
+
+test('scenario runner --throughInput put apple in chest narrates successful put', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'get apple',
+    '--command', 'put apple in chest',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 2\/2: put apple in chest/);
+  assert.match(result.stdout, /You put the apple in the chest\./);
+});
+
+test('scenario runner --throughInput unknown inventory shorthand "i" falls back to What?', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'i',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/1: i/);
+  assert.match(result.stdout, /What\?/);
 });
 
 test('scenario runner --throughInput routes malformed put relation text to put validation', () => {

@@ -1,3 +1,10 @@
 - id: room
   title: "Test Room"
   description: "Deterministic room used by automated scenario tests."
+
+- id: lab
+  title: "Test Lab"
+  description: "A practice room for manually testing item pickup and placement."
+  items:
+    - id: test:labApple
+    - id: test:labChest
