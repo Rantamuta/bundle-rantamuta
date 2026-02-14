@@ -1045,4 +1045,43 @@ describe('bundle-rantamuta command-dispatch', function () {
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
+
+  it('renders put-specific missing-direct prompt for bare put input', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put');
+
+      assert.ok(messages.includes('Put what?'));
+      assert.ok(!messages.includes('You can\'t do that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
 });

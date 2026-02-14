@@ -150,6 +150,111 @@ describe('bundle-rantamuta entity-resolution', function () {
     assert.strictEqual(result.value.indirectTarget, undefined);
   });
 
+  it('returns FORM_MISSING_DIRECT for intransitive input when verb declares direct rule', function () {
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.items'],
+          },
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take'));
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'FORM_MISSING_DIRECT',
+      },
+    });
+  });
+
+  it('returns FORM_MISSING_DIRECT for intransitive input when verb declares directIndirect rule', function () {
+    const command = makeCommand({
+      rules: {
+        directIndirect: {
+          acceptedRelations: ['in'],
+          scopeProfile: {
+            direct: ['player.inventory'],
+            indirect: ['room.items'],
+          },
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put'));
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'FORM_MISSING_DIRECT',
+      },
+    });
+  });
+
+  it('returns FORM_MISSING_RELATION for intransitive input when verb declares indirect rule', function () {
+    const command = makeCommand({
+      rules: {
+        indirect: {
+          acceptedRelations: ['to'],
+          scopeProfile: {
+            indirect: ['room.items'],
+          },
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('sing'));
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'FORM_MISSING_RELATION',
+      },
+    });
+  });
+
+  it('returns FORM_MISSING_RELATION for intransitive input when verb declares relationOnly rule', function () {
+    const command = makeCommand({
+      rules: {
+        relationOnly: {
+          acceptedRelations: ['off'],
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('keep'));
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'FORM_MISSING_RELATION',
+      },
+    });
+  });
+
+  it('returns FORM_NOT_SUPPORTED for intransitive input when no compatible rule exists', function () {
+    const command = makeCommand({
+      rules: {},
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('foo'));
+
+    assert.strictEqual(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.error.code, 'FORM_NOT_SUPPORTED');
+  });
+
   it('supports relationOnly rule shape with relation canonicalization', function () {
     const command = makeCommand({
       rules: {
