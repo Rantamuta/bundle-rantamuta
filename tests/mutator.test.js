@@ -24,6 +24,40 @@ function createContainer(items = []) {
   };
 }
 
+function createRoom(name) {
+  return {
+    name,
+    players: new Set(),
+    addPlayer(player) {
+      this.players.add(player);
+    },
+    removePlayer(player) {
+      this.players.delete(player);
+    },
+  };
+}
+
+function createPlayerInRoom(room) {
+  const player = {
+    room,
+    moveTo(nextRoom) {
+      if (this.room && this.room !== nextRoom && typeof this.room.removePlayer === 'function') {
+        this.room.removePlayer(this);
+      }
+      this.room = nextRoom;
+      if (nextRoom && typeof nextRoom.addPlayer === 'function') {
+        nextRoom.addPlayer(this);
+      }
+    },
+  };
+
+  if (room && typeof room.addPlayer === 'function') {
+    room.addPlayer(player);
+  }
+
+  return player;
+}
+
 describe('bundle-rantamuta mutator', function () {
   it('applies transferItem instruction and returns inverse operation', function () {
     const item = { id: 'test:sword' };
@@ -152,5 +186,46 @@ describe('bundle-rantamuta mutator', function () {
         operations: [{ type: 'noop' }],
       });
     });
+  });
+
+  it('applies movePlayer instruction and returns inverse operation', function () {
+    const start = createRoom('start');
+    const destination = createRoom('destination');
+    const player = createPlayerInRoom(start);
+
+    const undo = applyMutationInstruction({}, {
+      type: 'movePlayer',
+      player,
+      toRoom: destination,
+    });
+
+    assert.strictEqual(player.room, destination);
+    assert.strictEqual(start.players.has(player), false);
+    assert.strictEqual(destination.players.has(player), true);
+
+    undo();
+
+    assert.strictEqual(player.room, start);
+    assert.strictEqual(start.players.has(player), true);
+    assert.strictEqual(destination.players.has(player), false);
+  });
+
+  it('rolls back movePlayer when a later operation fails', function () {
+    const start = createRoom('start');
+    const destination = createRoom('destination');
+    const player = createPlayerInRoom(start);
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          { type: 'movePlayer', player, toRoom: destination },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.strictEqual(player.room, start);
+    assert.strictEqual(start.players.has(player), true);
+    assert.strictEqual(destination.players.has(player), false);
   });
 });

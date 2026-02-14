@@ -143,6 +143,26 @@ test('scenario runner --throughInput can look in test:lab', () => {
   assert.match(result.stdout, /A practice chest waits here\./);
 });
 
+test('scenario runner --throughInput traverses lab loop with go and returns to Test Lab', () => {
+  const result = runScenario([
+    '--throughInput',
+    '--room', 'test:lab',
+    '--command', 'go north',
+    '--command', 'go west',
+    '--command', 'go south',
+    '--command', 'go east',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /\[run\] 1\/5: go north/);
+  assert.match(result.stdout, /\[run\] 2\/5: go west/);
+  assert.match(result.stdout, /\[run\] 3\/5: go south/);
+  assert.match(result.stdout, /\[run\] 4\/5: go east/);
+  assert.match(result.stdout, /\[run\] 5\/5: look/);
+  assert.match(result.stdout, /Test Lab/);
+});
+
 test('scenario runner --throughInput get apple narrates successful take', () => {
   const result = runScenario([
     '--throughInput',

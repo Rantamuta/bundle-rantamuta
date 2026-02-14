@@ -1875,6 +1875,298 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('renders go-specific missing-direct prompt for bare go input', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { getExits: () => [] },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({ RoomManager: { getRoom: () => null } }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go');
+
+      assert.ok(messages.includes('Go where?'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('renders go-specific no-exit message for unresolved direction', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { getExits: () => [{ direction: 'north', roomId: 'test:elsewhere' }] },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({ RoomManager: { getRoom: () => null } }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go east');
+
+      assert.ok(messages.includes('You can\'t go that way.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('runs go through entity-resolution and commits movePlayer plan', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'test:labNorth',
+        title: 'Lab North Walk',
+        description: 'A narrow corridor north of the test lab.',
+        items: new Set(),
+        getDoor: () => null,
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'test:lab',
+          getExits: () => [{ direction: 'north', roomId: destination.entityReference }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go north');
+
+      assert.deepStrictEqual(committedPlan, {
+        operations: [
+          {
+            type: 'movePlayer',
+            player,
+            toRoom: destination,
+          },
+        ],
+      });
+      assert.ok(messages.includes('<bold>Lab North Walk</bold>'));
+      assert.ok(messages.includes('A narrow corridor north of the test lab.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('stops go at capture veto using exit metadata.permissions message', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const destination = {
+        entityReference: 'test:gate',
+        title: 'Gate Room',
+        description: 'A blocked gate.',
+        items: new Set(),
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          entityReference: 'test:lab',
+          getExits: () => [{
+            direction: 'east',
+            roomId: destination.entityReference,
+            metadata: {
+              permissions: {
+                verbs: {
+                  go: 'The portcullis is down.',
+                },
+              },
+            },
+          }],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go east');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The portcullis is down.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('renders go door-state failures for locked and closed exits', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const currentRoom = { entityReference: 'test:lab' };
+      const lockedDestination = {
+        entityReference: 'test:locked',
+        title: 'Locked',
+        description: 'Locked room',
+        items: new Set(),
+        getDoor: (fromRoom) => fromRoom && fromRoom.entityReference === currentRoom.entityReference
+          ? { locked: true, closed: true }
+          : null,
+      };
+      const closedDestination = {
+        entityReference: 'test:closed',
+        title: 'Closed',
+        description: 'Closed room',
+        items: new Set(),
+        getDoor: (fromRoom) => fromRoom && fromRoom.entityReference === currentRoom.entityReference
+          ? { locked: false, closed: true }
+          : null,
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          ...currentRoom,
+          getExits: () => [
+            { direction: 'north', roomId: lockedDestination.entityReference },
+            { direction: 'south', roomId: closedDestination.entityReference },
+          ],
+        },
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => {
+              if (roomId === lockedDestination.entityReference) {
+                return lockedDestination;
+              }
+              if (roomId === closedDestination.entityReference) {
+                return closedDestination;
+              }
+              return null;
+            },
+          },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go north');
+      await handleCommand(state, { player }, 'go south');
+
+      assert.ok(messages.includes('The way is locked.'));
+      assert.ok(messages.includes('The way is closed.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
   it('blocks take in capture when inventory is full', async function () {
     const takeDef = require('../commands/take');
     const ranvierPath = require.resolve('ranvier');

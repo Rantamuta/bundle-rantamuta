@@ -37,12 +37,13 @@ function createContainer(def = {}) {
 function createPlayer(def = {}) {
   const inventoryItems = Array.isArray(def.inventoryItems) ? def.inventoryItems : [];
   const roomItems = Array.isArray(def.roomItems) ? def.roomItems : [];
+  const room = def.room || {
+    items: new Set(roomItems),
+  };
 
   return {
     inventory: new Map(inventoryItems.map(item => [item.uuid, item])),
-    room: {
-      items: new Set(roomItems),
-    },
+    room,
     sendCalls: [],
     send(line) {
       this.sendCalls.push(line);
@@ -354,6 +355,65 @@ describe('bundle-rantamuta entity-resolution', function () {
     }
 
     assert.strictEqual(result.value.directTarget, fromInventory);
+  });
+
+  it('resolves go direction via room.exits scope', function () {
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.exits'],
+          },
+        },
+      },
+    });
+    const room = {
+      items: new Set(),
+      getExits: () => ([
+        { direction: 'east', roomId: 'test:labNorth' },
+        { direction: 'west', roomId: 'test:labWest' },
+      ]),
+    };
+    const player = createPlayer({ room });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('go east'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.directTarget.direction, 'east');
+    assert.strictEqual(result.value.directTarget.roomId, 'test:labNorth');
+    assert.strictEqual(result.value.directTarget.name, 'east');
+    assert.strictEqual(result.value.directTarget.uuid, 'exit:east:test:labNorth:0');
+  });
+
+  it('uses exact direction matching for room.exits scope', function () {
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.exits'],
+          },
+        },
+      },
+    });
+    const room = {
+      items: new Set(),
+      getExits: () => ([{ direction: 'east', roomId: 'test:labNorth' }]),
+    };
+    const player = createPlayer({ room });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('go e'));
+
+    assert.strictEqual(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.error.code, 'TARGET_NOT_FOUND');
+    assert.deepStrictEqual(result.error.details, { role: 'direct' });
   });
 
   it('uses bounded breadth-first traversal with max depth', function () {
