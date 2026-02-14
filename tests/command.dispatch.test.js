@@ -476,6 +476,179 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('allows look through capture when checks pass', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const events = [];
+    let captureInvoked = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      events.push(`render:${String(message)}`);
+    };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      events.push('commit');
+      assert.deepStrictEqual(planArg, { operations: [{ type: 'noop' }] });
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Allowed Room',
+          description: 'You can see this.',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          captureChecks: [
+            (context) => {
+              captureInvoked = true;
+              assert.strictEqual(context.entityResolution.ruleKey, 'intransitive');
+              return { ok: true };
+            },
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.strictEqual(captureInvoked, true);
+      assert.deepStrictEqual(events, [
+        'commit',
+        'render:<bold>Allowed Room</bold>',
+        'render:You can see this.',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('applies look bubble additions to the committed plan', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let bubbleInvoked = false;
+    const events = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      events.push(`render:${String(message)}`);
+    };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      events.push('commit');
+      assert.deepStrictEqual(planArg, {
+        operations: [{ type: 'noop' }, { type: 'noop' }, { type: 'noop' }],
+      });
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Bubble Room',
+          description: 'Bubble description',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          bubbleReactions: [
+            (context) => {
+              bubbleInvoked = true;
+              assert.strictEqual(context.entityResolution.ruleKey, 'intransitive');
+              return [{ type: 'noop' }, { type: 'noop' }];
+            },
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.strictEqual(bubbleInvoked, true);
+      assert.deepStrictEqual(events, [
+        'commit',
+        'render:<bold>Bubble Room</bold>',
+        'render:Bubble description',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('ignores non-operation bubble return values', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+
+    ranvier.Broadcast.sayAt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Room',
+          description: 'Desc',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          bubbleReactions: [
+            () => null,
+            () => undefined,
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(committedPlan, { operations: [{ type: 'noop' }] });
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('merges bubble operations into commit plan', async function () {
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
