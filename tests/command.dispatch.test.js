@@ -2451,8 +2451,9 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('blocks go down using gate metadata until required placements exist', async function () {
+  it('blocks go down via bell crypt room script until required placements exist', async function () {
     const goDef = require('../commands/go');
+    const bellCryptGateScript = require('../areas/rantamuta/scripts/rooms/bellCryptGate');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -2479,32 +2480,25 @@ describe('bundle-rantamuta command-dispatch', function () {
         items: new Set(),
         getDoor: () => null,
       };
-      const player = asPlayer({
-        name: 'Tester',
-        room: {
-          entityReference: 'rantamuta:bell_crypt',
-          getExits: () => [{
-            direction: 'down',
-            roomId: destination.entityReference,
-            metadata: {
-              gate: {
-                denyMessage: 'A dull stone slab blocks the descent.',
-                requiredPlacements: [
-                  { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
-                ],
-              },
+      const room = {
+        entityReference: 'rantamuta:bell_crypt',
+        getExits: () => [{
+          direction: 'down',
+          roomId: destination.entityReference,
+          metadata: {
+            gate: {
+              denyMessage: 'A dull stone slab blocks the descent.',
+              requiredPlacements: [
+                { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+              ],
             },
-          }],
-        },
-        moveTo: () => { },
-        socket: { writable: false },
-      });
-
+          },
+        }],
+      };
       const crackedBell = {
         entityReference: 'rantamuta:crackedBell',
         inventory: new Map(),
       };
-
       const command = {
         metadata: goDef.metadata,
         execute: goDef.command({
@@ -2516,7 +2510,16 @@ describe('bundle-rantamuta command-dispatch', function () {
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
         ItemManager: { items: new Set([crackedBell]) },
-      }, player);
+      }, null);
+      bellCryptGateScript.listeners.spawn(state).call(room);
+
+      const player = asPlayer({
+        name: 'Tester',
+        room,
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+      state.PlayerManager.getPlayer = () => player;
 
       await handleCommand(state, { player }, 'go down');
 
@@ -2529,8 +2532,9 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('allows go down when gate required placements are satisfied', async function () {
+  it('allows go down via bell crypt room script when required placements are satisfied', async function () {
     const goDef = require('../commands/go');
+    const bellCryptGateScript = require('../areas/rantamuta/scripts/rooms/bellCryptGate');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -2559,27 +2563,21 @@ describe('bundle-rantamuta command-dispatch', function () {
         entityReference: 'rantamuta:crackedBell',
         inventory: new Map([['clapper-1', clapper]]),
       };
-      const player = asPlayer({
-        name: 'Tester',
-        room: {
-          entityReference: 'rantamuta:bell_crypt',
-          getExits: () => [{
-            direction: 'down',
-            roomId: destination.entityReference,
-            metadata: {
-              gate: {
-                denyMessage: 'A dull stone slab blocks the descent.',
-                requiredPlacements: [
-                  { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
-                ],
-              },
+      const room = {
+        entityReference: 'rantamuta:bell_crypt',
+        getExits: () => [{
+          direction: 'down',
+          roomId: destination.entityReference,
+          metadata: {
+            gate: {
+              denyMessage: 'A dull stone slab blocks the descent.',
+              requiredPlacements: [
+                { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+              ],
             },
-          }],
-        },
-        moveTo: () => { },
-        socket: { writable: false },
-      });
-
+          },
+        }],
+      };
       const command = {
         metadata: goDef.metadata,
         execute: goDef.command({
@@ -2591,7 +2589,16 @@ describe('bundle-rantamuta command-dispatch', function () {
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
         ItemManager: { items: new Set([crackedBell, clapper]) },
-      }, player);
+      }, null);
+      bellCryptGateScript.listeners.spawn(state).call(room);
+
+      const player = asPlayer({
+        name: 'Tester',
+        room,
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+      state.PlayerManager.getPlayer = () => player;
 
       await handleCommand(state, { player }, 'go down');
 

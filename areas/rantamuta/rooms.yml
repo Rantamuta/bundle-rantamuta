@@ -62,6 +62,7 @@
 - id: bell_crypt
   title: "Bell Crypt"
   description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
+  script: bellCryptGate
   exits:
     - roomId: rantamuta:bell_courtyard
       direction: west
