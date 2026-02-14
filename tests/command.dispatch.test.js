@@ -108,6 +108,63 @@ describe('bundle-rantamuta command-dispatch', function () {
     assert.strictEqual(args[2], null);
   });
 
+  it('passes phase context through ranvier command wrappers', async function () {
+    const { Command } = require('ranvier');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let sawContext = false;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const wrapped = new Command('bundle-rantamuta', 'look', {
+        aliases: ['l'],
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        command: (args, player, alias, context) => {
+          sawContext = !!(context && context.entityResolution && context.entityResolution.ruleKey === 'intransitive');
+          return {
+            ok: true,
+            plan: { operations: [{ type: 'noop' }] },
+            render: { lines: ['wrapped-look-ok'] },
+          };
+        },
+      }, 'commands/look.js');
+
+      const player = asPlayer({
+        name: 'Tester',
+        socket: { writable: false },
+      });
+
+      const state = withPlayerManager({
+        CommandManager: {
+          find: () => ({ command: wrapped, alias: 'look' }),
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.strictEqual(sawContext, true);
+      assert.ok(messages.includes('wrapped-look-ok'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('preserves legacy behavior when command returns undefined', async function () {
     let called = false;
     const command = {
@@ -167,6 +224,57 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.strictEqual(appliedValue.stateArg, state);
       assert.strictEqual(appliedValue.planArg, plan);
     } finally {
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('renders success payload only after commit', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const events = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      events.push(`render:${String(message)}`);
+    };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      events.push('commit');
+      assert.deepStrictEqual(planArg, { operations: [{ type: 'noop' }] });
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Render Room',
+          description: 'Render description',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: lookDef.metadata,
+        execute: lookDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: {
+          find: () => ({ command, alias: 'look' }),
+        },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(events, [
+        'commit',
+        'render:<bold>Render Room</bold>',
+        'render:Render description',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
@@ -302,6 +410,69 @@ describe('bundle-rantamuta command-dispatch', function () {
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('stops look at capture veto before target execution', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Blocked Room',
+          description: 'You should not see this.',
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          errorMessages: {
+            ...lookDef.metadata.errorMessages,
+            FORBIDDEN_BLOCKED: 'A mysterious force prevents you from looking.',
+          },
+          captureChecks: [
+            (context) => {
+              assert.strictEqual(context.entityResolution.ruleKey, 'intransitive');
+              return { ok: false, vetoInfo: { code: 'FORBIDDEN_BLOCKED' } };
+            },
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('A mysterious force prevents you from looking.'));
+      assert.ok(!messages.includes('<bold>Blocked Room</bold>'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
 
