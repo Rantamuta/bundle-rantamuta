@@ -88,6 +88,9 @@ describe('bundle-rantamuta take command', function () {
         },
       ],
     });
+    assert.deepStrictEqual(result.render, {
+      lines: ['You take the gold coin.'],
+    });
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {

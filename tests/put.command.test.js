@@ -102,6 +102,9 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
+    assert.deepStrictEqual(result.render, {
+      lines: ['You put the rusty sword in the old chest.'],
+    });
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {
@@ -211,4 +214,3 @@ describe('bundle-rantamuta put command', function () {
     });
   });
 });
-

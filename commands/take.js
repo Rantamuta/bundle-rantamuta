@@ -84,6 +84,34 @@ function resolveTakeSource(item, player) {
   return null;
 }
 
+/**
+ * @param {*} entity
+ * @param {string} fallback
+ * @returns {string}
+ */
+function displayName(entity, fallback) {
+  if (entity && typeof entity.name === 'string' && entity.name.length > 0) {
+    return entity.name;
+  }
+
+  return fallback;
+}
+
+/**
+ * @param {string[] | undefined} span
+ * @param {*} entity
+ * @param {string} fallback
+ * @returns {string}
+ */
+function displayLabel(span, entity, fallback) {
+  const spanText = Array.isArray(span) ? span.map(part => String(part)).join(' ').trim() : '';
+  if (spanText.length > 0) {
+    return spanText;
+  }
+
+  return displayName(entity, fallback);
+}
+
 module.exports = {
   aliases: ['get'],
   metadata: {
@@ -155,6 +183,9 @@ module.exports = {
             to: player,
           },
         ],
+      },
+      render: {
+        lines: [`You take the ${displayLabel(resolution.directSpan, item, 'item')}.`],
       },
     };
   }

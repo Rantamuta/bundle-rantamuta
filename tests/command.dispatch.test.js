@@ -1004,14 +1004,23 @@ describe('bundle-rantamuta command-dispatch', function () {
 
   it('runs put through entity-resolution and commits transfer plan', async function () {
     const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
+    const messages = [];
 
     mutator.applyMutationPlan = (stateArg, planArg) => {
       committedPlan = planArg;
     };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
 
     try {
       const sword = { uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] };
@@ -1051,7 +1060,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         from: player,
         to: chest,
       }]);
+      assert.ok(messages.includes('You put the rusty sword in the old chest.'));
     } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
@@ -1194,14 +1206,23 @@ describe('bundle-rantamuta command-dispatch', function () {
 
   it('runs take through entity-resolution and commits transfer plan', async function () {
     const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
+    const messages = [];
 
     mutator.applyMutationPlan = (stateArg, planArg) => {
       committedPlan = planArg;
     };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
 
     try {
       const room = {
@@ -1252,7 +1273,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         from: room,
         to: player,
       }]);
+      assert.ok(messages.includes('You take the coin.'));
     } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });

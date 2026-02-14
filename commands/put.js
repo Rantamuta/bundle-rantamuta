@@ -54,6 +54,34 @@ function hasContainerCapacity(container) {
   return inventorySize < maxItems;
 }
 
+/**
+ * @param {*} entity
+ * @param {string} fallback
+ * @returns {string}
+ */
+function displayName(entity, fallback) {
+  if (entity && typeof entity.name === 'string' && entity.name.length > 0) {
+    return entity.name;
+  }
+
+  return fallback;
+}
+
+/**
+ * @param {string[] | undefined} span
+ * @param {*} entity
+ * @param {string} fallback
+ * @returns {string}
+ */
+function displayLabel(span, entity, fallback) {
+  const spanText = Array.isArray(span) ? span.map(part => String(part)).join(' ').trim() : '';
+  if (spanText.length > 0) {
+    return spanText;
+  }
+
+  return displayName(entity, fallback);
+}
+
 module.exports = {
   aliases: ['insert', 'place', 'stuff', 'hide'],
   metadata: {
@@ -131,6 +159,11 @@ module.exports = {
             from: player,
             to: target,
           },
+        ],
+      },
+      render: {
+        lines: [
+          `You put the ${displayLabel(resolution.directSpan, item, 'item')} in the ${displayLabel(resolution.indirectSpan, target, 'container')}.`,
         ],
       },
     };
