@@ -96,7 +96,7 @@ module.exports = {
           acceptedRelations: ['in', 'into'],
           scopeProfile: {
             direct: ['player.inventory'],
-            indirect: ['room.items'],
+            indirect: ['player.inventory', 'room.items'],
           },
         },
       },

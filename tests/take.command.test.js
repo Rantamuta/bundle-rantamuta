@@ -9,6 +9,8 @@ function createItem(def = {}) {
     uuid: def.uuid || `${String(def.name || 'item').replace(/\s+/gu, '-')}-id`,
     name: def.name || 'item',
     keywords: def.keywords || [],
+    type: def.type || 'OBJECT',
+    metadata: def.metadata || {},
     carriedBy: def.carriedBy || null,
     room: def.room || null,
     closed: !!def.closed,
@@ -116,6 +118,26 @@ describe('bundle-rantamuta take command', function () {
     assert.deepStrictEqual(result, {
       ok: false,
       error: { code: 'TAKE_NOT_REACHABLE', details: undefined },
+    });
+  });
+
+  it('returns TAKE_NOT_TAKEABLE for container items by default', function () {
+    const room = createRoom();
+    const chest = createItem({
+      uuid: 'chest-locked',
+      name: 'old chest',
+      keywords: ['old', 'chest'],
+      type: 'CONTAINER',
+      room,
+    });
+    room.items.add(chest);
+    const player = createPlayer({ room });
+
+    const result = executeTake(player, chest);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'TAKE_NOT_TAKEABLE', details: undefined },
     });
   });
 

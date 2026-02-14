@@ -486,6 +486,500 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('uses metadata.permissions string veto message for indirect target capture policy', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const apple = { uuid: 'apple-p-1', name: 'practice apple', keywords: ['practice', 'apple'] };
+      const chest = {
+        uuid: 'chest-p-1',
+        name: 'practice chest',
+        keywords: ['practice', 'chest'],
+        type: 'CONTAINER',
+        maxItems: 4,
+        inventory: new Map(),
+        metadata: {
+          permissions: {
+            verbs: {
+              put: {
+                indirect: 'The chest is extremely heavy and attached to the floor.',
+              },
+            },
+          },
+        },
+        addItem() { },
+        removeItem() { },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple in chest');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The chest is extremely heavy and attached to the floor.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('uses entity allowAction hook veto before target execution', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        allowAction(action) {
+          if (action && action.verbId === 'inspect' && action.role === 'direct') {
+            return 'You sense a ward and leave it untouched.';
+          }
+          return true;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('You sense a ward and leave it untouched.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('prioritizes runtime allowAction over metadata.permissions for capture policy', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-rh-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        metadata: {
+          permissions: {
+            verbs: {
+              inspect: true,
+            },
+          },
+        },
+        allowAction(action) {
+          if (action && action.verbId === 'inspect' && action.role === 'direct') {
+            return 'The ward rejects your touch.';
+          }
+          return true;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('The ward rejects your touch.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('uses metadata.permissions role+relation policy with canonical relation token', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const apple = { uuid: 'apple-pr-1', name: 'practice apple', keywords: ['practice', 'apple'] };
+      const chest = {
+        uuid: 'chest-pr-1',
+        name: 'practice chest',
+        keywords: ['practice', 'chest'],
+        metadata: {
+          permissions: {
+            verbs: {
+              store: {
+                indirect: {
+                  relations: {
+                    in: 'You cannot store anything in that.',
+                  },
+                  default: true,
+                },
+              },
+            },
+          },
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'store' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'store apple into chest');
+
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('You cannot store anything in that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('falls back to role default, then verb default, in metadata.permissions', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const apple = { uuid: 'apple-df-1', name: 'practice apple', keywords: ['practice', 'apple'] };
+      const chest = {
+        uuid: 'chest-df-1',
+        name: 'practice chest',
+        keywords: ['practice', 'chest'],
+        metadata: {
+          permissions: {
+            verbs: {
+              stash: {
+                indirect: {
+                  relations: {
+                    on: 'You cannot stash anything on that.',
+                  },
+                  default: 'You cannot stash anything there.',
+                },
+                default: 'Stashing is disabled here.',
+              },
+            },
+          },
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in', 'on'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'stash' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'stash apple in chest');
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('You cannot stash anything there.'));
+
+      messages.length = 0;
+      chest.metadata.permissions.verbs.stash.indirect = {
+        relations: {
+          on: 'You cannot stash anything on that.',
+        },
+      };
+
+      await handleCommand(state, { player }, 'stash apple in chest');
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('Stashing is disabled here.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('uses metadata.permissions.default when verb-specific policy is absent', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-md-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        metadata: {
+          permissions: {
+            default: 'Nothing can be taken from this place.',
+          },
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.strictEqual(executeCalled, false);
+      assert.ok(messages.includes('Nothing can be taken from this place.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('implicitly allows action when neither runtime hook nor metadata policy objects', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-ia-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return {
+            ok: true,
+            plan: { operations: [{ type: 'noop' }] },
+            render: { lines: ['inspect-ok'] },
+          };
+        },
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.strictEqual(executeCalled, true);
+      assert.ok(messages.includes('inspect-ok'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
   it('allows look through capture when checks pass', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
@@ -1068,6 +1562,75 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('runs put through entity-resolution when indirect container is in player inventory', async function () {
+    const putDef = require('../commands/put');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let committedPlan = null;
+    const messages = [];
+
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const apple = { uuid: 'apple-i-1', name: 'practice apple', keywords: ['practice', 'apple'] };
+      const chest = {
+        uuid: 'chest-i-1',
+        name: 'practice chest',
+        keywords: ['practice', 'chest'],
+        type: 'CONTAINER',
+        maxItems: 4,
+        inventory: new Map(),
+        addItem() { },
+        removeItem() { },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([
+          [apple.uuid, apple],
+          [chest.uuid, chest],
+        ]),
+        room: { items: new Set() },
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: putDef.metadata,
+        execute: putDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple in chest');
+
+      assert.ok(committedPlan);
+      assert.deepStrictEqual(committedPlan.operations, [{
+        type: 'transferItem',
+        item: apple,
+        from: player,
+        to: chest,
+      }]);
+      assert.ok(messages.includes('You put the apple in the chest.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('runs direct put through entity-resolution and commits room-drop plan', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
@@ -1277,6 +1840,144 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       assert.strictEqual(mutatorCalled, false);
       assert.ok(messages.includes('You are carrying too much.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('blocks take for non-takeable container targets by default', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const chest = {
+        uuid: 'chest-nt-1',
+        name: 'old chest',
+        keywords: ['old', 'chest'],
+        type: 'CONTAINER',
+        room: null,
+        carriedBy: null,
+      };
+      const room = {
+        items: new Set([chest]),
+        addItem() { },
+        removeItem() { },
+      };
+      chest.room = room;
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take chest');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('You can\'t take that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('uses metadata.permissions string veto message for take on direct target', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const chest = {
+        uuid: 'chest-nt-2',
+        name: 'old chest',
+        keywords: ['old', 'chest'],
+        type: 'CONTAINER',
+        metadata: {
+          permissions: {
+            verbs: {
+              take: 'The chest is extremely heavy and attached to the floor.',
+            },
+          },
+        },
+        room: null,
+        carriedBy: null,
+      };
+      const room = {
+        items: new Set([chest]),
+        addItem() { },
+        removeItem() { },
+      };
+      chest.room = room;
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take chest');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The chest is extremely heavy and attached to the floor.'));
+      assert.ok(!messages.includes('You can\'t take that.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;

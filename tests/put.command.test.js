@@ -174,6 +174,43 @@ describe('bundle-rantamuta put command', function () {
     });
   });
 
+  it('supports indirect container targets from player inventory', function () {
+    const apple = createItem({
+      uuid: 'apple-2',
+      name: 'practice apple',
+      keywords: ['practice', 'apple'],
+      type: 'OBJECT',
+    });
+    const chest = createContainer({
+      uuid: 'chest-2',
+      name: 'practice chest',
+      keywords: ['practice', 'chest'],
+      maxItems: 4,
+    });
+    const player = createPlayer({ inventoryItems: [apple, chest] });
+
+    const result = executePut(player, apple, chest);
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.deepStrictEqual(result.plan, {
+      operations: [
+        {
+          type: 'transferItem',
+          item: apple,
+          from: player,
+          to: chest,
+        },
+      ],
+    });
+    assert.deepStrictEqual(result.render, {
+      lines: ['You put the practice apple in the practice chest.'],
+    });
+  });
+
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {
     const execute = putCommand.command({});
     const player = createPlayer();

@@ -12,6 +12,10 @@
   keywords: [ "old", "chest" ]
   type: "CONTAINER"
   maxItems: 2
+  metadata:
+    permissions:
+      verbs:
+        take: "The chest is extremely heavy and attached to the floor."
 
 - id: labApple
   name: "practice apple"
@@ -27,3 +31,7 @@
   keywords: [ "practice", "chest" ]
   type: "CONTAINER"
   maxItems: 4
+  metadata:
+    permissions:
+      verbs:
+        take: "You cannot take the chest. It is extremely heavy."
