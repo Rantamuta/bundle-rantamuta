@@ -2,47 +2,17 @@
 'use strict';
 
 const { ItemType } = require('ranvier');
-const { matchItems } = require('../lib/helpers/item-helper');
-const { parseInput } = require('../lib/parse-input');
-
-/**
- * @typedef {import('../lib/parse-input').ParseArtifact} ParseArtifact
- */
-
-/**
- * @typedef {{ parsedInput?: ParseArtifact, rawInput?: string }} ExecutionContext
- */
 
 /**
  * @param {string} code
- * @param {string} message
- * @returns {{ ok: false, error: { code: string, message: string } }}
+ * @param {Record<string, *>} [details]
+ * @returns {{ ok: false, error: { code: string, details?: Record<string, *> } }}
  */
-function fail(code, message) {
+function fail(code, details) {
   return {
     ok: false,
-    error: { code, message },
+    error: { code, details },
   };
-}
-
-/**
- * @param {*} collection
- * @returns {Array<object>}
- */
-function valuesAsArray(collection) {
-  if (!collection) {
-    return [];
-  }
-
-  if (Array.isArray(collection)) {
-    return collection;
-  }
-
-  if (typeof collection.values === 'function') {
-    return Array.from(collection.values());
-  }
-
-  return [];
 }
 
 /**
@@ -55,6 +25,16 @@ function isContainerItem(value) {
   }
 
   return value.type === ItemType.CONTAINER || value.type === 'CONTAINER';
+}
+
+/**
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isValidTransferContainer(value) {
+  return !!value &&
+    typeof value.addItem === 'function' &&
+    typeof value.removeItem === 'function';
 }
 
 /**
@@ -74,105 +54,71 @@ function hasContainerCapacity(container) {
   return inventorySize < maxItems;
 }
 
-/**
- * @param {string} args
- * @param {ExecutionContext=} context
- * @returns {ParseArtifact}
- */
-function resolveParseArtifact(args, context) {
-  const parsedFromContext = context && context.parsedInput;
-  if (parsedFromContext && parsedFromContext.intentToken === 'put') {
-    return parsedFromContext;
-  }
-
-  const normalizedArgs = String(args || '').trim();
-  return parseInput(normalizedArgs ? `put ${normalizedArgs}` : 'put');
-}
-
-/**
- * Find one item by token span using noun/adjective matching.
- *
- * @param {Array<object>} candidates
- * @param {Array<string>} span
- * @returns {{ kind: 'none' } | { kind: 'many' } | { kind: 'one', item: object }}
- */
-function selectSingleItem(candidates, span) {
-  const matches = matchItems(candidates, span);
-  if (matches.length === 0) {
-    return { kind: 'none' };
-  }
-
-  if (matches.length > 1) {
-    return { kind: 'many' };
-  }
-
-  return { kind: 'one', item: matches[0] };
-}
-
 module.exports = {
   aliases: ['insert', 'place', 'stuff', 'hide'],
+  metadata: {
+    entityResolution: {
+      rules: {
+        directIndirect: {
+          acceptedRelations: ['in', 'into'],
+          scopeProfile: {
+            direct: ['player.inventory'],
+            indirect: ['room.items'],
+          },
+        },
+      },
+    },
+    errorMessages: {
+      FORM_MISSING_DIRECT: 'Put what?',
+      FORM_MISSING_INDIRECT: 'Put it where?',
+      FORM_UNSUPPORTED_RELATION: 'You can only put things in containers.',
+      TARGET_NOT_FOUND: {
+        direct: 'You do not have that.',
+        indirect: 'You do not see that here.',
+      },
+      AMBIGUOUS_TARGET: {
+        direct: 'Which item do you mean?',
+        indirect: 'Which container do you mean?',
+      },
+      PUT_TARGET_NOT_CONTAINER: 'You can\'t put things in that.',
+      PUT_TARGET_LOCKED: 'It is locked.',
+      PUT_TARGET_CLOSED: 'It is closed.',
+      PUT_TARGET_FULL: 'It is full.',
+      PUT_INVALID_SOURCE: 'You cannot move that right now.',
+      PUT_INVALID_TARGET: 'You cannot put that there.',
+    },
+  },
   command: state => (args, player, alias, context) => {
-    const parsed = resolveParseArtifact(args, context);
-    const directObjectWords = Array.isArray(parsed.primaryTargetSpan) ? parsed.primaryTargetSpan : [];
-    const indirectObjectWords = Array.isArray(parsed.secondaryTargetSpan) ? parsed.secondaryTargetSpan : [];
-    const preposition = parsed.relationToken;
-
-    if (!directObjectWords.length) {
-      return fail('PUT_MISSING_ITEM', 'Put what?');
+    const resolution = context && context.entityResolution;
+    if (!resolution || resolution.ruleKey !== 'directIndirect') {
+      return fail('FORM_NOT_SUPPORTED');
     }
 
-    if (!preposition || !indirectObjectWords.length) {
-      return fail('PUT_MISSING_DESTINATION', 'Put it where?');
-    }
-
-    if (preposition !== 'in' && preposition !== 'into') {
-      return fail('PUT_UNSUPPORTED_RELATION', 'You can only put things in containers.');
-    }
-
-    if (!player || !player.room) {
-      return fail('PUT_NO_ROOM', 'You are nowhere.');
-    }
-
-    const sourceSelection = selectSingleItem(valuesAsArray(player.inventory), directObjectWords);
-    if (sourceSelection.kind === 'none') {
-      return fail('PUT_ITEM_NOT_FOUND', 'You do not have that.');
-    }
-    if (sourceSelection.kind === 'many') {
-      return fail('PUT_ITEM_AMBIGUOUS', 'Which item do you mean?');
-    }
-    const item = sourceSelection.item;
-
-    const targetSelection = selectSingleItem(valuesAsArray(player.room.items), indirectObjectWords);
-    if (targetSelection.kind === 'none') {
-      return fail('PUT_TARGET_NOT_FOUND', 'You do not see that here.');
-    }
-    if (targetSelection.kind === 'many') {
-      return fail('PUT_TARGET_AMBIGUOUS', 'Which container do you mean?');
-    }
-    const target = targetSelection.item;
+    const item = resolution.directTarget;
+    const target = resolution.indirectTarget;
 
     if (!isContainerItem(target)) {
-      return fail('PUT_TARGET_NOT_CONTAINER', 'You can\'t put things in that.');
+      return fail('PUT_TARGET_NOT_CONTAINER');
     }
 
     if (target.locked) {
-      return fail('PUT_TARGET_LOCKED', 'It is locked.');
+      return fail('PUT_TARGET_LOCKED');
     }
 
     if (target.closed) {
-      return fail('PUT_TARGET_CLOSED', 'It is closed.');
+      return fail('PUT_TARGET_CLOSED');
     }
 
     if (!hasContainerCapacity(target)) {
-      return fail('PUT_TARGET_FULL', 'It is full.');
+      return fail('PUT_TARGET_FULL');
     }
 
-    if (typeof player.addItem !== 'function' || typeof player.removeItem !== 'function') {
-      return fail('PUT_INVALID_SOURCE', 'You cannot move that right now.');
+    if (!isValidTransferContainer(player)) {
+      return fail('PUT_INVALID_SOURCE');
     }
 
-    if (typeof target.addItem !== 'function' || typeof target.removeItem !== 'function') {
-      return fail('PUT_INVALID_TARGET', 'You cannot put that there.');
+    if (!isValidTransferContainer(target)) {
+      return fail('PUT_INVALID_TARGET');
     }
 
     return {

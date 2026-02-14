@@ -3,12 +3,10 @@
 
 const assert = require('assert');
 const putCommand = require('../commands/put');
-const { parseInput } = require('../lib/parse-input');
 
 function createItem(def = {}) {
-  const uuid = def.uuid || `${String(def.name || 'item').replace(/\s+/gu, '-').toLowerCase()}-uuid`;
   return {
-    uuid,
+    uuid: def.uuid || `${String(def.name || 'item').replace(/\s+/gu, '-')}-id`,
     name: def.name || 'item',
     keywords: def.keywords || [],
     type: def.type || 'OBJECT',
@@ -20,35 +18,33 @@ function createItem(def = {}) {
 }
 
 function createContainer(def = {}) {
-  const container = createItem({
-    ...def,
-    type: def.type || 'CONTAINER',
-    inventory: def.inventory || new Map(),
-  });
-
-  container.addItem = (item) => {
-    if (!container.inventory) {
-      container.inventory = new Map();
-    }
-    container.inventory.set(item.uuid, item);
+  const inventory = def.inventory || new Map();
+  return {
+    ...createItem({
+      ...def,
+      type: def.type || 'CONTAINER',
+      inventory,
+    }),
+    addItem(item) {
+      if (!this.inventory) {
+        this.inventory = new Map();
+      }
+      this.inventory.set(item.uuid, item);
+    },
+    removeItem(item) {
+      if (!this.inventory) {
+        return;
+      }
+      this.inventory.delete(item.uuid);
+    },
   };
-
-  container.removeItem = (item) => {
-    if (container.inventory) {
-      container.inventory.delete(item.uuid);
-    }
-  };
-
-  return container;
 }
 
-function createPlayer(inventoryItems, roomItems) {
-  const inventory = new Map(inventoryItems.map(item => [item.uuid, item]));
+function createPlayer(def = {}) {
+  const inventory = new Map((def.inventoryItems || []).map(item => [item.uuid, item]));
   return {
     inventory,
-    room: {
-      items: new Set(roomItems),
-    },
+    room: { items: new Set(def.roomItems || []) },
     addItem(item) {
       inventory.set(item.uuid, item);
     },
@@ -58,8 +54,21 @@ function createPlayer(inventoryItems, roomItems) {
   };
 }
 
+function executePut(player, directTarget, indirectTarget) {
+  const execute = putCommand.command({});
+  return execute('', player, null, {
+    entityResolution: {
+      ruleKey: 'directIndirect',
+      directTarget,
+      indirectTarget,
+      relationTokenRaw: 'in',
+      relationTokenCanonical: 'in',
+    },
+  });
+}
+
 describe('bundle-rantamuta put command', function () {
-  it('returns transferItem plan for "put <item> in <container>"', function () {
+  it('returns transferItem plan and does not mutate directly', function () {
     const sword = createItem({
       uuid: 'sword-1',
       name: 'rusty sword',
@@ -72,185 +81,134 @@ describe('bundle-rantamuta put command', function () {
       keywords: ['old', 'chest'],
       maxItems: 2,
     });
-    const player = createPlayer([sword], [chest]);
-    const execute = putCommand.command({});
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
 
-    const result = execute(
-      'rusty sword in old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword in old chest') }
-    );
+    const result = executePut(player, sword, chest);
 
-    assert.deepStrictEqual(result.ok, true);
-    assert.strictEqual(player.inventory.has(sword.uuid), true, 'command must not mutate player inventory');
-    assert.strictEqual(chest.inventory.size, 0, 'command must not mutate container inventory');
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
 
-    const operation = result.plan.operations[0];
-    assert.strictEqual(operation.type, 'transferItem');
-    assert.strictEqual(operation.item, sword);
-    assert.strictEqual(operation.from, player);
-    assert.strictEqual(operation.to, chest);
-  });
-
-  it('fails when the direct object is missing', function () {
-    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
-    const player = createPlayer([], [chest]);
-    const execute = putCommand.command({});
-
-    const result = execute(
-      'in old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put in old chest') }
-    );
-
-    assert.deepStrictEqual(result, {
-      ok: false,
-      error: {
-        code: 'PUT_MISSING_ITEM',
-        message: 'Put what?',
-      },
+    assert.strictEqual(player.inventory.has(sword.uuid), true);
+    assert.strictEqual(chest.inventory.size, 0);
+    assert.deepStrictEqual(result.plan, {
+      operations: [
+        {
+          type: 'transferItem',
+          item: sword,
+          from: player,
+          to: chest,
+        },
+      ],
     });
   });
 
-  it('fails when destination is missing', function () {
+  it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {
+    const execute = putCommand.command({});
+    const player = createPlayer();
+
+    const result = execute('', player, null, {});
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'FORM_NOT_SUPPORTED', details: undefined },
+    });
+  });
+
+  it('returns PUT_TARGET_NOT_CONTAINER for non-container indirect target', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const player = createPlayer([sword], []);
-    const execute = putCommand.command({});
+    const anvil = createItem({ name: 'heavy anvil', keywords: ['heavy', 'anvil'], type: 'OBJECT' });
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [anvil] });
 
-    const result = execute(
-      'rusty sword',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword') }
-    );
+    const result = executePut(player, sword, anvil);
 
     assert.deepStrictEqual(result, {
       ok: false,
-      error: {
-        code: 'PUT_MISSING_DESTINATION',
-        message: 'Put it where?',
-      },
+      error: { code: 'PUT_TARGET_NOT_CONTAINER', details: undefined },
     });
   });
 
-  it('fails when relation token is unsupported', function () {
+  it('returns PUT_TARGET_LOCKED when container is locked', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
-    const player = createPlayer([sword], [chest]);
-    const execute = putCommand.command({});
+    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'], locked: true });
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
 
-    const result = execute(
-      'rusty sword on old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword on old chest') }
-    );
+    const result = executePut(player, sword, chest);
 
     assert.deepStrictEqual(result, {
       ok: false,
-      error: {
-        code: 'PUT_UNSUPPORTED_RELATION',
-        message: 'You can only put things in containers.',
-      },
+      error: { code: 'PUT_TARGET_LOCKED', details: undefined },
     });
   });
 
-  it('fails when item is not in inventory', function () {
-    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
-    const player = createPlayer([], [chest]);
-    const execute = putCommand.command({});
-
-    const result = execute(
-      'rusty sword in old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword in old chest') }
-    );
-
-    assert.deepStrictEqual(result, {
-      ok: false,
-      error: {
-        code: 'PUT_ITEM_NOT_FOUND',
-        message: 'You do not have that.',
-      },
-    });
-  });
-
-  it('fails when target container is not in room', function () {
+  it('returns PUT_TARGET_CLOSED when container is closed', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const player = createPlayer([sword], []);
-    const execute = putCommand.command({});
+    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'], closed: true });
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
 
-    const result = execute(
-      'rusty sword in old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword in old chest') }
-    );
+    const result = executePut(player, sword, chest);
 
     assert.deepStrictEqual(result, {
       ok: false,
-      error: {
-        code: 'PUT_TARGET_NOT_FOUND',
-        message: 'You do not see that here.',
-      },
+      error: { code: 'PUT_TARGET_CLOSED', details: undefined },
     });
   });
 
-  it('fails when target is not a container', function () {
+  it('returns PUT_TARGET_FULL when container has no remaining capacity', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const anvil = createItem({
-      name: 'heavy anvil',
-      keywords: ['heavy', 'anvil'],
-      type: 'OBJECT',
-    });
-    const player = createPlayer([sword], [anvil]);
-    const execute = putCommand.command({});
-
-    const result = execute(
-      'rusty sword in heavy anvil',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword in heavy anvil') }
-    );
-
-    assert.deepStrictEqual(result, {
-      ok: false,
-      error: {
-        code: 'PUT_TARGET_NOT_CONTAINER',
-        message: "You can't put things in that.",
-      },
-    });
-  });
-
-  it('fails when target container is full', function () {
-    const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const chestInventory = new Map();
-    chestInventory.set('existing-item', createItem({ uuid: 'existing-item', name: 'existing item' }));
+    const chestInventory = new Map([
+      ['existing', createItem({ uuid: 'existing', name: 'existing item' })],
+    ]);
     const chest = createContainer({
       name: 'old chest',
       keywords: ['old', 'chest'],
       maxItems: 1,
       inventory: chestInventory,
     });
-    const player = createPlayer([sword], [chest]);
-    const execute = putCommand.command({});
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
 
-    const result = execute(
-      'rusty sword in old chest',
-      player,
-      null,
-      { parsedInput: parseInput('put rusty sword in old chest') }
-    );
+    const result = executePut(player, sword, chest);
 
     assert.deepStrictEqual(result, {
       ok: false,
-      error: {
-        code: 'PUT_TARGET_FULL',
-        message: 'It is full.',
-      },
+      error: { code: 'PUT_TARGET_FULL', details: undefined },
+    });
+  });
+
+  it('returns PUT_INVALID_SOURCE when player is not a reversible container', function () {
+    const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
+    const player = {
+      inventory: new Map([[sword.uuid, sword]]),
+      room: { items: new Set([chest]) },
+      removeItem: undefined,
+      addItem: undefined,
+    };
+
+    const result = executePut(player, sword, chest);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'PUT_INVALID_SOURCE', details: undefined },
+    });
+  });
+
+  it('returns PUT_INVALID_TARGET when target does not support add/remove', function () {
+    const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const chest = {
+      ...createItem({ name: 'old chest', keywords: ['old', 'chest'], type: 'CONTAINER', inventory: new Map() }),
+      addItem: undefined,
+      removeItem: undefined,
+    };
+    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
+
+    const result = executePut(player, sword, chest);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'PUT_INVALID_TARGET', details: undefined },
     });
   });
 });
+
