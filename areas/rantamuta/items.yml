@@ -20,6 +20,7 @@
   description: "A palm-sized stone worn smooth by generations of hands."
   keywords: [ "prayer", "stone" ]
   type: "OBJECT"
+  script: prayerStoneGuard
 
 - id: crackedBell
   name: "cracked bell"
