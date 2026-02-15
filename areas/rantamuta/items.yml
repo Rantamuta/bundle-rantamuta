@@ -22,7 +22,7 @@
 - id: crackedBell
   name: "cracked bell"
   roomDesc: "A cracked bell hangs in the rafters."
-  description: "The old bell is split along one side, silent and inert."
+  description: "The old bell is split along one side, and its clapper is missing."
   keywords: [ "cracked", "bell" ]
   type: "CONTAINER"
   script: ritualPutTarget
@@ -34,6 +34,8 @@
     puzzle:
       putPolicy:
         acceptedItemRef: "rantamuta:bronzeClapper"
+        descriptionEmpty: "The old bell is split along one side, and its clapper is missing."
+        descriptionFilled: "The old bell is split along one side, but a bronze clapper now hangs within it."
         rejectMessage: "That does not belong in the bell."
         successRender: "The cracked bell hums with a low resonance."
 
