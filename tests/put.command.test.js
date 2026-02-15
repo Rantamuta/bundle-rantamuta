@@ -136,9 +136,20 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.render, {
-      lines: ['You put the rusty sword in the old chest.'],
-    });
+    assert.deepStrictEqual(result.postCommit, [
+      {
+        type: 'semanticEvent',
+        template: '{actor.you} {verb:put} {object.direct} in {object.indirect}.',
+        audiencePolicy: 'self_and_others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: 'the rusty sword',
+          indirect: 'the old chest',
+        },
+      },
+    ]);
   });
 
   it('returns drop-to-room plan for direct put and does not mutate directly', function () {
@@ -169,9 +180,19 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.render, {
-      lines: ['You put the apple down.'],
-    });
+    assert.deepStrictEqual(result.postCommit, [
+      {
+        type: 'semanticEvent',
+        template: '{actor.you} {verb:put} {object.direct} down.',
+        audiencePolicy: 'self_and_others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: 'the apple',
+        },
+      },
+    ]);
   });
 
   it('supports indirect container targets from player inventory', function () {
@@ -206,9 +227,20 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.render, {
-      lines: ['You put the practice apple in the practice chest.'],
-    });
+    assert.deepStrictEqual(result.postCommit, [
+      {
+        type: 'semanticEvent',
+        template: '{actor.you} {verb:put} {object.direct} in {object.indirect}.',
+        audiencePolicy: 'self_and_others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: 'the practice apple',
+          indirect: 'the practice chest',
+        },
+      },
+    ]);
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {

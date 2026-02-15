@@ -1999,7 +1999,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('runs put through entity-resolution and commits transfer plan', async function () {
+  it('runs put through entity-resolution, commits transfer plan, and emits social put messaging', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2015,7 +2015,10 @@ describe('bundle-rantamuta command-dispatch', function () {
       committedPlan = planArg;
     };
     ranvier.Broadcast.sayAt = (target, message) => {
-      messages.push(String(message));
+      const targetName = target && typeof target === 'object' && typeof target.name === 'string'
+        ? target.name
+        : '<unknown>';
+      messages.push({ targetName, message: String(message) });
     };
     ranvier.Broadcast.prompt = () => { };
 
@@ -2031,10 +2034,17 @@ describe('bundle-rantamuta command-dispatch', function () {
         addItem() { },
         removeItem() { },
       };
+      const observer = { name: 'Observer', isNpc: true };
+      const room = {
+        items: new Set([chest]),
+        getBroadcastTargets() {
+          return [player, observer];
+        },
+      };
       const player = asPlayer({
         name: 'Tester',
         inventory: new Map([[sword.uuid, sword]]),
-        room: { items: new Set([chest]) },
+        room,
         addItem() { },
         removeItem() { },
         socket: { writable: false },
@@ -2057,7 +2067,8 @@ describe('bundle-rantamuta command-dispatch', function () {
         from: player,
         to: chest,
       }]);
-      assert.ok(messages.includes('You put the rusty sword in the old chest.'));
+      assert.ok(messages.some(entry => entry.targetName === 'Tester' && entry.message === 'You put the rusty sword in the old chest.'));
+      assert.ok(messages.some(entry => entry.targetName === 'Observer' && entry.message === 'Tester puts the rusty sword in the old chest.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -3586,7 +3597,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('runs take through entity-resolution and commits transfer plan', async function () {
+  it('runs take through entity-resolution, commits transfer plan, and emits social take messaging', async function () {
     const takeDef = require('../commands/take');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -3602,13 +3613,20 @@ describe('bundle-rantamuta command-dispatch', function () {
       committedPlan = planArg;
     };
     ranvier.Broadcast.sayAt = (target, message) => {
-      messages.push(String(message));
+      const targetName = target && typeof target === 'object' && typeof target.name === 'string'
+        ? target.name
+        : '<unknown>';
+      messages.push({ targetName, message: String(message) });
     };
     ranvier.Broadcast.prompt = () => { };
 
     try {
+      const observer = { name: 'Observer', isNpc: true };
       const room = {
         items: new Set(),
+        getBroadcastTargets() {
+          return [player, observer];
+        },
         addItem(item) {
           this.items.add(item);
           item.room = this;
@@ -3655,7 +3673,8 @@ describe('bundle-rantamuta command-dispatch', function () {
         from: room,
         to: player,
       }]);
-      assert.ok(messages.includes('You take the coin.'));
+      assert.ok(messages.some(entry => entry.targetName === 'Tester' && entry.message === 'You take the coin.'));
+      assert.ok(messages.some(entry => entry.targetName === 'Observer' && entry.message === 'Tester takes the coin.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;

@@ -151,11 +151,19 @@ module.exports = {
             },
           ],
         },
-        render: {
-          lines: [
-            `You put the ${displayLabel(resolution.directSpan, item, 'item')} down.`,
-          ],
-        },
+        postCommit: [
+          {
+            type: 'semanticEvent',
+            template: '{actor.you} {verb:put} {object.direct} down.',
+            audiencePolicy: 'self_and_others',
+            participants: {
+              actor: { selector: 'currentPlayer' },
+            },
+            objectText: {
+              direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+            },
+          },
+        ],
       };
     }
 
@@ -193,11 +201,20 @@ module.exports = {
           },
         ],
       },
-      render: {
-        lines: [
-          `You put the ${displayLabel(resolution.directSpan, item, 'item')} in the ${displayLabel(resolution.indirectSpan, target, 'container')}.`,
-        ],
-      },
+      postCommit: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.you} {verb:put} {object.direct} in {object.indirect}.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+            indirect: `the ${displayLabel(resolution.indirectSpan, target, 'container')}`,
+          },
+        },
+      ],
     };
   }
 };

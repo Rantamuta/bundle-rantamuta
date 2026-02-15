@@ -250,9 +250,19 @@ module.exports = {
           },
         ],
       },
-      render: {
-        lines: [`You take the ${displayLabel(resolution.directSpan, item, 'item')}.`],
-      },
+      postCommit: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.you} {verb:take} {object.direct}.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+          },
+        },
+      ],
     };
   }
 };
