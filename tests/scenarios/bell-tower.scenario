@@ -14,5 +14,6 @@ command: put prayer stone in stone basin
 command: east
 command: put bronze clapper in cracked bell
 command: west
+command: look
 command: down
 command: look

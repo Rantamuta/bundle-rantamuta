@@ -63,6 +63,12 @@
   title: "Bell Crypt"
   description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
   script: bellCryptGate
+  metadata:
+    descriptionFragments:
+      - when: slab_blocking
+        text: "A dull stone slab blocks the descent."
+      - when: slab_open
+        text: "A heavy slab has been forced aside, revealing stone stairs descending into darkness."
   exits:
     - roomId: rantamuta:bell_courtyard
       direction: west

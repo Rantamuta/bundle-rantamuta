@@ -212,10 +212,12 @@ test('scenario runner blocks crypt descent before ritual completion', () => {
     '--room', 'rantamuta:square',
     '--command', 'go north',
     '--command', 'go east',
+    '--command', 'look',
     '--command', 'go down',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /A dull stone slab blocks the descent\./);
   assert.match(result.stdout, /go down/);
   assert.match(result.stdout, /A dull stone slab blocks the descent\./);
 });
@@ -250,6 +252,7 @@ test('scenario runner bell ritual full path unlocks resonance chamber', () => {
     '--command', 'go east',
     '--command', 'put bronze clapper in cracked bell',
     '--command', 'go west',
+    '--command', 'look',
     '--command', 'go down',
     '--command', 'look',
   ]);
@@ -258,6 +261,7 @@ test('scenario runner bell ritual full path unlocks resonance chamber', () => {
   assert.match(result.stdout, /The reliquary warms beneath your hands\./);
   assert.match(result.stdout, /Ripples of light shimmer across the basin\./);
   assert.match(result.stdout, /The cracked bell hums with a low resonance\./);
+  assert.match(result.stdout, /A heavy slab has been forced aside, revealing stone stairs descending into darkness\./);
   assert.match(result.stdout, /go down/);
   assert.match(result.stdout, /Resonance Chamber/);
 });
