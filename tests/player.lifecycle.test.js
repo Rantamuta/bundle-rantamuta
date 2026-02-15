@@ -135,7 +135,7 @@ describe('bundle-rantamuta player-lifecycle', function () {
     assert.deepStrictEqual(broadcasts, [
       {
         target: player.room,
-        message: 'Rendall logs in and suddenly winks into existence.',
+        message: 'Rendall suddenly materializes!',
         exceptTargets: [player],
       },
     ]);
@@ -190,7 +190,7 @@ describe('bundle-rantamuta player-lifecycle', function () {
     assert.deepStrictEqual(broadcasts, [
       {
         target: player.room,
-        message: 'Rendall quits, and suddenly winks out of existence.',
+        message: 'Rendall suddenly winks out of existence!',
         exceptTargets: [player],
       },
     ]);

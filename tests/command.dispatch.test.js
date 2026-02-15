@@ -3686,6 +3686,168 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('does not send semantic others line back to actor via same-socket proxy targets', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    mutator.applyMutationPlan = () => { };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      const targetName = target && typeof target === 'object' && typeof target.name === 'string'
+        ? target.name
+        : '<unknown>';
+      messages.push({ targetName, message: String(message) });
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const sharedSocket = { writable: false };
+      const observer = { name: 'Observer', isNpc: true, socket: { writable: false } };
+      const actorProxy = { socket: sharedSocket };
+      const room = {
+        items: new Set(),
+        getBroadcastTargets() {
+          return [player, observer, actorProxy];
+        },
+        addItem(item) {
+          this.items.add(item);
+          item.room = this;
+          item.carriedBy = null;
+        },
+        removeItem(item) {
+          this.items.delete(item);
+          item.room = null;
+        },
+      };
+      const coin = { uuid: 'coin-201', name: 'gold coin', keywords: ['gold', 'coin'], room, carriedBy: null };
+      room.items.add(coin);
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem(item) {
+          this.inventory.set(item.uuid, item);
+          item.carriedBy = this;
+          item.room = null;
+        },
+        removeItem(item) {
+          this.inventory.delete(item.uuid);
+        },
+        socket: sharedSocket,
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take coin');
+
+      const actorLineCount = messages.filter(entry => entry.targetName === 'Tester' && entry.message === 'You take the coin.').length;
+      const observerLineCount = messages.filter(entry => entry.targetName === 'Observer' && entry.message === 'Tester takes the coin.').length;
+      const echoedOtherCount = messages.filter(entry => entry.targetName === '<unknown>' && entry.message === 'Tester takes the coin.').length;
+
+      assert.strictEqual(actorLineCount, 1);
+      assert.strictEqual(observerLineCount, 1);
+      assert.strictEqual(echoedOtherCount, 0);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('does not treat room broadcast source as an "other" semantic recipient', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    mutator.applyMutationPlan = () => { };
+    ranvier.Broadcast.sayAt = (target, message) => {
+      const targetName = target && typeof target === 'object' && typeof target.name === 'string'
+        ? target.name
+        : '<unknown>';
+      messages.push({ targetName, message: String(message) });
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const observer = { name: 'Observer', isNpc: true, socket: { writable: false } };
+      const room = {
+        items: new Set(),
+        getBroadcastTargets() {
+          return [room, player, observer];
+        },
+        addItem(item) {
+          this.items.add(item);
+          item.room = this;
+          item.carriedBy = null;
+        },
+        removeItem(item) {
+          this.items.delete(item);
+          item.room = null;
+        },
+      };
+      const coin = { uuid: 'coin-202', name: 'gold coin', keywords: ['gold', 'coin'], room, carriedBy: null };
+      room.items.add(coin);
+
+      const player = asPlayer({
+        name: 'Rendall',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem(item) {
+          this.inventory.set(item.uuid, item);
+          item.carriedBy = this;
+          item.room = null;
+        },
+        removeItem(item) {
+          this.inventory.delete(item.uuid);
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take coin');
+
+      const actorSelfLineCount = messages.filter(entry => entry.targetName === 'Rendall' && entry.message === 'You take the coin.').length;
+      const actorOtherLineCount = messages.filter(entry => entry.targetName === 'Rendall' && entry.message === 'Rendall takes the coin.').length;
+      const observerOtherLineCount = messages.filter(entry => entry.targetName === 'Observer' && entry.message === 'Rendall takes the coin.').length;
+
+      assert.strictEqual(actorSelfLineCount, 1);
+      assert.strictEqual(actorOtherLineCount, 0);
+      assert.strictEqual(observerOtherLineCount, 1);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('renders already-have message when take resolves to player inventory target', async function () {
     const takeDef = require('../commands/take');
     const ranvierPath = require.resolve('ranvier');
