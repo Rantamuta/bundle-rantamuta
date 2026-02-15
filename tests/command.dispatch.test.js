@@ -1590,6 +1590,147 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('executes semanticEvent postCommit instructions after render', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const observer = { name: 'Observer', isNpc: true };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Semantic Room',
+          description: 'Semantic description',
+          area: {},
+          getBroadcastTargets: () => [player, observer],
+        },
+        socket: { writable: false },
+      });
+      player.room.getBroadcastTargets = () => [player, observer];
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { lines: ['target render'] },
+          postCommit: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.you} {verb:wave}.',
+              audiencePolicy: 'self_and_others',
+              participants: {
+                actor: { selector: 'currentPlayer' },
+              },
+            },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, [
+        'target render',
+        'You wave.',
+        'Tester waves.',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('rejects invalid semanticEvent instructions and continues remaining postCommit entries', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const errors = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { area: {}, getBroadcastTargets: () => [] },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          postCommit: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.you} {verb:wave}.',
+              audiencePolicy: 'self_and_others',
+              participants: {},
+            },
+            { type: 'broadcast', audience: 'player', message: 'fallback' },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      const trace = await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, ['fallback']);
+      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: postCommit.semanticEvent actor render failed (SEMANTIC_PARTICIPANT_MISSING)')));
+      assert.deepStrictEqual(trace.phases.postCommit, {
+        ok: false,
+        instructionsAttempted: 2,
+        failures: 1,
+      });
+      assert.strictEqual(trace.outcome.ok, true);
+      assert.strictEqual(trace.outcome.code, 'OK');
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('rejects unknown postCommit instruction types and continues remaining instructions', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
