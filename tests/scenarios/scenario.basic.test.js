@@ -15,6 +15,14 @@ function runScenario(args) {
   });
 }
 
+function stripAnsi(text) {
+  return String(text).replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-ntqry=><]))/g,
+    ''
+  );
+}
+
 test('scenario runner help exits successfully', () => {
   const result = runScenario(['--help']);
 
@@ -22,6 +30,7 @@ test('scenario runner help exits successfully', () => {
   assert.match(result.stdout, /Usage:/);
   assert.match(result.stdout, /--scenario/);
   assert.match(result.stdout, /--command/);
+  assert.match(result.stdout, /--whitespace/);
 });
 
 test('scenario runner executes command lines in order and continues on unknown commands', () => {
@@ -358,6 +367,38 @@ test('scenario runner --json run event includes parse fields and outcome phase/c
   assert.equal(runEvents[2].parse.canonicalInput, 'eastward');
   assert.equal(runEvents[2].outcome.code, 'UNKNOWN_COMMAND');
   assert.equal(runEvents[2].outcome.phase, 'lookup');
+});
+
+test('scenario runner --json filters blank and ANSI-only output lines by default', () => {
+  const result = runScenario([
+    '--json',
+    '--room', 'test:room',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  const outputEvents = payload.events.filter(event => event.type === 'output');
+  assert.ok(outputEvents.length > 0);
+  for (const event of outputEvents) {
+    const text = String(event.text);
+    assert.notEqual(stripAnsi(text).trim(), '');
+  }
+});
+
+test('scenario runner --json --whitespace keeps blank and ANSI-only output lines', () => {
+  const result = runScenario([
+    '--json',
+    '--whitespace',
+    '--room', 'test:room',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  const outputEvents = payload.events.filter(event => event.type === 'output');
+  assert.ok(outputEvents.length > 0);
+  assert.ok(outputEvents.some(event => stripAnsi(String(event.text)).trim() === ''));
 });
 
 test('scenario runner seeds inventory and room items before command execution', () => {
