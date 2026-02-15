@@ -85,9 +85,10 @@ module.exports = {
         });
 
         stream.on('close', async () => {
-          /** @type {InstanceType<import('ranvier').Player> | null} */
+          /** @type {import('ranvier/types/Player') | null} */
           const player = session.player;
-          if (!player || player.__pruned) {
+          const isPruned = !!(player && /** @type {{ __pruned?: boolean }} */ (player).__pruned);
+          if (!player || isPruned) {
             return;
           }
 
