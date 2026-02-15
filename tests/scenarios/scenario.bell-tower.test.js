@@ -50,6 +50,15 @@ test('bell tower puzzle runs successfully end to end', () => {
   assert.ok(downRun);
   assert.equal(downRun.parse.canonicalInput, 'go down');
 
+  const ritualCompletionRun = runEvents.find(event => event.raw === 'put bronze clapper in cracked bell');
+  assert.ok(ritualCompletionRun);
+  assert.ok(ritualCompletionRun.phases);
+  assert.deepStrictEqual(ritualCompletionRun.phases.postCommit, {
+    ok: true,
+    instructionsAttempted: 3,
+    failures: 0,
+  });
+
   const outputText = payload.events
     .filter(event => event.type === 'output')
     .map(event => stripAnsi(String(event.text)))

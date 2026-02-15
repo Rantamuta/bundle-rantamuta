@@ -1,19 +1,10 @@
 // @ts-check
 'use strict';
 
-const { Broadcast } = require('ranvier');
 const { evaluateExitGate } = require('../helpers/exitGate');
 
 const RUNES_DORMANT_DESCRIPTION = 'Ancient runes curl around the basin lip, each line cut with unnerving precision.';
 const RUNES_GLOWING_DESCRIPTION = 'Ancient runes curl around the basin lip, now lit by an ethereal glow that wavers like breath.';
-const RITUAL_HUM_MESSAGE = 'A low, resonant hum fills the tower, wavering at its edges before steadying.';
-const RITUAL_AREA_GRIND_MESSAGE = 'There is a low grinding sound from the base of the bell tower.';
-const RITUAL_CRYPT_GRIND_MESSAGE = 'A stone slab on the floor moves aside with a low grinding sound, revealing a staircase descending into darkness.';
-const RITUAL_TARGET_REFS = [
-  'rantamuta:crackedBell',
-  'rantamuta:reliquary',
-  'rantamuta:stoneBasin',
-];
 
 /**
  * @param {*} value
@@ -45,28 +36,6 @@ function valuesAsArray(collection) {
   }
 
   return [];
-}
-
-/**
- * @param {*} state
- * @param {string} entityRef
- * @returns {* | null}
- */
-function findItemByEntityRef(state, entityRef) {
-  const targetRef = normalizeRef(entityRef);
-  if (!targetRef) {
-    return null;
-  }
-
-  const manager = state && state.ItemManager;
-  const items = manager && manager.items;
-  for (const item of valuesAsArray(items)) {
-    if (normalizeRef(item && item.entityReference) === targetRef) {
-      return item;
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -248,76 +217,6 @@ function attachBasinRunesSync(room) {
 }
 
 /**
- * @param {*} room
- */
-function broadcastRitualCompletion(room) {
-  if (!room || typeof room !== 'object' || room.__ritualCompletionBroadcasted) {
-    return;
-  }
-
-  const area = room.area;
-  if (!area || typeof area.getBroadcastTargets !== 'function') {
-    return;
-  }
-
-  const cryptTargets = typeof room.getBroadcastTargets === 'function'
-    ? room.getBroadcastTargets()
-    : [];
-
-  Broadcast.sayAt(area, RITUAL_HUM_MESSAGE);
-  Broadcast.sayAtExcept(area, RITUAL_AREA_GRIND_MESSAGE, cryptTargets);
-  Broadcast.sayAt(room, RITUAL_CRYPT_GRIND_MESSAGE);
-
-  room.__ritualCompletionBroadcasted = true;
-}
-
-/**
- * @param {*} state
- * @param {*} room
- */
-function attachRitualCompletionBroadcast(state, room) {
-  for (const entityRef of RITUAL_TARGET_REFS) {
-    const target = findItemByEntityRef(state, entityRef);
-    if (!target || typeof target !== 'object' || target.__ritualCompletionWrapped) {
-      continue;
-    }
-
-    const previousAddItem = typeof target.addItem === 'function'
-      ? target.addItem
-      : null;
-    const previousRemoveItem = typeof target.removeItem === 'function'
-      ? target.removeItem
-      : null;
-
-    if (previousAddItem) {
-      target.addItem = (item) => {
-        const wasOpen = isDescentOpen(state, room);
-        const result = previousAddItem.call(target, item);
-        const isOpen = isDescentOpen(state, room);
-        if (!wasOpen && isOpen) {
-          broadcastRitualCompletion(room);
-        }
-        return result;
-      };
-    }
-
-    if (previousRemoveItem) {
-      target.removeItem = (item) => {
-        const wasOpen = isDescentOpen(state, room);
-        const result = previousRemoveItem.call(target, item);
-        const isOpen = isDescentOpen(state, room);
-        if (!wasOpen && isOpen) {
-          broadcastRitualCompletion(room);
-        }
-        return result;
-      };
-    }
-
-    target.__ritualCompletionWrapped = true;
-  }
-}
-
-/**
  * @param {*} action
  * @param {*} context
  * @returns {boolean}
@@ -382,9 +281,8 @@ module.exports = {
 
       syncRunesDetailDescription(this);
     },
-    ready: state => function onReady() {
+    ready: () => function onReady() {
       attachBasinRunesSync(this);
-      attachRitualCompletionBroadcast(state, this);
       syncRunesDetailDescription(this);
     },
   },
