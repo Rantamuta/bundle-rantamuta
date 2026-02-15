@@ -283,4 +283,50 @@ describe('bundle-rantamuta semantic-message', function () {
       text: 'wax seal.',
     });
   });
+
+  it('capitalizes target names for target.you when recipient is not the target', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:stab} {target.you} in {target.poss} neck!',
+      audiencePolicy: 'self_target_and_others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+        target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+      },
+    };
+    const context = {
+      currentPlayer: { name: 'foo', pronoun: 'he', isNpc: false },
+      indirectTarget: { name: 'bar', pronoun: 'she', isNpc: true },
+    };
+
+    const selfResult = renderSemanticEvent(instruction, context, 'self');
+    assert.deepStrictEqual(selfResult, {
+      ok: true,
+      included: true,
+      text: 'You stab Bar in her neck!',
+    });
+  });
+
+  it('preserves object casing for target.you when target is non-character', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:examine} {target.you}.',
+      audiencePolicy: 'self_and_others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+        target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+      },
+    };
+    const context = {
+      currentPlayer: { name: 'rendall', isNpc: false },
+      indirectTarget: { name: 'wax seal' },
+    };
+
+    const selfResult = renderSemanticEvent(instruction, context, 'self');
+    assert.deepStrictEqual(selfResult, {
+      ok: true,
+      included: true,
+      text: 'You examine wax seal.',
+    });
+  });
 });
