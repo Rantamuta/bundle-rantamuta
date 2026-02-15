@@ -34,6 +34,17 @@ function createContainer(def = {}) {
   });
 }
 
+function createDetail(def = {}) {
+  return {
+    id: def.id || String(def.name || 'detail').replace(/\s+/gu, '-'),
+    name: def.name || 'detail',
+    keywords: def.keywords || [],
+    description: def.description || null,
+    verbs: def.verbs,
+    metadata: def.metadata || {},
+  };
+}
+
 function createPlayer(def = {}) {
   const inventoryItems = Array.isArray(def.inventoryItems) ? def.inventoryItems : [];
   const roomItems = Array.isArray(def.roomItems) ? def.roomItems : [];
@@ -355,6 +366,119 @@ describe('bundle-rantamuta entity-resolution', function () {
     }
 
     assert.strictEqual(result.value.directTarget, fromInventory);
+  });
+
+  it('resolves direct target from room.details scope', function () {
+    const bellShrine = createDetail({
+      id: 'bell_shrine',
+      name: 'bell-shrine',
+      keywords: ['bell-shrine', 'shrine', 'bell'],
+      description: 'The weathered shrine is veined with old cracks.',
+    });
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.details'],
+          },
+        },
+      },
+    });
+    const room = {
+      items: new Set(),
+      metadata: {
+        details: [bellShrine],
+      },
+      entityReference: 'test:detail_room',
+    };
+    const player = createPlayer({ room });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look shrine'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.directTarget.kind, 'roomDetail');
+    assert.strictEqual(result.value.directTarget.detailId, 'bell_shrine');
+    assert.strictEqual(result.value.directTarget.name, 'bell-shrine');
+  });
+
+  it('prefers room items over room details when both match', function () {
+    const roomSword = createItem({ uuid: 'room-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const swordDetail = createDetail({
+      id: 'sword_relief',
+      name: 'sword',
+      keywords: ['sword', 'relief'],
+      description: 'A carved sword motif is set into the wall.',
+    });
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.items', 'room.details'],
+          },
+        },
+      },
+    });
+    const room = {
+      items: new Set([roomSword]),
+      metadata: {
+        details: [swordDetail],
+      },
+      entityReference: 'test:mix_room',
+    };
+    const player = createPlayer({ room });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look sword'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.directTarget, roomSword);
+  });
+
+  it('prefers room details over inventory when scope declares details first', function () {
+    const carriedSword = createItem({ uuid: 'inv-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const roomDetail = createDetail({
+      id: 'sword_relief',
+      name: 'sword',
+      keywords: ['sword'],
+      description: 'An engraved sword appears on the stone relief.',
+    });
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.details', 'player.inventory'],
+          },
+        },
+      },
+    });
+    const room = {
+      items: new Set(),
+      metadata: {
+        details: [roomDetail],
+      },
+      entityReference: 'test:detail_first_room',
+    };
+    const player = createPlayer({
+      room,
+      inventoryItems: [carriedSword],
+    });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look sword'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.directTarget.kind, 'roomDetail');
+    assert.strictEqual(result.value.directTarget.detailId, 'sword_relief');
   });
 
   it('resolves go direction via room.exits scope', function () {
