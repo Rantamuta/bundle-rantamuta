@@ -14,8 +14,8 @@
  * - Accept one specific offering item (for example: bronze clapper in cracked bell).
  * - Reject wrong offerings with a clear, authored message.
  * - Emit a flavor line on successful correct placement.
- * - Optionally update the object's long description based on whether the
- *   correct offering is currently inside the container.
+ * - Optionally update the object's long description and room description line
+ *   based on whether the correct offering is currently inside the container.
  *
  * Pipeline goal:
  * - Do not mutate world state in capture/target hooks.
@@ -102,9 +102,11 @@ function hasAcceptedItem(entity, policy) {
 }
 
 /**
- * Update this object's long description from optional puzzle policy fields:
+ * Update this object's text from optional puzzle policy fields:
  * - descriptionEmpty
  * - descriptionFilled
+ * - roomDescEmpty
+ * - roomDescFilled
  *
  * How designers use it in YAML:
  * metadata:
@@ -136,20 +138,33 @@ function syncPuzzleDescription(entity) {
   const descriptionFilled = typeof policy.descriptionFilled === 'string'
     ? policy.descriptionFilled.trim()
     : '';
+  const roomDescEmpty = typeof policy.roomDescEmpty === 'string'
+    ? policy.roomDescEmpty.trim()
+    : '';
+  const roomDescFilled = typeof policy.roomDescFilled === 'string'
+    ? policy.roomDescFilled.trim()
+    : '';
 
-  if (!descriptionEmpty && !descriptionFilled) {
+  if (!descriptionEmpty && !descriptionFilled && !roomDescEmpty && !roomDescFilled) {
     return;
   }
 
-  const nextDescription = hasAcceptedItem(entity, policy)
+  const isFilled = hasAcceptedItem(entity, policy);
+
+  const nextDescription = isFilled
     ? descriptionFilled || descriptionEmpty
     : descriptionEmpty || descriptionFilled;
+  const nextRoomDesc = isFilled
+    ? roomDescFilled || roomDescEmpty
+    : roomDescEmpty || roomDescFilled;
 
-  if (!nextDescription) {
-    return;
+  if (nextDescription) {
+    entity.description = nextDescription;
   }
 
-  entity.description = nextDescription;
+  if (nextRoomDesc) {
+    entity.roomDesc = nextRoomDesc;
+  }
 }
 
 module.exports = {

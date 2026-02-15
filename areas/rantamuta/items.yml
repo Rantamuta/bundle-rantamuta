@@ -12,6 +12,7 @@
   description: "A circular seal of red wax marked with a faded sigil."
   keywords: [ "wax", "seal" ]
   type: "OBJECT"
+  script: waxSealGuard
 
 - id: prayerStone
   name: "prayer stone"
@@ -44,7 +45,7 @@
   name: "reliquary"
   roomDesc: "A reliquary sits in a fractured alcove."
   description: "An ornate reliquary with a shallow circular recess."
-  keywords: [ "reliquary" ]
+  keywords: [ "reliquary", "shallow", "circular", "recess" ]
   type: "CONTAINER"
   script: ritualPutTarget
   maxItems: 1
@@ -55,6 +56,10 @@
     puzzle:
       putPolicy:
         acceptedItemRef: "rantamuta:waxSeal"
+        descriptionEmpty: "An ornate reliquary with a shallow circular recess awaiting its seal."
+        descriptionFilled: "An ornate reliquary with a red wax seal set firmly into its shallow recess."
+        roomDescEmpty: "A reliquary sits in a fractured alcove."
+        roomDescFilled: "A reliquary sits in a fractured alcove, with a red wax seal set firmly into its shallow recess."
         rejectMessage: "The reliquary rejects that offering."
         successRender: "The reliquary warms beneath your hands."
 
