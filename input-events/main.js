@@ -3,7 +3,7 @@
 
 const io = require('../lib/session/io');
 const { handleGetName, handleGetPassword } = require('../lib/session/auth-flow');
-const { enterGame } = require('../lib/session/player-lifecycle');
+const { enterGame, quitGame } = require('../lib/session/player-lifecycle');
 const { handleCommand } = require('../lib/session/command-dispatch');
 
 module.exports = {
@@ -26,6 +26,10 @@ module.exports = {
           return;
 
         case 'inGame':
+          if (input.toLowerCase() === 'quit' || input.toLowerCase() === 'exit') {
+            await quitGame(state, session);
+            return;
+          }
           return await handleCommand(state, session, input);
 
         default:

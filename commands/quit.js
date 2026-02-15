@@ -1,19 +1,14 @@
 // @ts-check
 'use strict';
 
-const { Broadcast } = require('ranvier');
+const { quitGame } = require('../lib/session/player-lifecycle');
 
 module.exports = {
   aliases: ['exit'],
-  command: state => async (args, player) => {
-    Broadcast.sayAt(player, 'Goodbye.');
-
-    try {
-      await state.PlayerManager.save(player);
-    } catch (err) {
-      // best-effort save
-    }
-
-    state.PlayerManager.removePlayer(player, true);
+  command: state => async (args, player, alias, context) => {
+    const session = context && context.session && typeof context.session === 'object'
+      ? context.session
+      : { player };
+    await quitGame(state, session);
   }
 };
