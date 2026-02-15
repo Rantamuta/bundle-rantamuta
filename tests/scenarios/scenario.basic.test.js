@@ -28,11 +28,9 @@ test('scenario runner executes command lines in order and continues on unknown c
   const result = runScenario(['--command', 'unknown-first', '--command', 'unknown-second', '--failOnUnknown']);
 
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
-  assert.match(result.stdout, /\[run\] 1\/2: unknown-first/);
+  assert.match(result.stdout, /> unknown-first/);
   assert.match(result.stdout, /What\?/);
-  assert.match(result.stdout, /\[run\] 2\/2: unknown-second/);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
+  assert.match(result.stdout, /> unknown-second/);
 });
 
 test('scenario runner .scenario file parses directives and ignores comments/blank lines', () => {
@@ -48,11 +46,9 @@ test('scenario runner .scenario file parses directives and ignores comments/blan
   const result = runScenario(['--scenario', scenarioPath, '--failOnUnknown']);
 
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
-  assert.match(result.stdout, /\[run\] 1\/2: unknown-alpha/);
+  assert.match(result.stdout, /> unknown-alpha/);
   assert.match(result.stdout, /What\?/);
-  assert.match(result.stdout, /\[run\] 2\/2: unknown-beta/);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=2, failed=1\)/);
+  assert.match(result.stdout, /> unknown-beta/);
 });
 
 test('scenario runner reports error for missing --scenario value', () => {
@@ -105,15 +101,12 @@ test('scenario runner legacy --command/--args fallback builds one command line',
   const result = runScenario(['--command', 'legacy-unknown', '--args', 'abc def']);
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /\[info\] scenario starting \(commands=1\)/);
-  assert.match(result.stdout, /\[run\] 1\/1: legacy-unknown abc def/);
+  assert.match(result.stdout, /> legacy-unknown abc def/);
   assert.match(result.stdout, /What\?/);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=1, failed=0\)/);
 });
 
-test('scenario runner --throughInput executes via input events and reports unknown text commands', () => {
+test('scenario runner executes via input events and reports unknown text commands', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:room',
     '--command', 'look',
     '--command', 'eastward',
@@ -121,84 +114,76 @@ test('scenario runner --throughInput executes via input events and reports unkno
   ]);
 
   assert.equal(result.status, 1, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[info\] scenario starting \(commands=2\)/);
-  assert.match(result.stdout, /\[run\] 1\/2: look/);
+  assert.match(result.stdout, /> look/);
   assert.match(result.stdout, /Test Room/);
-  assert.match(result.stdout, /\[run\] 2\/2: eastward/);
+  assert.match(result.stdout, /> eastward/);
   assert.match(result.stdout, /What\?/);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=2, unknown=1, failed=1\)/);
 });
 
-test('scenario runner --throughInput can look in test:lab', () => {
+test('scenario runner can look in test:lab', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'look',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: look/);
+  assert.match(result.stdout, /> look/);
   assert.match(result.stdout, /Test Lab/);
   assert.match(result.stdout, /Exits: north, west/);
   assert.match(result.stdout, /A practice apple rests here\./);
   assert.match(result.stdout, /A practice chest waits here\./);
 });
 
-test('scenario runner --throughInput canonicalizes l to look', () => {
+test('scenario runner canonicalizes l to look', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'l',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: l/);
+  assert.match(result.stdout, /> l/);
   assert.match(result.stdout, /Test Lab/);
   assert.match(result.stdout, /A practice apple rests here\./);
   assert.match(result.stdout, /A practice chest waits here\./);
 });
 
-test('scenario runner --throughInput canonicalizes east to go east', () => {
+test('scenario runner canonicalizes east to go east', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:labWest',
     '--command', 'east',
     '--command', 'look',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/2: east/);
-  assert.match(result.stdout, /\[run\] 2\/2: look/);
+  assert.match(result.stdout, /> east/);
+  assert.match(result.stdout, /> look/);
   assert.match(result.stdout, /Test Lab/);
 });
 
-test('scenario runner --throughInput canonicalizes n to go north', () => {
+test('scenario runner canonicalizes n to go north', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'n',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: n/);
+  assert.match(result.stdout, /> n/);
   assert.match(result.stdout, /Lab North Walk/);
 });
 
-test('scenario runner --throughInput canonicalizes x <thing> and surfaces look form failure', () => {
+test('scenario runner canonicalizes x <thing> and surfaces look form failure', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'x chest',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: x chest/);
+  assert.match(result.stdout, /> x chest/);
   assert.match(result.stdout, /You can't do that\./);
 });
 
-test('scenario runner --throughInput bell area entry from square and return path', () => {
+test('scenario runner bell area entry from square and return path', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'rantamuta:square',
     '--command', 'go north',
     '--command', 'go south',
@@ -206,16 +191,15 @@ test('scenario runner --throughInput bell area entry from square and return path
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/3: go north/);
+  assert.match(result.stdout, /> go north/);
   assert.match(result.stdout, /Bell Courtyard/);
-  assert.match(result.stdout, /\[run\] 2\/3: go south/);
-  assert.match(result.stdout, /\[run\] 3\/3: look/);
+  assert.match(result.stdout, /> go south/);
+  assert.match(result.stdout, /> look/);
   assert.match(result.stdout, /Rantamuta Square/);
 });
 
-test('scenario runner --throughInput blocks crypt descent before ritual completion', () => {
+test('scenario runner blocks crypt descent before ritual completion', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'rantamuta:square',
     '--command', 'go north',
     '--command', 'go east',
@@ -223,13 +207,12 @@ test('scenario runner --throughInput blocks crypt descent before ritual completi
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 3\/3: go down/);
+  assert.match(result.stdout, /> go down/);
   assert.match(result.stdout, /A dull stone slab blocks the descent\./);
 });
 
-test('scenario runner --throughInput bell target vetoes wrong put item', () => {
+test('scenario runner bell target vetoes wrong put item', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'rantamuta:square',
     '--command', 'go north',
     '--command', 'take wax seal',
@@ -238,13 +221,12 @@ test('scenario runner --throughInput bell target vetoes wrong put item', () => {
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 4\/4: put wax seal in stone basin/);
+  assert.match(result.stdout, /> put wax seal in stone basin/);
   assert.match(result.stdout, /The basin's runes remain dark\./);
 });
 
-test('scenario runner --throughInput bell ritual full path unlocks resonance chamber', () => {
+test('scenario runner bell ritual full path unlocks resonance chamber', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'rantamuta:square',
     '--command', 'go north',
     '--command', 'take wax seal',
@@ -267,13 +249,12 @@ test('scenario runner --throughInput bell ritual full path unlocks resonance cha
   assert.match(result.stdout, /The reliquary warms beneath your hands\./);
   assert.match(result.stdout, /Ripples of light shimmer across the basin\./);
   assert.match(result.stdout, /The cracked bell hums with a low resonance\./);
-  assert.match(result.stdout, /\[run\] 14\/15: go down/);
+  assert.match(result.stdout, /> go down/);
   assert.match(result.stdout, /Resonance Chamber/);
 });
 
-test('scenario runner --throughInput traverses lab loop with go and returns to Test Lab', () => {
+test('scenario runner traverses lab loop with go and returns to Test Lab', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'go north',
     '--command', 'go west',
@@ -283,63 +264,100 @@ test('scenario runner --throughInput traverses lab loop with go and returns to T
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/5: go north/);
-  assert.match(result.stdout, /\[run\] 2\/5: go west/);
-  assert.match(result.stdout, /\[run\] 3\/5: go south/);
-  assert.match(result.stdout, /\[run\] 4\/5: go east/);
-  assert.match(result.stdout, /\[run\] 5\/5: look/);
+  assert.match(result.stdout, /> go north/);
+  assert.match(result.stdout, /> go west/);
+  assert.match(result.stdout, /> go south/);
+  assert.match(result.stdout, /> go east/);
+  assert.match(result.stdout, /> look/);
   assert.match(result.stdout, /Test Lab/);
 });
 
-test('scenario runner --throughInput get apple narrates successful take', () => {
+test('scenario runner get apple narrates successful take', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'get apple',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: get apple/);
+  assert.match(result.stdout, /> get apple/);
   assert.match(result.stdout, /You take the apple\./);
 });
 
-test('scenario runner --throughInput put apple in chest narrates successful put', () => {
+test('scenario runner put apple in chest narrates successful put', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'get apple',
     '--command', 'put apple in chest',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 2\/2: put apple in chest/);
+  assert.match(result.stdout, /> put apple in chest/);
   assert.match(result.stdout, /You put the apple in the chest\./);
 });
 
-test('scenario runner --throughInput inventory shorthand "i" renders inventory output', () => {
+test('scenario runner inventory shorthand "i" renders inventory output', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:lab',
     '--command', 'i',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: i/);
+  assert.match(result.stdout, /> i/);
   assert.match(result.stdout, /You have nothing\./);
 });
 
-test('scenario runner --throughInput routes malformed put relation text to put validation', () => {
+test('scenario runner routes malformed put relation text to put validation', () => {
   const result = runScenario([
-    '--throughInput',
     '--room', 'test:room',
     '--command', 'put in old chest',
     '--failOnUnknown',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /\[run\] 1\/1: put in old chest/);
+  assert.match(result.stdout, /> put in old chest/);
   assert.match(result.stdout, /Put what\?/);
-  assert.match(result.stdout, /\[info\] scenario complete \(commands=1, unknown=0, failed=0\)/);
+});
+
+test('scenario runner non-json output echoes commands and omits diagnostic [run]/[info] lines', () => {
+  const result = runScenario([
+    '--room', 'test:lab',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /> look/);
+  assert.doesNotMatch(result.stdout, /\[run\]/);
+  assert.doesNotMatch(result.stdout, /\[info\]/);
+});
+
+test('scenario runner --json run event includes parse fields and outcome phase/code', () => {
+  const result = runScenario([
+    '--json',
+    '--room', 'test:room',
+    '--command', 'l',
+    '--command', 'put',
+    '--command', 'eastward',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout);
+  const runEvents = payload.events.filter(event => event.type === 'run');
+  assert.equal(runEvents.length, 3);
+
+  assert.equal(runEvents[0].parse.intentToken, 'look');
+  assert.equal(runEvents[0].parse.canonicalInput, 'look');
+  assert.equal(runEvents[0].outcome.code, 'OK');
+  assert.equal(runEvents[0].outcome.phase, 'success');
+
+  assert.equal(runEvents[1].parse.intentToken, 'put');
+  assert.equal(runEvents[1].parse.canonicalInput, 'put');
+  assert.equal(runEvents[1].outcome.code, 'FORM_MISSING_DIRECT');
+  assert.equal(runEvents[1].outcome.phase, 'entityResolution');
+
+  assert.equal(runEvents[2].parse.intentToken, 'eastward');
+  assert.equal(runEvents[2].parse.canonicalInput, 'eastward');
+  assert.equal(runEvents[2].outcome.code, 'UNKNOWN_COMMAND');
+  assert.equal(runEvents[2].outcome.phase, 'lookup');
 });
 
 test('scenario runner seeds inventory and room items before command execution', () => {

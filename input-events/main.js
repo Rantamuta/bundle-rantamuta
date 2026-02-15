@@ -26,8 +26,7 @@ module.exports = {
           return;
 
         case 'inGame':
-          await handleCommand(state, session, input);
-          return;
+          return await handleCommand(state, session, input);
 
         default:
           session.state = 'getName';
