@@ -170,7 +170,7 @@ module.exports = {
       rules: {
         direct: {
           scopeProfile: {
-            direct: [{ source: 'room.items', nested: true }, 'room.details', 'player.inventory'],
+            direct: [{ source: 'room.items', nested: true }, 'room.details', { source: 'player.inventory', nested: true }],
           },
         },
       },

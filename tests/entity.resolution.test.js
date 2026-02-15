@@ -580,6 +580,50 @@ describe('bundle-rantamuta entity-resolution', function () {
     assert.strictEqual(deepResult.value.directTarget, coin);
   });
 
+  it('resolves nested targets from player.inventory when nested traversal is enabled', function () {
+    const coin = createItem({ uuid: 'inv-coin', name: 'gold coin', keywords: ['gold', 'coin'] });
+    const satchel = createContainer({
+      uuid: 'inv-satchel',
+      name: 'leather satchel',
+      keywords: ['leather', 'satchel'],
+      inventory: new Map([[coin.uuid, coin]]),
+    });
+    const player = createPlayer({ inventoryItems: [satchel] });
+
+    const flatCommand = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['player.inventory'],
+          },
+        },
+      },
+    });
+    const nestedCommand = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: [{ source: 'player.inventory', nested: true }],
+          },
+        },
+      },
+    });
+
+    const flatResult = EntityResolution.resolveEntityContext({}, flatCommand, player, parseInput('take coin'));
+    assert.strictEqual(flatResult.ok, false);
+    if (!flatResult.ok) {
+      assert.strictEqual(flatResult.error.code, 'TARGET_NOT_FOUND');
+    }
+
+    const nestedResult = EntityResolution.resolveEntityContext({}, nestedCommand, player, parseInput('take coin'));
+    assert.strictEqual(nestedResult.ok, true);
+    if (!nestedResult.ok) {
+      return;
+    }
+
+    assert.strictEqual(nestedResult.value.directTarget, coin);
+  });
+
   it('returns AMBIGUOUS_TARGET for distinguishable matches', function () {
     const green = createItem({
       uuid: 'env-green',
