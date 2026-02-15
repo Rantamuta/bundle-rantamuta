@@ -17,9 +17,22 @@ describe('bundle-rantamuta input-canonicalizer', function () {
     assert.strictEqual(canonicalizeInput('l'), 'look');
   });
 
-  it('canonicalizes x <thing> to look at <thing>', function () {
-    assert.strictEqual(canonicalizeInput('x lantern'), 'look at lantern');
-    assert.strictEqual(canonicalizeInput('  x   rusty sword  '), 'look at rusty sword');
+  it('canonicalizes look at <thing> to look <thing>', function () {
+    assert.strictEqual(canonicalizeInput('look at lantern'), 'look lantern');
+    assert.strictEqual(canonicalizeInput('  LOOK   AT   rusty sword  '), 'look rusty sword');
+  });
+
+  it('canonicalizes look at with no target to intransitive look', function () {
+    assert.strictEqual(canonicalizeInput('look at'), 'look');
+  });
+
+  it('canonicalizes x <thing> to look <thing>', function () {
+    assert.strictEqual(canonicalizeInput('x lantern'), 'look lantern');
+    assert.strictEqual(canonicalizeInput('  x   rusty sword  '), 'look rusty sword');
+  });
+
+  it('canonicalizes examine <thing> to look <thing>', function () {
+    assert.strictEqual(canonicalizeInput('examine lantern'), 'look lantern');
   });
 
   it('leaves unknown input unchanged', function () {

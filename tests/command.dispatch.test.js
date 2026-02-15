@@ -2677,7 +2677,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('canonicalizes x <thing> to look at <thing> and returns look target-not-found message when unresolved', async function () {
+  it('canonicalizes x <thing> to look <thing> and resolves direct look target', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2691,11 +2691,19 @@ describe('bundle-rantamuta command-dispatch', function () {
     ranvier.Broadcast.prompt = () => { };
 
     try {
+      const chest = {
+        uuid: 'lab-chest-1',
+        name: 'practice chest',
+        keywords: ['practice', 'chest'],
+        description: 'A lightweight chest meant for put/take testing.',
+      };
+
       const player = asPlayer({
         name: 'Tester',
         room: {
           title: 'Render Room',
           description: 'Render description',
+          items: new Set([chest]),
         },
         socket: { writable: false },
       });
@@ -2713,7 +2721,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       await handleCommand(state, { player }, 'x chest');
 
-      assert.ok(messages.includes('You do not see that.'));
+      assert.ok(messages.includes('A lightweight chest meant for put/take testing.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;

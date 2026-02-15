@@ -180,7 +180,7 @@ test('scenario runner canonicalizes n to go north', () => {
   assert.match(result.stdout, /Lab North Walk/);
 });
 
-test('scenario runner canonicalizes x <thing> and surfaces unresolved look target', () => {
+test('scenario runner canonicalizes x <thing> to look <thing>', () => {
   const result = runScenario([
     '--room', 'test:lab',
     '--command', 'x chest',
@@ -188,7 +188,18 @@ test('scenario runner canonicalizes x <thing> and surfaces unresolved look targe
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /x chest/);
-  assert.match(result.stdout, /You do not see that\./);
+  assert.match(result.stdout, /A lightweight chest meant for put\/take testing\./);
+});
+
+test('scenario runner canonicalizes look at <thing> to look <thing>', () => {
+  const result = runScenario([
+    '--room', 'test:lab',
+    '--command', 'look at chest',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /look at chest/);
+  assert.match(result.stdout, /A lightweight chest meant for put\/take testing\./);
 });
 
 test('scenario runner bell area entry from square and return path', () => {

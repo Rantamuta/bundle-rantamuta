@@ -84,10 +84,30 @@ describe('bundle-rantamuta parse-input', function () {
     const result = parseInput('x rusty sword');
 
     assert.strictEqual(result.actorInput, 'x rusty sword');
-    assert.strictEqual(result.canonicalInput, 'look at rusty sword');
-    assert.strictEqual(result.normalizedInput, 'look at rusty sword');
+    assert.strictEqual(result.canonicalInput, 'look rusty sword');
+    assert.strictEqual(result.normalizedInput, 'look rusty sword');
     assert.strictEqual(result.intentToken, 'look');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['at', 'rusty', 'sword']);
+    assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
+  });
+
+  it('canonicalizes look at <thing> before parsing', function () {
+    const result = parseInput('look at rusty sword');
+
+    assert.strictEqual(result.actorInput, 'look at rusty sword');
+    assert.strictEqual(result.canonicalInput, 'look rusty sword');
+    assert.strictEqual(result.normalizedInput, 'look rusty sword');
+    assert.strictEqual(result.intentToken, 'look');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
+  });
+
+  it('canonicalizes look at with no target to intransitive look', function () {
+    const result = parseInput('look at');
+
+    assert.strictEqual(result.actorInput, 'look at');
+    assert.strictEqual(result.canonicalInput, 'look');
+    assert.strictEqual(result.normalizedInput, 'look');
+    assert.strictEqual(result.intentToken, 'look');
+    assert.strictEqual(result.primaryTargetSpan, undefined);
   });
 
   it('parses go down as direct movement text, not as relation form', function () {
