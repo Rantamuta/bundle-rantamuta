@@ -183,4 +183,104 @@ describe('bundle-rantamuta semantic-message', function () {
       text: "Foo points at Bar's blade and guards Foo's own hand.",
     });
   });
+
+  it('supports capitalization for actor/target placeholders only', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.You} {verb:stab} {target.you} in {target.Poss} neck.',
+      audiencePolicy: 'others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+        target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+      },
+    };
+    const context = {
+      currentPlayer: { name: 'Foo', pronoun: 'he' },
+      indirectTarget: { name: 'Bar', pronoun: 'she' },
+    };
+
+    const otherResult = renderSemanticEvent(instruction, context, 'other');
+    assert.deepStrictEqual(otherResult, {
+      ok: true,
+      included: true,
+      text: 'Foo stabs Bar in Her neck.',
+    });
+  });
+
+  it('does not apply capitalization to verb/object tokens', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.You} {verb:Stab} {object.Direct}.',
+      audiencePolicy: 'self',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+      },
+      objectText: {
+        direct: 'the coin',
+      },
+    };
+    const context = {
+      currentPlayer: { name: 'Foo', pronoun: 'he' },
+    };
+
+    const selfResult = renderSemanticEvent(instruction, context, 'self');
+    assert.deepStrictEqual(selfResult, {
+      ok: true,
+      included: true,
+      text: 'You stab the coin.',
+    });
+  });
+
+  it('always capitalizes actor.name tokens', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.name} nods.',
+      audiencePolicy: 'others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+      },
+    };
+    const context = {
+      currentPlayer: { name: 'rendall', isNpc: false },
+    };
+
+    const otherResult = renderSemanticEvent(instruction, context, 'other');
+    assert.deepStrictEqual(otherResult, {
+      ok: true,
+      included: true,
+      text: 'Rendall nods.',
+    });
+  });
+
+  it('capitalizes target.name for character targets but preserves object casing', function () {
+    const characterInstruction = {
+      type: 'semanticEvent',
+      template: '{target.name}.',
+      audiencePolicy: 'others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+        target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+      },
+    };
+
+    const characterResult = renderSemanticEvent(characterInstruction, {
+      currentPlayer: { name: 'foo', isNpc: false },
+      indirectTarget: { name: 'bar', isNpc: true },
+    }, 'other');
+    assert.deepStrictEqual(characterResult, {
+      ok: true,
+      included: true,
+      text: 'Bar.',
+    });
+
+    const objectResult = renderSemanticEvent(characterInstruction, {
+      currentPlayer: { name: 'foo', isNpc: false },
+      indirectTarget: { name: 'wax seal' },
+    }, 'other');
+    assert.deepStrictEqual(objectResult, {
+      ok: true,
+      included: true,
+      text: 'wax seal.',
+    });
+  });
 });

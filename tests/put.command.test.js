@@ -139,7 +139,7 @@ describe('bundle-rantamuta put command', function () {
     assert.deepStrictEqual(result.postCommit, [
       {
         type: 'semanticEvent',
-        template: '{actor.you} {verb:put} {object.direct} in {object.indirect}.',
+        template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
         audiencePolicy: 'self_and_others',
         participants: {
           actor: { selector: 'currentPlayer' },
@@ -183,7 +183,7 @@ describe('bundle-rantamuta put command', function () {
     assert.deepStrictEqual(result.postCommit, [
       {
         type: 'semanticEvent',
-        template: '{actor.you} {verb:put} {object.direct} down.',
+        template: '{actor.You} {verb:put} {object.direct} down.',
         audiencePolicy: 'self_and_others',
         participants: {
           actor: { selector: 'currentPlayer' },
@@ -230,7 +230,7 @@ describe('bundle-rantamuta put command', function () {
     assert.deepStrictEqual(result.postCommit, [
       {
         type: 'semanticEvent',
-        template: '{actor.you} {verb:put} {object.direct} in {object.indirect}.',
+        template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
         audiencePolicy: 'self_and_others',
         participants: {
           actor: { selector: 'currentPlayer' },
