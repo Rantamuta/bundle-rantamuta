@@ -76,7 +76,12 @@ module.exports = {
       return fail('LOOK_NO_ROOM');
     }
 
-    const lines = buildRoomViewLines(room);
+    const lines = buildRoomViewLines(room, {
+      actor: player,
+      room,
+      area: room.area || null,
+      world: state,
+    });
 
     return {
       ok: true,

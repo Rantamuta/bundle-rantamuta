@@ -84,7 +84,12 @@ module.exports = {
         ],
       },
       render: {
-        lines: buildRoomViewLines(destination),
+        lines: buildRoomViewLines(destination, {
+          actor: player,
+          room: destination,
+          area: destination.area || null,
+          world: state,
+        }),
       },
     };
   },
