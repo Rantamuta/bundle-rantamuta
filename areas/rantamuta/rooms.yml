@@ -1,4 +1,122 @@
 - id: start
   title: "Rantamuta"
-  description: "This is the reference starting point. From here, we can build anything."
+  description: "A legacy launch point that now leads to the square."
+  exits:
+    - roomId: rantamuta:square
+      direction: north
 
+- id: square
+  title: "Rantamuta Square"
+  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north."
+  exits:
+    - roomId: rantamuta:start
+      direction: south
+    - roomId: rantamuta:bell_courtyard
+      direction: north
+
+- id: bell_courtyard
+  title: "Bell Courtyard"
+  description: "Broken flagstones ring a weathered bell-shrine. The bell tower rises to the north above the ruined walls. Cold air drifts from deeper ruins."
+  metadata:
+    details:
+      - name: "flagstones"
+        keywords: [ "flagstone", "flagstones", "stone" ]
+        description: "The flagstones are cracked and uneven, worn smooth by years of weather."
+      - name: "bell-shrine"
+        keywords: [ "bell-shrine", "shrine", "bell" ]
+        description: "The old shrine is weathered and split with long veins of stone cracks."
+      - name: "bell tower"
+        keywords: [ "tower", "bell tower", "belltower" ]
+        description: "The tower looms over the courtyard, its upper stonework dark against the sky."
+      - name: "ruined walls"
+        keywords: [ "wall", "walls", "ruined wall", "ruined walls" ]
+        description: "Broken wall sections ring the courtyard, with gaps where whole courses collapsed."
+      - name: "cold air"
+        keywords: [ "air", "cold air", "draft" ]
+        description: "The air is damp and chill, carrying a faint mineral smell from below."
+      - name: "ruins"
+        keywords: [ "ruin", "ruins", "deeper ruins" ]
+        description: "The deeper ruins beyond the courtyard look undisturbed and old."
+  exits:
+    - roomId: rantamuta:square
+      direction: south
+    - roomId: rantamuta:bell_nave
+      direction: north
+  items:
+    - id: rantamuta:waxSeal
+
+- id: bell_nave
+  title: "Bell Nave"
+  description: "Dusty pews face a shattered alcove where a reliquary still waits."
+  exits:
+    - roomId: rantamuta:bell_courtyard
+      direction: south
+    - roomId: rantamuta:bell_stair
+      direction: up
+    - roomId: rantamuta:bell_crypt
+      direction: down
+  items:
+    - id: rantamuta:prayerStone
+    - id: rantamuta:reliquary
+
+- id: bell_stair
+  title: "Bell Stair"
+  description: "A narrow spiral stair wraps around ancient masonry toward the belfry."
+  exits:
+    - roomId: rantamuta:bell_nave
+      direction: down
+    - roomId: rantamuta:bell_belfry
+      direction: up
+
+- id: bell_belfry
+  title: "Bell Belfry"
+  description: "Ragged ropes sway around a cracked bell suspended over the town below."
+  exits:
+    - roomId: rantamuta:bell_stair
+      direction: down
+  items:
+    - id: rantamuta:crackedBell
+
+- id: bell_crypt
+  title: "Bell Crypt"
+  description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
+  script: bellCryptGate
+  metadata:
+    details:
+      - name: "runes"
+        keywords: [ "rune", "runes", "glyph", "glyphs", "etching", "etchings" ]
+        description: "Ancient runes curl around the basin lip, each line cut with unnerving precision."
+    descriptionFragments:
+      - when: slab_blocking
+        text: "A dull stone slab blocks the descent."
+      - when: slab_open
+        text: "A heavy slab has been forced aside, revealing stone stairs descending into darkness."
+      - when: basin_runes_dormant
+        text: "The basin runes lie cold and silent, as if waiting for a final word."
+      - when: basin_runes_glowing
+        text: "A faint, mystic glow pulses through the basin runes, bathing the crypt in gentle light."
+  exits:
+    - roomId: rantamuta:bell_nave
+      direction: up
+    - roomId: rantamuta:resonance_chamber
+      direction: down
+      metadata:
+        gate:
+          denyMessage: "A dull stone slab blocks the descent."
+          requiredPlacements:
+            - containerRef: rantamuta:crackedBell
+              itemRef: rantamuta:bronzeClapper
+            - containerRef: rantamuta:reliquary
+              itemRef: rantamuta:waxSeal
+            - containerRef: rantamuta:stoneBasin
+              itemRef: rantamuta:prayerStone
+  items:
+    - id: rantamuta:bronzeClapper
+    - id: rantamuta:stoneBasin
+
+- id: resonance_chamber
+  title: "Resonance Chamber"
+  description: "A hidden chamber thrums with harmonic tone. The ritual has awakened the old tower."
+  exits:
+    - roomId: rantamuta:bell_crypt
+      direction: up

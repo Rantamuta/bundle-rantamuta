@@ -1,0 +1,31 @@
+# Bell Tower full puzzle completion path
+room: rantamuta:square
+command: look
+command: n
+command: take wax seal
+command: n
+command: x reliquary
+command: take prayer stone
+command: put wax seal in reliquary
+command: x reliquary
+command: take wax seal
+command: down
+command: x runes
+command: take bronze clapper
+command: put prayer stone in stone basin
+command: x runes
+command: take prayer stone
+command: up
+command: up
+command: up
+command: x cracked bell
+command: put bronze clapper in cracked bell
+command: x cracked bell
+command: take bronze clapper
+command: down
+command: down
+command: look
+command: down
+command: look
+command: down
+command: look

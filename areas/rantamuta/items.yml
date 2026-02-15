@@ -1,0 +1,83 @@
+- id: bronzeClapper
+  name: "bronze clapper"
+  roomDesc: "A bronze clapper lies half-buried in dust."
+  description: "A heavy bell clapper engraved with tiny concentric circles."
+  keywords: [ "bronze", "clapper" ]
+  type: "OBJECT"
+  script: bronzeClapperGuard
+
+- id: waxSeal
+  name: "wax seal"
+  roomDesc: "A wax seal rests on a chipped stone ledge."
+  description: "A circular seal of red wax marked with a faded sigil."
+  keywords: [ "wax", "seal" ]
+  type: "OBJECT"
+  script: waxSealGuard
+
+- id: prayerStone
+  name: "prayer stone"
+  roomDesc: "A smooth prayer stone sits atop a broken pew."
+  description: "A palm-sized stone worn smooth by generations of hands."
+  keywords: [ "prayer", "stone" ]
+  type: "OBJECT"
+  script: prayerStoneGuard
+
+- id: crackedBell
+  name: "cracked bell"
+  roomDesc: "A cracked bell hangs in the rafters."
+  description: "The old bell is split along one side, and its clapper is missing."
+  keywords: [ "cracked", "bell" ]
+  type: "CONTAINER"
+  script: ritualPutTarget
+  maxItems: 1
+  metadata:
+    permissions:
+      verbs:
+        take: "The bell is fixed to the ancient frame."
+    puzzle:
+      putPolicy:
+        acceptedItemRef: "rantamuta:bronzeClapper"
+        descriptionEmpty: "The old bell is split along one side, and its clapper is missing."
+        descriptionFilled: "The old bell is split along one side, but a bronze clapper now hangs within it."
+        rejectMessage: "That does not belong in the bell."
+        successRender: "The cracked bell rings clear, and the note leaves you unexpectedly uplifted."
+
+- id: reliquary
+  name: "reliquary"
+  roomDesc: "A reliquary sits in a fractured alcove."
+  description: "An ornate reliquary with a shallow circular recess."
+  keywords: [ "reliquary", "shallow", "circular", "recess" ]
+  type: "CONTAINER"
+  script: ritualPutTarget
+  maxItems: 1
+  metadata:
+    permissions:
+      verbs:
+        take: "The reliquary is set into the stonework."
+    puzzle:
+      putPolicy:
+        acceptedItemRef: "rantamuta:waxSeal"
+        descriptionEmpty: "An ornate reliquary with a shallow circular recess awaiting its seal."
+        descriptionFilled: "An ornate reliquary with a red wax seal set firmly into its shallow recess."
+        roomDescEmpty: "A reliquary sits in a fractured alcove."
+        roomDescFilled: "A reliquary sits in a fractured alcove, with a red wax seal set firmly into its shallow recess."
+        rejectMessage: "The reliquary rejects that offering."
+        successRender: "The reliquary warms beneath your hands."
+
+- id: stoneBasin
+  name: "stone basin"
+  roomDesc: "A stone basin carved with runes rests in the crypt."
+  description: "A circular basin whose runes seem to shimmer at the edge of sight."
+  keywords: [ "stone", "basin" ]
+  type: "CONTAINER"
+  script: ritualPutTarget
+  maxItems: 1
+  metadata:
+    permissions:
+      verbs:
+        take: "The basin is far too heavy to move."
+    puzzle:
+      putPolicy:
+        acceptedItemRef: "rantamuta:prayerStone"
+        rejectMessage: "The basin's runes remain dark."
+        successRender: "Ripples of light shimmer across the basin."

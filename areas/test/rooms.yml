@@ -1,3 +1,42 @@
 - id: room
   title: "Test Room"
   description: "Deterministic room used by automated scenario tests."
+
+- id: lab
+  title: "Test Lab"
+  description: "A practice room for manually testing item pickup and placement."
+  exits:
+    - roomId: test:labNorth
+      direction: north
+    - roomId: test:labWest
+      direction: west
+  items:
+    - id: test:labApple
+    - id: test:labChest
+
+- id: labNorth
+  title: "Lab North Walk"
+  description: "A narrow corridor north of the test lab."
+  exits:
+    - roomId: test:lab
+      direction: south
+    - roomId: test:labNorthWest
+      direction: west
+
+- id: labNorthWest
+  title: "Lab Northwest Corner"
+  description: "A quiet corner connecting the north and west passages."
+  exits:
+    - roomId: test:labNorth
+      direction: east
+    - roomId: test:labWest
+      direction: south
+
+- id: labWest
+  title: "Lab West Walk"
+  description: "A side corridor west of the test lab."
+  exits:
+    - roomId: test:labNorthWest
+      direction: north
+    - roomId: test:lab
+      direction: east
