@@ -65,11 +65,11 @@ function executeTake(player, directTarget) {
 }
 
 describe('bundle-rantamuta take command', function () {
-  it('declares direct scope order including room.details and player.inventory', function () {
+  it('declares direct scope order including room.details and nested player.inventory', function () {
     assert.deepStrictEqual(takeCommand.metadata.entityResolution.rules.direct.scopeProfile.direct, [
       { source: 'room.items', nested: true },
       'room.details',
-      'player.inventory',
+      { source: 'player.inventory', nested: true },
     ]);
   });
 
