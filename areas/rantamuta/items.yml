@@ -4,6 +4,7 @@
   description: "A heavy bell clapper engraved with tiny concentric circles."
   keywords: [ "bronze", "clapper" ]
   type: "OBJECT"
+  script: bronzeClapperGuard
 
 - id: waxSeal
   name: "wax seal"
