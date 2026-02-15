@@ -26,6 +26,33 @@ function isTransferContainer(value) {
 }
 
 /**
+ * @param {*} item
+ * @param {*} player
+ * @returns {boolean}
+ */
+function isAlreadyCarried(item, player) {
+  if (!item || typeof item !== 'object' || !player || typeof player !== 'object') {
+    return false;
+  }
+
+  if (item.carriedBy === player) {
+    return true;
+  }
+
+  const inventory = player.inventory;
+  if (!inventory || typeof inventory.has !== 'function') {
+    return false;
+  }
+
+  const uuid = item.uuid;
+  if (typeof uuid !== 'string' || uuid.length === 0) {
+    return false;
+  }
+
+  return inventory.has(uuid);
+}
+
+/**
  * Containers are non-takeable by default unless explicitly marked takeable.
  *
  * @param {*} item
@@ -143,7 +170,7 @@ module.exports = {
       rules: {
         direct: {
           scopeProfile: {
-            direct: [{ source: 'room.items', nested: true }],
+            direct: [{ source: 'room.items', nested: true }, 'room.details', 'player.inventory'],
           },
         },
       },
@@ -157,6 +184,7 @@ module.exports = {
         direct: 'Which item do you mean?',
       },
       TAKE_CARRY_TOO_MUCH: 'You are carrying too much.',
+      ALREADY_HAVE_DIRECT: 'You already have that.',
       TAKE_NOT_TAKEABLE: 'You can\'t take that.',
       TAKE_NOT_REACHABLE: 'You cannot reach that.',
       TAKE_INVALID_SOURCE: 'You cannot take that right now.',
@@ -165,6 +193,11 @@ module.exports = {
     captureChecks: [
       (context) => {
         const player = context && context.player;
+        const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+        if (isAlreadyCarried(directTarget, player)) {
+          return { ok: true };
+        }
+
         const inventoryFull = !!(player && typeof player.isInventoryFull === 'function' && player.isInventoryFull());
         if (inventoryFull) {
           return {
@@ -184,6 +217,10 @@ module.exports = {
     }
 
     const item = resolution.directTarget;
+    if (isAlreadyCarried(item, player)) {
+      return fail('ALREADY_HAVE_DIRECT');
+    }
+
     if (!isTakeable(item)) {
       return fail('TAKE_NOT_TAKEABLE');
     }

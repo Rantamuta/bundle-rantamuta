@@ -65,6 +65,14 @@ function executeTake(player, directTarget) {
 }
 
 describe('bundle-rantamuta take command', function () {
+  it('declares direct scope order including room.details and player.inventory', function () {
+    assert.deepStrictEqual(takeCommand.metadata.entityResolution.rules.direct.scopeProfile.direct, [
+      { source: 'room.items', nested: true },
+      'room.details',
+      'player.inventory',
+    ]);
+  });
+
   it('returns transferItem plan and does not mutate directly', function () {
     const room = createRoom();
     const coin = createItem({ uuid: 'coin-1', name: 'gold coin', keywords: ['gold', 'coin'], room });
@@ -104,6 +112,19 @@ describe('bundle-rantamuta take command', function () {
     assert.deepStrictEqual(result, {
       ok: false,
       error: { code: 'FORM_NOT_SUPPORTED', details: undefined },
+    });
+  });
+
+  it('returns ALREADY_HAVE_DIRECT when item is already in player inventory', function () {
+    const coin = createItem({ uuid: 'coin-held', name: 'gold coin', keywords: ['gold', 'coin'] });
+    const player = createPlayer({ inventoryItems: [coin] });
+    coin.carriedBy = player;
+
+    const result = executeTake(player, coin);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'ALREADY_HAVE_DIRECT', details: undefined },
     });
   });
 

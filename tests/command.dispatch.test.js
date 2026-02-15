@@ -3104,6 +3104,204 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('renders already-have message when take resolves to player inventory target', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const coin = { uuid: 'coin-held-1', name: 'gold coin', keywords: ['gold', 'coin'] };
+      const room = {
+        items: new Set(),
+        metadata: { details: [] },
+        addItem() { },
+        removeItem() { },
+      };
+      const inventory = new Map([[coin.uuid, coin]]);
+      const player = asPlayer({
+        name: 'Tester',
+        inventory,
+        room,
+        isInventoryFull: () => true,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+      coin.carriedBy = player;
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take coin');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('You already have that.'));
+      assert.ok(!messages.includes('You are carrying too much.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('denies non-look action on room detail with detail verb override message', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const room = {
+        items: new Set(),
+        metadata: {
+          details: [
+            {
+              id: 'flagstones',
+              name: 'flagstones',
+              keywords: ['flagstones', 'stones'],
+              description: 'Worn stones line the courtyard floor.',
+              verbs: {
+                take: 'The flagstones are fixed in place.',
+              },
+            },
+          ],
+        },
+        entityReference: 'test:detail_room',
+        addItem() { },
+        removeItem() { },
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take flagstones');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The flagstones are fixed in place.'));
+      assert.ok(!messages.includes('You can\'t do that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('denies non-look action on room detail with default denial message', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const room = {
+        items: new Set(),
+        metadata: {
+          details: [
+            {
+              id: 'statue',
+              name: 'statue',
+              keywords: ['statue'],
+              description: 'An ancient statue watches silently.',
+            },
+          ],
+        },
+        entityReference: 'test:detail_room_default',
+        addItem() { },
+        removeItem() { },
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: takeDef.command({}),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take statue');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('You can\'t do that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('returns trace for resolver failure with phase/code semantics', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
