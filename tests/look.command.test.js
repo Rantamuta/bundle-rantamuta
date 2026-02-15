@@ -13,22 +13,27 @@ function createPlayer(def = {}) {
 }
 
 describe('bundle-rantamuta look command', function () {
-  it('declares intransitive entity-resolution rule metadata', function () {
+  it('declares intransitive + direct entity-resolution rule metadata', function () {
     assert.ok(lookCommand.metadata);
     assert.ok(lookCommand.metadata.entityResolution);
     assert.deepStrictEqual(lookCommand.metadata.entityResolution.rules, {
       intransitive: {},
+      direct: {
+        scopeProfile: {
+          direct: ['room.items', 'room.details', 'player.inventory'],
+        },
+      },
     });
   });
 
-  it('returns FORM_NOT_SUPPORTED when resolution rule is not intransitive', function () {
+  it('returns FORM_NOT_SUPPORTED when resolution rule is not supported', function () {
     const execute = lookCommand.command({});
     const player = createPlayer({
       room: { title: 'Room', description: 'Desc' },
     });
 
     const result = execute('', player, null, {
-      entityResolution: { ruleKey: 'direct' },
+      entityResolution: { ruleKey: 'indirect' },
     });
 
     assert.deepStrictEqual(result, {
@@ -37,20 +42,93 @@ describe('bundle-rantamuta look command', function () {
     });
   });
 
-  it('entity-resolution rejects direct-object look form for intransitive-only declaration', function () {
+  it('entity-resolution resolves direct-object look form using look scope policy', function () {
+    const chest = {
+      uuid: 'room-chest',
+      name: 'practice chest',
+      keywords: ['practice', 'chest'],
+      description: 'A lightweight chest meant for put/take testing.',
+    };
     const player = createPlayer({
-      room: { title: 'Room', description: 'Desc', items: new Set() },
+      room: { title: 'Room', description: 'Desc', items: new Set([chest]) },
       inventory: new Map(),
     });
 
     const result = EntityResolution.resolveEntityContext({}, lookCommand, player, parseInput('look chest'));
 
-    assert.strictEqual(result.ok, false);
-    if (result.ok) {
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'FORM_DIRECT_NOT_SUPPORTED');
+    assert.strictEqual(result.value.ruleKey, 'direct');
+    assert.strictEqual(result.value.directTarget, chest);
+  });
+
+  it('returns TARGET_NOT_FOUND when direct rule has no bound target', function () {
+    const execute = lookCommand.command({});
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc' },
+    });
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'direct', directTarget: null },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'TARGET_NOT_FOUND', details: { role: 'direct' } },
+    });
+  });
+
+  it('renders direct look target description when present', function () {
+    const execute = lookCommand.command({});
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc' },
+    });
+    const chest = {
+      name: 'practice chest',
+      description: 'A lightweight chest meant for put/take testing.',
+    };
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'direct', directTarget: chest },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        lines: ['A lightweight chest meant for put/take testing.'],
+      },
+    });
+  });
+
+  it('renders direct look fallback when target has no description', function () {
+    const execute = lookCommand.command({});
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc' },
+    });
+    const target = {
+      name: 'mysterious thing',
+      keywords: ['mysterious', 'thing'],
+    };
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'direct', directTarget: target },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        lines: ['You see nothing special.'],
+      },
+    });
   });
 
   it('returns LOOK_NO_ROOM when player has no room', function () {
