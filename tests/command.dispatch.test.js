@@ -2681,6 +2681,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction: 'north',
           },
         ],
       });
@@ -2750,6 +2751,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction: 'east',
           },
         ],
       });
@@ -2818,6 +2820,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction: 'north',
           },
         ],
       });
@@ -3180,6 +3183,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction: 'down',
           },
         ],
       });

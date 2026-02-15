@@ -172,6 +172,7 @@ describe('bundle-rantamuta go command', function () {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction: 'east',
           },
         ],
       },

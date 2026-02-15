@@ -259,6 +259,45 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.players.has(player), false);
   });
 
+  it('broadcasts leave before move and arrive after move for direction-aware movement', function () {
+    const start = createRoom('start');
+    const destination = createRoom('destination');
+    const player = createPlayerInRoom(start);
+    player.name = 'Tester';
+    start.getBroadcastTargets = () => [player];
+    destination.getBroadcastTargets = () => [player];
+
+    const originalSayAtExcept = ranvier.Broadcast.sayAtExcept;
+    const calls = [];
+
+    ranvier.Broadcast.sayAtExcept = (target, message, exceptTargets) => {
+      calls.push({ target, message: String(message), exceptTargets });
+    };
+
+    try {
+      const undo = applyMutationInstruction({}, {
+        type: 'movePlayer',
+        player,
+        toRoom: destination,
+        direction: 'west',
+      });
+
+      assert.strictEqual(player.room, destination);
+      assert.deepStrictEqual(calls.map(call => call.message), [
+        'Tester leaves west.',
+        'Tester arrives from the east.',
+      ]);
+      assert.strictEqual(calls[0].target, start);
+      assert.strictEqual(calls[1].target, destination);
+      assert.deepStrictEqual(calls[0].exceptTargets, [player]);
+      assert.deepStrictEqual(calls[1].exceptTargets, [player]);
+
+      undo();
+    } finally {
+      ranvier.Broadcast.sayAtExcept = originalSayAtExcept;
+    }
+  });
+
   it('rolls back movePlayer when a later operation fails', function () {
     const start = createRoom('start');
     const destination = createRoom('destination');

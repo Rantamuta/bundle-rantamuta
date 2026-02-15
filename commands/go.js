@@ -15,6 +15,14 @@ function fail(code, details) {
   };
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeDirection(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 module.exports = {
   metadata: {
     entityResolution: {
@@ -53,6 +61,7 @@ module.exports = {
     if (!roomId) {
       return fail('GO_DESTINATION_MISSING');
     }
+    const direction = normalizeDirection(exit && exit.direction);
 
     const roomManager = state && state.RoomManager;
     const destination = roomManager && typeof roomManager.getRoom === 'function'
@@ -80,6 +89,7 @@ module.exports = {
             type: 'movePlayer',
             player,
             toRoom: destination,
+            direction,
           },
         ],
       },
