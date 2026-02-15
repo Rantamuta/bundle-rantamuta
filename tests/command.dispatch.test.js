@@ -1048,24 +1048,29 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('applies look bubble additions to the committed plan', async function () {
+  it('rejects bubble operations and continues success path', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let bubbleInvoked = false;
     const events = [];
+    const errors = [];
 
     ranvier.Broadcast.sayAt = (target, message) => {
       events.push(`render:${String(message)}`);
     };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
     mutator.applyMutationPlan = (stateArg, planArg) => {
       events.push('commit');
       assert.deepStrictEqual(planArg, {
-        operations: [{ type: 'noop' }, { type: 'noop' }, { type: 'noop' }],
+        operations: [{ type: 'noop' }],
       });
     };
 
@@ -1086,7 +1091,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             (context) => {
               bubbleInvoked = true;
               assert.strictEqual(context.entityResolution.ruleKey, 'intransitive');
-              return [{ type: 'noop' }, { type: 'noop' }];
+              return { operations: [{ type: 'noop' }, { type: 'noop' }] };
             },
           ],
         },
@@ -1105,8 +1110,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         'render:<bold>Bubble Room</bold>',
         'render:Bubble description',
       ]);
+      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
@@ -1167,23 +1174,28 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('supports mixed bubble payload with operations and render lines', async function () {
+  it('rejects mixed bubble payload operations but keeps render additions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const events = [];
+    const errors = [];
 
     ranvier.Broadcast.sayAt = (target, message) => {
       events.push(`render:${String(message)}`);
     };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
     mutator.applyMutationPlan = (stateArg, planArg) => {
       events.push('commit');
       assert.deepStrictEqual(planArg, {
-        operations: [{ type: 'noop' }, { type: 'noop' }],
+        operations: [{ type: 'noop' }],
       });
     };
 
@@ -1222,18 +1234,22 @@ describe('bundle-rantamuta command-dispatch', function () {
         'render:Mixed target line',
         'render:Mixed bubble line',
       ]);
+      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
 
-  it('supports mixed bubble payload with transferItem and render lines', async function () {
+  it('rejects bubble transferItem operations and keeps world state unchanged', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
     const messages = [];
+    const errors = [];
     const inventory = new Set();
     const roomItems = new Set();
     const item = { uuid: 'spike-1', name: 'spike of heroism' };
@@ -1263,6 +1279,9 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     ranvier.Broadcast.sayAt = (target, message) => {
       messages.push(String(message));
+    };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
     };
 
     try {
@@ -1294,15 +1313,17 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       await handleCommand(state, { player }, 'look');
 
-      assert.strictEqual(inventory.has(item), false);
-      assert.strictEqual(roomItems.has(item), true);
+      assert.strictEqual(inventory.has(item), true);
+      assert.strictEqual(roomItems.has(item), false);
       assert.deepStrictEqual(messages, [
         '<bold>Sanctum</bold>',
         'A quiet sanctum.',
         'The spike hums.',
       ]);
+      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
     }
   });
 
@@ -1414,6 +1435,337 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('executes postCommit broadcast selectors after render with phase counters', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalSayAtExcept = ranvier.Broadcast.sayAtExcept;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const events = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      events.push(`sayAt:${String(message)}`);
+    };
+    ranvier.Broadcast.sayAtExcept = (_target, message, exceptTargets) => {
+      events.push(`sayAtExcept:${String(message)}:${Array.isArray(exceptTargets) ? exceptTargets.length : 0}`);
+    };
+    mutator.applyMutationPlan = () => {
+      events.push('commit');
+    };
+
+    try {
+      const roomTargets = [{ name: 'Tester' }, { name: 'Other' }];
+      const excludedRoomTargets = [{ name: 'Observer' }];
+      const excludedRoom = {
+        getBroadcastTargets: () => excludedRoomTargets,
+      };
+      const room = {
+        title: 'Selector Room',
+        description: 'Selector description',
+        area: {
+          getBroadcastTargets: () => roomTargets,
+        },
+        getBroadcastTargets: () => roomTargets,
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        room,
+        socket: { writable: false },
+      });
+
+      const command = {
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { lines: ['target render'] },
+          postCommit: [
+            { type: 'broadcast', audience: 'player', message: 'pc-player' },
+            { type: 'broadcast', audience: 'room', message: 'pc-room' },
+            { type: 'broadcast', audience: 'area', message: 'pc-area' },
+            { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex', exceptSelector: 'currentRoomTargets' },
+            { type: 'broadcast', audience: 'room', message: 'pc-room-by-ref', targetSelector: 'roomByRef', targetRoomRef: 'test:excluded-room' },
+            { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex-by-ref', exceptSelector: 'targetsByRoomRef', exceptRoomRef: 'test:excluded-room' },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+        RoomManager: {
+          getRoom: (roomRef) => roomRef === 'test:excluded-room' ? excludedRoom : null,
+        },
+      }, player);
+
+      const trace = await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(events, [
+        'commit',
+        'sayAt:target render',
+        'sayAt:pc-player',
+        'sayAt:pc-room',
+        'sayAt:pc-area',
+        'sayAtExcept:pc-area-ex:2',
+        'sayAt:pc-room-by-ref',
+        'sayAtExcept:pc-area-ex-by-ref:1',
+      ]);
+      assert.deepStrictEqual(trace.phases.postCommit, {
+        ok: true,
+        instructionsAttempted: 6,
+        failures: 0,
+      });
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.sayAtExcept = originalSayAtExcept;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('dispatches target postCommit before bubble postCommit entries', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Queue Room',
+          description: 'Queue description',
+          area: {},
+          getBroadcastTargets: () => [],
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          reactions: [
+            () => ({
+              postCommit: [
+                { type: 'broadcast', audience: 'player', message: 'bubble-1' },
+                { type: 'broadcast', audience: 'player', message: 'bubble-2' },
+              ],
+            }),
+          ],
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { lines: ['target render'] },
+          postCommit: [
+            { type: 'broadcast', audience: 'player', message: 'target-post' },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, [
+        'target render',
+        'target-post',
+        'bubble-1',
+        'bubble-2',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('rejects unknown postCommit instruction types and continues remaining instructions', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const errors = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { area: {}, getBroadcastTargets: () => [] },
+        socket: { writable: false },
+      });
+
+      const command = {
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          postCommit: [
+            { type: 'mystery', audience: 'player', message: 'bad' },
+            { type: 'broadcast', audience: 'player', message: 'good' },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      const trace = await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, ['good']);
+      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: Unsupported postCommit instruction type')));
+      assert.deepStrictEqual(trace.phases.postCommit, {
+        ok: false,
+        instructionsAttempted: 2,
+        failures: 1,
+      });
+      assert.strictEqual(trace.outcome.ok, true);
+      assert.strictEqual(trace.outcome.code, 'OK');
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('rejects unknown bubble postCommit instruction types and continues remaining instructions', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const errors = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Bubble PostCommit',
+          description: 'Room line',
+          area: {},
+          getBroadcastTargets: () => [],
+        },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          reactions: [
+            () => ({
+              postCommit: [
+                { type: 'mystery', audience: 'player', message: 'bad' },
+                { type: 'broadcast', audience: 'player', message: 'bubble-good' },
+              ],
+            }),
+          ],
+        },
+        execute: lookDef.command({}),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      const trace = await handleCommand(state, { player }, 'look');
+
+      assert.ok(messages.includes('bubble-good'));
+      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: Unsupported postCommit instruction type')));
+      assert.deepStrictEqual(trace.phases.postCommit, {
+        ok: false,
+        instructionsAttempted: 2,
+        failures: 1,
+      });
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('does not execute postCommit instructions when commit fails', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalLoggerError = ranvier.Logger.error;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Logger.error = () => { };
+    mutator.applyMutationPlan = () => {
+      throw new Error('commit failed');
+    };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { area: {}, getBroadcastTargets: () => [] },
+        socket: { writable: false },
+      });
+
+      const command = {
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          postCommit: [
+            { type: 'broadcast', audience: 'player', message: 'should not emit' },
+          ],
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      const trace = await handleCommand(state, { player }, 'look');
+
+      assert.ok(!messages.includes('should not emit'));
+      assert.strictEqual(trace.phases.postCommit, undefined);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Logger.error = originalLoggerError;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('ignores non-operation bubble return values', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
@@ -1463,7 +1815,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('merges bubble operations into commit plan', async function () {
+  it('ignores legacy single-operation bubble shape and keeps target plan unchanged', async function () {
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
@@ -1500,7 +1852,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'look');
 
       assert.ok(committedPlan);
-      assert.deepStrictEqual(committedPlan.operations, [{ type: 'noop' }, { type: 'noop' }]);
+      assert.deepStrictEqual(committedPlan.operations, [{ type: 'noop' }]);
     } finally {
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
@@ -1721,7 +2073,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('vetoes wrong ritual offering via indirect target allowAction hook', async function () {
+  it('vetoes wrong offering via indirect target allowAction hook', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1743,16 +2095,16 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     try {
       const wrongItem = {
-        uuid: 'wax-1',
-        entityReference: 'rantamuta:waxSeal',
-        name: 'wax seal',
-        keywords: ['wax', 'seal'],
+        uuid: 'cog-1',
+        entityReference: 'test:tinCog',
+        name: 'tin cog',
+        keywords: ['tin', 'cog'],
       };
-      const bell = {
-        uuid: 'bell-1',
-        entityReference: 'rantamuta:crackedBell',
-        name: 'cracked bell',
-        keywords: ['cracked', 'bell'],
+      const socket = {
+        uuid: 'socket-1',
+        entityReference: 'test:mechanismSocket',
+        name: 'mechanism socket',
+        keywords: ['mechanism', 'socket'],
         type: 'CONTAINER',
         maxItems: 1,
         inventory: new Map(),
@@ -1762,11 +2114,11 @@ describe('bundle-rantamuta command-dispatch', function () {
           }
 
           const direct = context && context.entityResolution && context.entityResolution.directTarget;
-          if (direct && direct.entityReference === 'rantamuta:bronzeClapper') {
+          if (direct && direct.entityReference === 'test:powerCrystal') {
             return undefined;
           }
 
-          return 'That does not belong in the bell.';
+          return 'That does not belong in the mechanism socket.';
         },
         addItem() { },
         removeItem() { },
@@ -1774,7 +2126,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const player = asPlayer({
         name: 'Tester',
         inventory: new Map([[wrongItem.uuid, wrongItem]]),
-        room: { items: new Set([bell]) },
+        room: { items: new Set([socket]) },
         addItem() { },
         removeItem() { },
         socket: { writable: false },
@@ -1788,10 +2140,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'put' }) },
       }, player);
 
-      await handleCommand(state, { player }, 'put wax seal in cracked bell');
+      await handleCommand(state, { player }, 'put tin cog in mechanism socket');
 
       assert.strictEqual(mutatorCalled, false);
-      assert.ok(messages.includes('That does not belong in the bell.'));
+      assert.ok(messages.includes('That does not belong in the mechanism socket.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -1799,7 +2151,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('renders ritual flavor line from indirect target bubbleEvent hook on correct offering', async function () {
+  it('renders flavor line from indirect target bubbleEvent hook on correct offering', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1817,17 +2169,17 @@ describe('bundle-rantamuta command-dispatch', function () {
     mutator.applyMutationPlan = () => { };
 
     try {
-      const clapper = {
-        uuid: 'clapper-1',
-        entityReference: 'rantamuta:bronzeClapper',
-        name: 'bronze clapper',
-        keywords: ['bronze', 'clapper'],
+      const crystal = {
+        uuid: 'crystal-1',
+        entityReference: 'test:powerCrystal',
+        name: 'power crystal',
+        keywords: ['power', 'crystal'],
       };
-      const bell = {
-        uuid: 'bell-2',
-        entityReference: 'rantamuta:crackedBell',
-        name: 'cracked bell',
-        keywords: ['cracked', 'bell'],
+      const socket = {
+        uuid: 'socket-2',
+        entityReference: 'test:mechanismSocket',
+        name: 'mechanism socket',
+        keywords: ['mechanism', 'socket'],
         type: 'CONTAINER',
         maxItems: 1,
         inventory: new Map(),
@@ -1837,13 +2189,13 @@ describe('bundle-rantamuta command-dispatch', function () {
           }
 
           const direct = context && context.entityResolution && context.entityResolution.directTarget;
-          if (!direct || direct.entityReference !== 'rantamuta:bronzeClapper') {
+          if (!direct || direct.entityReference !== 'test:powerCrystal') {
             return null;
           }
 
           return {
             render: {
-              lines: ['The cracked bell hums with a low resonance.'],
+              lines: ['The mechanism emits a steady tone.'],
             },
           };
         },
@@ -1852,8 +2204,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       };
       const player = asPlayer({
         name: 'Tester',
-        inventory: new Map([[clapper.uuid, clapper]]),
-        room: { items: new Set([bell]) },
+        inventory: new Map([[crystal.uuid, crystal]]),
+        room: { items: new Set([socket]) },
         addItem() { },
         removeItem() { },
         socket: { writable: false },
@@ -1867,10 +2219,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'put' }) },
       }, player);
 
-      await handleCommand(state, { player }, 'put bronze clapper in cracked bell');
+      await handleCommand(state, { player }, 'put power crystal in mechanism socket');
 
-      assert.ok(messages.includes('You put the bronze clapper in the cracked bell.'));
-      assert.ok(messages.includes('The cracked bell hums with a low resonance.'));
+      assert.ok(messages.includes('You put the power crystal in the mechanism socket.'));
+      assert.ok(messages.includes('The mechanism emits a steady tone.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -2469,9 +2821,8 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('blocks go down via bell crypt room script until required placements exist', async function () {
+  it('blocks go down via room allowAction gate until required placements exist', async function () {
     const goDef = require('../commands/go');
-    const bellCryptGateScript = require('../areas/rantamuta/scripts/rooms/bellCryptGate');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -2492,29 +2843,56 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     try {
       const destination = {
-        entityReference: 'rantamuta:resonance_chamber',
-        title: 'Resonance Chamber',
-        description: 'A hidden chamber.',
+        entityReference: 'test:lowerVault',
+        title: 'Lower Vault',
+        description: 'A sealed lower vault.',
         items: new Set(),
         getDoor: () => null,
       };
       const room = {
-        entityReference: 'rantamuta:bell_crypt',
+        entityReference: 'test:upperVault',
         getExits: () => [{
           direction: 'down',
           roomId: destination.entityReference,
           metadata: {
             gate: {
-              denyMessage: 'A dull stone slab blocks the descent.',
+              denyMessage: 'A reinforced hatch blocks the descent.',
               requiredPlacements: [
-                { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+                { containerRef: 'test:controlSocket', itemRef: 'test:powerCrystal' },
               ],
             },
           },
         }],
+        allowAction(action, context) {
+          if (!action || action.verbId !== 'go' || action.role !== null) {
+            return undefined;
+          }
+
+          const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+          const gate = directTarget && directTarget.metadata && directTarget.metadata.gate;
+          if (!gate) {
+            return undefined;
+          }
+
+          const required = Array.isArray(gate.requiredPlacements) ? gate.requiredPlacements : [];
+          const denyMessage = typeof gate.denyMessage === 'string' ? gate.denyMessage : 'You can\'t go that way.';
+          const items = state && state.ItemManager && state.ItemManager.items
+            ? Array.from(state.ItemManager.items)
+            : [];
+          const hasAll = required.every(requirement => {
+            const container = items.find(item => item && item.entityReference === requirement.containerRef);
+            if (!container || !container.inventory || typeof container.inventory.values !== 'function') {
+              return false;
+            }
+
+            return Array.from(container.inventory.values()).some(item => item && item.entityReference === requirement.itemRef);
+          });
+
+          return hasAll ? undefined : denyMessage;
+        },
       };
-      const crackedBell = {
-        entityReference: 'rantamuta:crackedBell',
+      const controlSocket = {
+        entityReference: 'test:controlSocket',
         inventory: new Map(),
       };
       const command = {
@@ -2527,9 +2905,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
-        ItemManager: { items: new Set([crackedBell]) },
+        ItemManager: { items: new Set([controlSocket]) },
       }, null);
-      bellCryptGateScript.listeners.spawn(state).call(room);
 
       const player = asPlayer({
         name: 'Tester',
@@ -2542,7 +2919,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'go down');
 
       assert.strictEqual(mutatorCalled, false);
-      assert.ok(messages.includes('A dull stone slab blocks the descent.'));
+      assert.ok(messages.includes('A reinforced hatch blocks the descent.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -2550,9 +2927,8 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('allows go down via bell crypt room script when required placements are satisfied', async function () {
+  it('allows go down via room allowAction gate when required placements are satisfied', async function () {
     const goDef = require('../commands/go');
-    const bellCryptGateScript = require('../areas/rantamuta/scripts/rooms/bellCryptGate');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -2570,31 +2946,58 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     try {
       const destination = {
-        entityReference: 'rantamuta:resonance_chamber',
-        title: 'Resonance Chamber',
-        description: 'A hidden chamber.',
+        entityReference: 'test:lowerVault',
+        title: 'Lower Vault',
+        description: 'A sealed lower vault.',
         items: new Set(),
         getDoor: () => null,
       };
-      const clapper = { entityReference: 'rantamuta:bronzeClapper' };
-      const crackedBell = {
-        entityReference: 'rantamuta:crackedBell',
-        inventory: new Map([['clapper-1', clapper]]),
+      const crystal = { entityReference: 'test:powerCrystal' };
+      const controlSocket = {
+        entityReference: 'test:controlSocket',
+        inventory: new Map([['crystal-1', crystal]]),
       };
       const room = {
-        entityReference: 'rantamuta:bell_crypt',
+        entityReference: 'test:upperVault',
         getExits: () => [{
           direction: 'down',
           roomId: destination.entityReference,
           metadata: {
             gate: {
-              denyMessage: 'A dull stone slab blocks the descent.',
+              denyMessage: 'A reinforced hatch blocks the descent.',
               requiredPlacements: [
-                { containerRef: 'rantamuta:crackedBell', itemRef: 'rantamuta:bronzeClapper' },
+                { containerRef: 'test:controlSocket', itemRef: 'test:powerCrystal' },
               ],
             },
           },
         }],
+        allowAction(action, context) {
+          if (!action || action.verbId !== 'go' || action.role !== null) {
+            return undefined;
+          }
+
+          const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+          const gate = directTarget && directTarget.metadata && directTarget.metadata.gate;
+          if (!gate) {
+            return undefined;
+          }
+
+          const required = Array.isArray(gate.requiredPlacements) ? gate.requiredPlacements : [];
+          const denyMessage = typeof gate.denyMessage === 'string' ? gate.denyMessage : 'You can\'t go that way.';
+          const items = state && state.ItemManager && state.ItemManager.items
+            ? Array.from(state.ItemManager.items)
+            : [];
+          const hasAll = required.every(requirement => {
+            const container = items.find(item => item && item.entityReference === requirement.containerRef);
+            if (!container || !container.inventory || typeof container.inventory.values !== 'function') {
+              return false;
+            }
+
+            return Array.from(container.inventory.values()).some(item => item && item.entityReference === requirement.itemRef);
+          });
+
+          return hasAll ? undefined : denyMessage;
+        },
       };
       const command = {
         metadata: goDef.metadata,
@@ -2606,9 +3009,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
-        ItemManager: { items: new Set([crackedBell, clapper]) },
+        ItemManager: { items: new Set([controlSocket, crystal]) },
       }, null);
-      bellCryptGateScript.listeners.spawn(state).call(room);
 
       const player = asPlayer({
         name: 'Tester',

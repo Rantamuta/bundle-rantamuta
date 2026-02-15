@@ -27,6 +27,12 @@ const {
   getPutPolicy,
   isPutToIndirectTarget,
 } = require('../helpers/putPolicy');
+const { evaluateExitGate } = require('../helpers/exitGate');
+
+const CRYPT_ROOM_REFERENCE = 'rantamuta:bell_crypt';
+const RITUAL_HUM_MESSAGE = 'A low, resonant hum fills the tower, wavering at its edges before steadying.';
+const RITUAL_AREA_GRIND_MESSAGE = 'There is a low grinding sound from the base of the bell tower.';
+const RITUAL_CRYPT_GRIND_MESSAGE = 'A stone slab on the floor moves aside with a low grinding sound, revealing a staircase descending into darkness.';
 
 /**
  * Normalize entity refs and metadata values so comparisons are predictable.
@@ -67,6 +73,167 @@ function inventoryValues(entity) {
   }
 
   return [];
+}
+
+/**
+ * Read all items from the global manager in deterministic iteration order.
+ *
+ * @param {*} state
+ * @returns {Array<*>}
+ */
+function allItems(state) {
+  const manager = state && state.ItemManager;
+  const items = manager && manager.items;
+  return inventoryValues({ inventory: items });
+}
+
+/**
+ * @param {*} state
+ * @param {string} entityRef
+ * @returns {* | null}
+ */
+function findItemByEntityRef(state, entityRef) {
+  const needle = normalizeRef(entityRef);
+  if (!needle) {
+    return null;
+  }
+
+  for (const item of allItems(state)) {
+    if (normalizeRef(item && item.entityReference) === needle) {
+      return item;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {*} state
+ * @returns {* | null}
+ */
+function findCryptRoom(state) {
+  const roomManager = state && state.RoomManager;
+  if (!roomManager || typeof roomManager.getRoom !== 'function') {
+    return null;
+  }
+
+  return roomManager.getRoom(CRYPT_ROOM_REFERENCE);
+}
+
+/**
+ * @param {*} room
+ * @returns {* | null}
+ */
+function findDownExit(room) {
+  if (!room || typeof room !== 'object') {
+    return null;
+  }
+
+  const exits = typeof room.getExits === 'function'
+    ? room.getExits()
+    : room.exits;
+  if (!Array.isArray(exits)) {
+    return null;
+  }
+
+  for (const exit of exits) {
+    if (exit && typeof exit === 'object' && normalizeRef(exit.direction) === 'down') {
+      return exit;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {*} state
+ * @returns {Array<{ containerRef: string, itemRef: string }>}
+ */
+function ritualRequirements(state) {
+  const cryptRoom = findCryptRoom(state);
+  const downExit = findDownExit(cryptRoom);
+  const metadata = downExit && typeof downExit === 'object' && downExit.metadata && typeof downExit.metadata === 'object'
+    ? downExit.metadata
+    : null;
+  const gate = metadata && metadata.gate && typeof metadata.gate === 'object'
+    ? metadata.gate
+    : null;
+  const requiredPlacements = gate && Array.isArray(gate.requiredPlacements)
+    ? gate.requiredPlacements
+    : [];
+
+  return requiredPlacements
+    .map(entry => ({
+      containerRef: normalizeRef(entry && entry.containerRef),
+      itemRef: normalizeRef(entry && entry.itemRef),
+    }))
+    .filter(entry => entry.containerRef && entry.itemRef);
+}
+
+/**
+ * @param {*} container
+ * @param {string} itemRef
+ * @returns {boolean}
+ */
+function containerHasItemRef(container, itemRef) {
+  const needle = normalizeRef(itemRef);
+  if (!container || typeof container !== 'object' || !needle) {
+    return false;
+  }
+
+  return inventoryValues(container).some(item => normalizeRef(item && item.entityReference) === needle);
+}
+
+/**
+ * Determine whether this exact successful `put` will open the crypt descent.
+ *
+ * This check is read-only and predictive:
+ * - It verifies the gate is currently closed.
+ * - It then evaluates required placements, treating the current planned put
+ *   (directTarget -> indirectTarget) as satisfied even before commit executes.
+ *
+ * @param {*} state
+ * @param {*} context
+ * @returns {boolean}
+ */
+function willOpenDescentAfterCurrentPut(state, context) {
+  const requirements = ritualRequirements(state);
+  if (!requirements.length) {
+    return false;
+  }
+
+  const cryptRoom = findCryptRoom(state);
+  const downExit = findDownExit(cryptRoom);
+  if (!downExit) {
+    return false;
+  }
+
+  const gateStatus = evaluateExitGate(state, downExit);
+  if (!gateStatus || gateStatus.ok !== false) {
+    return false;
+  }
+
+  const entityResolution = context && context.entityResolution && typeof context.entityResolution === 'object'
+    ? context.entityResolution
+    : null;
+  if (!entityResolution || entityResolution.ruleKey !== 'directIndirect') {
+    return false;
+  }
+
+  const directRef = normalizeRef(entityResolution.directTarget && entityResolution.directTarget.entityReference);
+  const indirectRef = normalizeRef(entityResolution.indirectTarget && entityResolution.indirectTarget.entityReference);
+  if (!directRef || !indirectRef) {
+    return false;
+  }
+
+  return requirements.every(requirement => {
+    if (requirement.containerRef === indirectRef && requirement.itemRef === directRef) {
+      return true;
+    }
+
+    const container = findItemByEntityRef(state, requirement.containerRef);
+    return containerHasItemRef(container, requirement.itemRef);
+  });
 }
 
 /**
@@ -271,6 +438,8 @@ module.exports = {
        * Responsibilities:
        * - After command passes validation, optionally add a flavor line
        *   (for example "The cracked bell hums with a low resonance.").
+       * - If this put completes the Bell Tower ritual, enqueue post-commit
+       *   area/room broadcasts. Delivery stays dispatcher-owned.
        * - Do not mutate world state here.
        * - Return null when no contribution should be added.
        */
@@ -301,11 +470,39 @@ module.exports = {
         }
 
         // Return data-only bubble contribution for dispatch/render.
-        return {
+        const contribution = {
           render: {
             lines: [policy.successRender],
           },
         };
+
+        if (willOpenDescentAfterCurrentPut(state, context)) {
+          contribution.postCommit = [
+            {
+              type: 'broadcast',
+              audience: 'area',
+              targetSelector: 'currentArea',
+              message: RITUAL_HUM_MESSAGE,
+            },
+            {
+              type: 'broadcast',
+              audience: 'areaExceptTargets',
+              targetSelector: 'currentArea',
+              exceptSelector: 'targetsByRoomRef',
+              exceptRoomRef: CRYPT_ROOM_REFERENCE,
+              message: RITUAL_AREA_GRIND_MESSAGE,
+            },
+            {
+              type: 'broadcast',
+              audience: 'room',
+              targetSelector: 'roomByRef',
+              targetRoomRef: CRYPT_ROOM_REFERENCE,
+              message: RITUAL_CRYPT_GRIND_MESSAGE,
+            },
+          ];
+        }
+
+        return contribution;
       };
 
       // Initialize description immediately on spawn so room/look text starts in
