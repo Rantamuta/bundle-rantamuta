@@ -39,7 +39,7 @@
         descriptionEmpty: "The old bell is split along one side, and its clapper is missing."
         descriptionFilled: "The old bell is split along one side, but a bronze clapper now hangs within it."
         rejectMessage: "That does not belong in the bell."
-        successRender: "The cracked bell hums with a low resonance."
+        successRender: "The cracked bell rings clear, and the note leaves you unexpectedly uplifted."
 
 - id: reliquary
   name: "reliquary"
