@@ -128,6 +128,55 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(from.bag, [item]);
   });
 
+  it('rejects transferItem when source and destination are the same container', function () {
+    const item = { id: 'test:ring' };
+    const from = createContainer([item]);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'transferItem',
+        item,
+        from,
+        to: from,
+      }));
+    }, /transferItem\.from and transferItem\.to must be different containers\./);
+  });
+
+  it('rejects transferItem when destination is the same object as item', function () {
+    const from = createContainer();
+    const item = createContainer();
+    from.addItem(item);
+    item.carriedBy = from;
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'transferItem',
+        item,
+        from,
+        to: item,
+      }));
+    }, /transferItem cannot move an item into itself or one of its descendants\./);
+  });
+
+  it('rejects transferItem when destination is contained by the item', function () {
+    const from = createContainer();
+    const item = createContainer();
+    const inner = createContainer();
+    from.addItem(item);
+    item.carriedBy = from;
+    item.addItem(inner);
+    inner.carriedBy = item;
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'transferItem',
+        item,
+        from,
+        to: inner,
+      }));
+    }, /transferItem cannot move an item into itself or one of its descendants\./);
+  });
+
   it('rolls back prior operations when a later plan operation fails', function () {
     const item = { id: 'test:apple' };
     const from = createContainer([item]);
