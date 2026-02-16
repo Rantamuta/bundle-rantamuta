@@ -73,7 +73,7 @@ describe('bundle-rantamuta inventory command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['You have nothing.'],
+        messages: ['You have nothing.'],
       },
     });
   });
@@ -99,7 +99,7 @@ describe('bundle-rantamuta inventory command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['You are carrying:', '- apple', '- gold coin'],
+        messages: ['You are carrying:', '- apple', '- gold coin'],
       },
     });
   });

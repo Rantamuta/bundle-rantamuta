@@ -102,7 +102,7 @@ module.exports = {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: inventoryLines(player),
+        messages: inventoryLines(player),
       },
     };
   },
