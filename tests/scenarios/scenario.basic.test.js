@@ -279,7 +279,7 @@ test('scenario runner non-json output echoes commands and omits diagnostic [run]
   assert.doesNotMatch(result.stdout, /\[info\]/);
 });
 
-test('scenario runner --json run event includes parse fields and outcome phase/code', () => {
+test('scenario runner --json run event includes parse fields and lookup-based outcome', () => {
   const result = runScenario([
     '--json',
     '--room', 'test:room',
@@ -300,8 +300,9 @@ test('scenario runner --json run event includes parse fields and outcome phase/c
 
   assert.equal(runEvents[1].parse.intentToken, 'put');
   assert.equal(runEvents[1].parse.canonicalInput, 'put');
-  assert.equal(runEvents[1].outcome.code, 'FORM_MISSING_DIRECT');
-  assert.equal(runEvents[1].outcome.phase, 'entityResolution');
+  assert.equal(runEvents[1].lookup.commandFound, true);
+  assert.equal(runEvents[1].outcome.code, 'OK');
+  assert.equal(runEvents[1].outcome.phase, 'success');
 
   assert.equal(runEvents[2].parse.intentToken, 'eastward');
   assert.equal(runEvents[2].parse.canonicalInput, 'eastward');

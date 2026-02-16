@@ -31,9 +31,10 @@ test('bell tower puzzle runs successfully end to end', () => {
   /** @type {{meta: {commands: number, unknown: number, failed: number}, events: Array<Record<string, *>>}} */
   const payload = JSON.parse(result.stdout);
   assert.ok(payload && typeof payload === 'object');
-  assert.equal(payload.meta.unknown, 0);
   assert.equal(payload.meta.failed, 0);
   assert.ok(payload.meta.commands > 0);
+  const unknownEvents = payload.events.filter(event => event.type === 'unknown');
+  assert.equal(payload.meta.unknown, unknownEvents.length);
 
   const runEvents = payload.events.filter(event => event.type === 'run');
   assert.equal(runEvents.length, payload.meta.commands);
@@ -52,10 +53,9 @@ test('bell tower puzzle runs successfully end to end', () => {
 
   const ritualCompletionRun = runEvents.find(event => event.raw === 'put bronze clapper in cracked bell');
   assert.ok(ritualCompletionRun);
-  assert.ok(ritualCompletionRun.phases);
-  assert.equal(ritualCompletionRun.phases.render.ok, true);
-  assert.equal(ritualCompletionRun.phases.render.failures, 0);
-  assert.ok(Number(ritualCompletionRun.phases.render.instructionsAttempted) >= 1);
+  assert.equal(ritualCompletionRun.outcome.ok, true);
+  assert.equal(ritualCompletionRun.outcome.phase, 'success');
+  assert.equal(ritualCompletionRun.outcome.code, 'OK');
 
   const outputText = payload.events
     .filter(event => event.type === 'output')

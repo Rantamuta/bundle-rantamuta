@@ -1562,7 +1562,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
+      await handleCommand(state, { player }, 'look');
 
       assert.deepStrictEqual(events, [
         'commit',
@@ -1574,12 +1574,6 @@ describe('bundle-rantamuta command-dispatch', function () {
         'sayAt:pc-room-by-ref',
         'sayAtExcept:pc-area-ex-by-ref:1',
       ]);
-      assert.deepStrictEqual(trace.phases.render, {
-        ok: true,
-        linesRendered: 1,
-        instructionsAttempted: 6,
-        failures: 0,
-      });
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.sayAtExcept = originalSayAtExcept;
@@ -1863,18 +1857,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'look' }) },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
+      await handleCommand(state, { player }, 'look');
 
       assert.deepStrictEqual(messages, ['fallback']);
       assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: render.semanticEvent actor render failed (SEMANTIC_PARTICIPANT_MISSING)')));
-      assert.deepStrictEqual(trace.phases.render, {
-        ok: false,
-        linesRendered: 0,
-        instructionsAttempted: 2,
-        failures: 1,
-      });
-      assert.strictEqual(trace.outcome.ok, true);
-      assert.strictEqual(trace.outcome.code, 'OK');
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -1925,18 +1911,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'look' }) },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
+      await handleCommand(state, { player }, 'look');
 
       assert.deepStrictEqual(messages, ['good']);
       assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: Unsupported render instruction type')));
-      assert.deepStrictEqual(trace.phases.render, {
-        ok: false,
-        linesRendered: 0,
-        instructionsAttempted: 2,
-        failures: 1,
-      });
-      assert.strictEqual(trace.outcome.ok, true);
-      assert.strictEqual(trace.outcome.code, 'OK');
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -1997,16 +1975,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'look' }) },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
+      await handleCommand(state, { player }, 'look');
 
       assert.ok(messages.includes('bubble-good'));
       assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: Unsupported render instruction type')));
-      assert.deepStrictEqual(trace.phases.render, {
-        ok: false,
-        linesRendered: 2,
-        instructionsAttempted: 2,
-        failures: 1,
-      });
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -2055,10 +2027,9 @@ describe('bundle-rantamuta command-dispatch', function () {
         CommandManager: { find: () => ({ command, alias: 'look' }) },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
-
+      await handleCommand(state, { player }, 'look');
       assert.ok(!messages.includes('should not emit'));
-      assert.strictEqual(trace.phases.render, undefined);
+      assert.ok(messages.includes('Command failed.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -4205,185 +4176,17 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('returns trace for resolver failure with phase/code semantics', async function () {
-    const putDef = require('../commands/put');
+  it('returns undefined for command execution and relies on player-facing output', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
 
-    ranvier.Broadcast.sayAt = () => { };
-    ranvier.Broadcast.prompt = () => { };
-
-    try {
-      const player = asPlayer({
-        name: 'Tester',
-        inventory: new Map(),
-        room: { items: new Set() },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: putDef.metadata,
-        execute: wrapLegacyRenderCommand(putDef.command({})),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'put' }) },
-      }, player);
-
-      const trace = await handleCommand(state, { player }, 'put');
-
-      assert.equal(trace.outcome.ok, false);
-      assert.equal(trace.outcome.phase, 'entityResolution');
-      assert.equal(trace.outcome.code, 'FORM_MISSING_DIRECT');
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-    }
-  });
-
-  it('returns trace for capture veto with phase/code semantics', async function () {
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-
-    ranvier.Broadcast.sayAt = () => { };
-    ranvier.Broadcast.prompt = () => { };
-
-    try {
-      const player = asPlayer({
-        name: 'Tester',
-        room: { title: 'Room', description: 'Room desc' },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: {
-          entityResolution: {
-            rules: {
-              intransitive: {},
-            },
-          },
-          captureChecks: [
-            () => ({ ok: false, vetoInfo: { code: 'FORBIDDEN_BLOCKED' } }),
-          ],
-        },
-        execute: async () => ({ ok: true, plan: { operations: [{ type: 'noop' }] } }),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'look' }) },
-      }, player);
-
-      const trace = await handleCommand(state, { player }, 'look');
-
-      assert.equal(trace.outcome.ok, false);
-      assert.equal(trace.outcome.phase, 'capture');
-      assert.equal(trace.outcome.code, 'FORBIDDEN_BLOCKED');
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-    }
-  });
-
-  it('returns trace for target failure with phase/code semantics', async function () {
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-
-    ranvier.Broadcast.sayAt = () => { };
-    ranvier.Broadcast.prompt = () => { };
-
-    try {
-      const player = asPlayer({
-        name: 'Tester',
-        room: { title: 'Room', description: 'Room desc' },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: {
-          entityResolution: {
-            rules: {
-              intransitive: {},
-            },
-          },
-        },
-        execute: async () => ({ ok: false, error: { code: 'TARGET_NOT_FOUND' } }),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'look' }) },
-      }, player);
-
-      const trace = await handleCommand(state, { player }, 'look');
-
-      assert.equal(trace.outcome.ok, false);
-      assert.equal(trace.outcome.phase, 'target');
-      assert.equal(trace.outcome.code, 'TARGET_NOT_FOUND');
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-    }
-  });
-
-  it('returns COMMIT_FAILED trace with errorTag on commit exception', async function () {
-    const lookDef = require('../commands/look');
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
-    const mutator = require(mutatorPath);
-    const originalApplyMutationPlan = mutator.applyMutationPlan;
-
-    ranvier.Broadcast.sayAt = () => { };
-    ranvier.Broadcast.prompt = () => { };
-    ranvier.Logger.error = () => { };
-    mutator.applyMutationPlan = () => {
-      throw new TypeError('commit boom');
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
     };
-
-    try {
-      const player = asPlayer({
-        name: 'Tester',
-        room: { title: 'Room', description: 'Room desc' },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: lookDef.metadata,
-        execute: wrapLegacyRenderCommand(lookDef.command({})),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'look' }) },
-      }, player);
-
-      const trace = await handleCommand(state, { player }, 'look');
-
-      assert.equal(trace.outcome.ok, false);
-      assert.equal(trace.outcome.phase, 'commit');
-      assert.equal(trace.outcome.code, 'COMMIT_FAILED');
-      assert.equal(trace.outcome.errorTag, 'TypeError');
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-      ranvier.Logger.error = originalLoggerError;
-      mutator.applyMutationPlan = originalApplyMutationPlan;
-    }
-  });
-
-  it('returns COMMAND_FAILED trace with errorTag on runtime exception', async function () {
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const originalLoggerError = ranvier.Logger.error;
-
-    ranvier.Broadcast.sayAt = () => { };
     ranvier.Broadcast.prompt = () => { };
-    ranvier.Logger.error = () => { };
 
     try {
       const player = asPlayer({
@@ -4400,24 +4203,18 @@ describe('bundle-rantamuta command-dispatch', function () {
             },
           },
         },
-        execute: async () => {
-          throw new ReferenceError('runtime boom');
-        },
+        execute: async () => ({ ok: false, error: { message: 'Nope.' } }),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'look' }) },
       }, player);
 
-      const trace = await handleCommand(state, { player }, 'look');
-
-      assert.equal(trace.outcome.ok, false);
-      assert.equal(trace.outcome.phase, 'runtime');
-      assert.equal(trace.outcome.code, 'COMMAND_FAILED');
-      assert.equal(trace.outcome.errorTag, 'ReferenceError');
+      const result = await handleCommand(state, { player }, 'look');
+      assert.strictEqual(result, undefined);
+      assert.ok(messages.includes('Nope.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
-      ranvier.Logger.error = originalLoggerError;
     }
   });
 });
