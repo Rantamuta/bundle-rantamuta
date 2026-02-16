@@ -101,7 +101,7 @@ describe('bundle-rantamuta look command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['A lightweight chest meant for put/take testing.'],
+        messages: ['A lightweight chest meant for put/take testing.'],
       },
     });
   });
@@ -126,7 +126,7 @@ describe('bundle-rantamuta look command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['You see nothing special.'],
+        messages: ['You see nothing special.'],
       },
     });
   });
@@ -164,7 +164,7 @@ describe('bundle-rantamuta look command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['<bold>Test Chamber</bold>', 'A deterministic room used for testing.'],
+        messages: ['<bold>Test Chamber</bold>', 'A deterministic room used for testing.'],
       },
     });
   });
@@ -196,7 +196,7 @@ describe('bundle-rantamuta look command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: [
+        messages: [
           '<bold>Item Room</bold>',
           'Room with items.',
           'Exits: north, east',
@@ -226,7 +226,7 @@ describe('bundle-rantamuta look command', function () {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines: ['<bold>Quiet Room</bold>', 'No exits here.'],
+        messages: ['<bold>Quiet Room</bold>', 'No exits here.'],
       },
     });
   });

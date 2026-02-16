@@ -65,7 +65,7 @@ module.exports = {
           operations: [{ type: 'noop' }],
         },
         render: {
-          lines: buildDirectLookLines(resolution.directTarget),
+          messages: buildDirectLookLines(resolution.directTarget),
         },
       };
     }
@@ -89,7 +89,7 @@ module.exports = {
         operations: [{ type: 'noop' }],
       },
       render: {
-        lines,
+        messages: lines,
       },
     };
   }
