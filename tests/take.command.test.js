@@ -99,7 +99,7 @@ describe('bundle-rantamuta take command', function () {
       ],
     });
     assert.deepStrictEqual(result.render, {
-      instructions: [
+      messages: [
         {
           type: 'semanticEvent',
           template: '{actor.You} {verb:take} {object.direct}.',
