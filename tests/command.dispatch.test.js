@@ -45,6 +45,67 @@ function withPlayerManager(value, player) {
   });
 }
 
+/**
+ * Test-only shim: normalize legacy command return payloads so dispatch tests can
+ * remain strict (`render.messages` only) while command modules are migrated.
+ *
+ * @param {*} result
+ * @returns {*}
+ */
+function normalizeLegacyRenderForTests(result) {
+  if (!result || typeof result !== 'object') {
+    return result;
+  }
+
+  const render = result.render;
+  if (!render || typeof render !== 'object' || Array.isArray(render)) {
+    return result;
+  }
+
+  const hasMessages = Array.isArray(render.messages);
+  const hasLegacyLines = Array.isArray(render.lines);
+  const hasLegacyInstructions = Array.isArray(render.instructions);
+
+  if (hasMessages || (!hasLegacyLines && !hasLegacyInstructions)) {
+    return result;
+  }
+
+  const messages = [];
+  if (hasLegacyLines) {
+    for (const line of render.lines) {
+      messages.push(line);
+    }
+  }
+
+  if (hasLegacyInstructions) {
+    for (const instruction of render.instructions) {
+      messages.push(instruction);
+    }
+  }
+
+  return {
+    ...result,
+    render: {
+      ...render,
+      messages,
+    },
+  };
+}
+
+/**
+ * Wrap a command execute handler so test fixtures can consume migrated
+ * `render.messages` behavior without touching command implementations yet.
+ *
+ * @param {Function} execute
+ * @returns {Function}
+ */
+function wrapLegacyRenderCommand(execute) {
+  return async (...args) => {
+    const result = await execute(...args);
+    return normalizeLegacyRenderForTests(result);
+  };
+}
+
 describe('bundle-rantamuta command-dispatch', function () {
   it('executes canonicalized shorthand through exact-key command lookup', async function () {
     let executeArgs = null;
@@ -151,7 +212,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           return {
             ok: true,
             plan: { operations: [{ type: 'noop' }] },
-            render: { lines: ['wrapped-look-ok'] },
+            render: { messages: ['wrapped-look-ok'] },
           };
         },
       }, 'commands/look.js');
@@ -270,7 +331,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: lookDef.metadata,
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -474,7 +535,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             },
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -545,7 +606,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -968,7 +1029,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           return {
             ok: true,
             plan: { operations: [{ type: 'noop' }] },
-            render: { lines: ['inspect-ok'] },
+            render: { messages: ['inspect-ok'] },
           };
         },
       };
@@ -1027,7 +1088,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             },
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1095,7 +1156,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             },
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1149,10 +1210,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { lines: ['Bubble line one', 'Bubble line two'] } }),
+            () => ({ render: { messages: ['Bubble line one', 'Bubble line two'] } }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1215,11 +1276,11 @@ describe('bundle-rantamuta command-dispatch', function () {
           reactions: [
             () => ({
               operations: [{ type: 'noop' }],
-              render: { lines: ['Mixed bubble line'] },
+              render: { messages: ['Mixed bubble line'] },
             }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1299,12 +1360,12 @@ describe('bundle-rantamuta command-dispatch', function () {
                 },
               ],
               render: {
-                lines: ['The spike hums.'],
+                messages: ['The spike hums.'],
               },
             }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1360,10 +1421,10 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { lines: ['Bubble line should not render'] } }),
+            () => ({ render: { messages: ['Bubble line should not render'] } }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1410,11 +1471,11 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { lines: ['bubble-a'] } }),
-            () => ({ render: { lines: ['bubble-b'] } }),
+            () => ({ render: { messages: ['bubble-a'] } }),
+            () => ({ render: { messages: ['bubble-b'] } }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1481,8 +1542,8 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            lines: ['target render'],
-            instructions: [
+            messages: [
+              'target render',
               { type: 'broadcast', audience: 'player', message: 'pc-player' },
               { type: 'broadcast', audience: 'room', message: 'pc-room' },
               { type: 'broadcast', audience: 'area', message: 'pc-area' },
@@ -1559,7 +1620,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           reactions: [
             () => ({
               render: {
-                instructions: [
+                messages: [
                   { type: 'broadcast', audience: 'player', message: 'bubble-1' },
                   { type: 'broadcast', audience: 'player', message: 'bubble-2' },
                 ],
@@ -1571,8 +1632,8 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            lines: ['target render'],
-            instructions: [
+            messages: [
+              'target render',
               { type: 'broadcast', audience: 'player', message: 'target-post' },
             ],
           },
@@ -1590,6 +1651,84 @@ describe('bundle-rantamuta command-dispatch', function () {
         'target-post',
         'bubble-1',
         'bubble-2',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('preserves target/bubble message chronology across lines and instructions', async function () {
+    const lookDef = require('../commands/look');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const observer = { name: 'Observer', isNpc: true };
+      const player = asPlayer({
+        name: 'Tester',
+        room: {
+          title: 'Chronology Room',
+          description: 'Chronology description',
+          area: {},
+          getBroadcastTargets: () => [player, observer],
+        },
+        socket: { writable: false },
+      });
+      player.room.getBroadcastTargets = () => [player, observer];
+
+      const command = {
+        metadata: {
+          ...lookDef.metadata,
+          reactions: [
+            () => ({
+              render: {
+                messages: [
+                  'bubble-line',
+                  { type: 'broadcast', audience: 'player', message: 'bubble-broadcast' },
+                ],
+              },
+            }),
+          ],
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: {
+            messages: [
+              {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:haul} down on the rope and the bell rings clear and loud.',
+                audiencePolicy: 'self',
+                participants: {
+                  actor: { selector: 'currentPlayer' },
+                },
+              },
+            ],
+          },
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, [
+        'You haul down on the rope and the bell rings clear and loud.',
+        'bubble-line',
+        'bubble-broadcast',
       ]);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -1637,8 +1776,8 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            lines: ['target render'],
-            instructions: [
+            messages: [
+              'target render',
               {
                 type: 'semanticEvent',
                 template: '{actor.you} {verb:wave}.',
@@ -1707,7 +1846,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            instructions: [
+            messages: [
               {
                 type: 'semanticEvent',
                 template: '{actor.you} {verb:wave}.',
@@ -1774,7 +1913,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            instructions: [
+            messages: [
               { type: 'mystery', audience: 'player', message: 'bad' },
               { type: 'broadcast', audience: 'player', message: 'good' },
             ],
@@ -1843,7 +1982,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           reactions: [
             () => ({
               render: {
-                instructions: [
+                messages: [
                   { type: 'mystery', audience: 'player', message: 'bad' },
                   { type: 'broadcast', audience: 'player', message: 'bubble-good' },
                 ],
@@ -1851,7 +1990,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             }),
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -1905,7 +2044,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
           render: {
-            instructions: [
+            messages: [
               { type: 'broadcast', audience: 'player', message: 'should not emit' },
             ],
           },
@@ -1960,7 +2099,7 @@ describe('bundle-rantamuta command-dispatch', function () {
             () => undefined,
           ],
         },
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
 
       const state = withPlayerManager({
@@ -2072,7 +2211,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2142,7 +2281,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2222,7 +2361,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2306,7 +2445,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2367,7 +2506,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
           return {
             render: {
-              lines: ['The mechanism emits a steady tone.'],
+              messages: ['The mechanism emits a steady tone.'],
             },
           };
         },
@@ -2385,7 +2524,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2425,7 +2564,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -2465,7 +2604,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -2510,7 +2649,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: inventoryDef.metadata,
-        execute: inventoryDef.command({}),
+        execute: wrapLegacyRenderCommand(inventoryDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'inventory' }) },
@@ -2550,7 +2689,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: inventoryDef.metadata,
-        execute: inventoryDef.command({}),
+        execute: wrapLegacyRenderCommand(inventoryDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'i' }) },
@@ -2588,7 +2727,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({ RoomManager: { getRoom: () => null } }),
+        execute: wrapLegacyRenderCommand(goDef.command({ RoomManager: { getRoom: () => null } })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -2625,7 +2764,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({ RoomManager: { getRoom: () => null } }),
+        execute: wrapLegacyRenderCommand(goDef.command({ RoomManager: { getRoom: () => null } })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -2680,11 +2819,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -2750,11 +2889,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -2822,11 +2961,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -2902,11 +3041,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -2972,11 +3111,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -3072,11 +3211,11 @@ describe('bundle-rantamuta command-dispatch', function () {
       };
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -3176,11 +3315,11 @@ describe('bundle-rantamuta command-dispatch', function () {
       };
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -3243,7 +3382,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: lookDef.metadata,
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -3296,7 +3435,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: lookDef.metadata,
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: {
@@ -3397,7 +3536,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: goDef.metadata,
-        execute: goDef.command({
+        execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => {
               if (roomId === lockedDestination.entityReference) {
@@ -3409,7 +3548,7 @@ describe('bundle-rantamuta command-dispatch', function () {
               return null;
             },
           },
-        }),
+        })),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'go' }) },
@@ -3466,7 +3605,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3531,7 +3670,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3603,7 +3742,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3682,7 +3821,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3766,7 +3905,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3846,7 +3985,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3910,7 +4049,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -3981,7 +4120,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -4049,7 +4188,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: takeDef.metadata,
-        execute: takeDef.command({}),
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'take' }) },
@@ -4086,7 +4225,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: putDef.metadata,
-        execute: putDef.command({}),
+        execute: wrapLegacyRenderCommand(putDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'put' }) },
@@ -4215,7 +4354,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: lookDef.metadata,
-        execute: lookDef.command({}),
+        execute: wrapLegacyRenderCommand(lookDef.command({})),
       };
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'look' }) },
