@@ -177,7 +177,7 @@ describe('bundle-rantamuta go command', function () {
         ],
       },
       render: {
-        lines: ['<bold>Destination</bold>', 'You have arrived.'],
+        messages: ['<bold>Destination</bold>', 'You have arrived.'],
       },
     });
   });

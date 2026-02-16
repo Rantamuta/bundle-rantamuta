@@ -94,7 +94,7 @@ module.exports = {
         ],
       },
       render: {
-        lines: buildRoomViewLines(destination, {
+        messages: buildRoomViewLines(destination, {
           actor: player,
           room: destination,
           area: destination.area || null,
