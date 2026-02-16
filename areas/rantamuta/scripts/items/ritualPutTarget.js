@@ -436,10 +436,9 @@ module.exports = {
        * Bubble-phase reaction hook.
        *
        * Responsibilities:
-       * - After command passes validation, optionally add a flavor line
-       *   (for example "The cracked bell hums with a low resonance.").
-       * - If this put completes the Bell Tower ritual, enqueue post-commit
-       *   area/room broadcasts. Delivery stays dispatcher-owned.
+       * - After command passes validation, optionally add flavor messaging.
+       * - If this put completes the Bell Tower ritual, enqueue area/room
+       *   broadcasts.
        * - Do not mutate world state here.
        * - Return null when no contribution should be added.
        */
@@ -457,7 +456,7 @@ module.exports = {
           return null;
         }
 
-        // Need a configured success render line to contribute.
+        // Need a configured success flavor line to contribute.
         const policy = getPutPolicy(this);
         if (!policy || typeof policy.successRender !== 'string' || policy.successRender.length === 0) {
           return null;
@@ -472,12 +471,18 @@ module.exports = {
         // Return data-only bubble contribution for dispatch/render.
         const contribution = {
           render: {
-            lines: [policy.successRender],
+            instructions: [
+              {
+                type: 'broadcast',
+                audience: 'player',
+                message: policy.successRender,
+              },
+            ],
           },
         };
 
         if (willOpenDescentAfterCurrentPut(state, context)) {
-          contribution.postCommit = [
+          contribution.render.instructions.push(
             {
               type: 'broadcast',
               audience: 'area',
@@ -498,8 +503,8 @@ module.exports = {
               targetSelector: 'roomByRef',
               targetRoomRef: CRYPT_ROOM_REFERENCE,
               message: RITUAL_CRYPT_GRIND_MESSAGE,
-            },
-          ];
+            }
+          );
         }
 
         return contribution;

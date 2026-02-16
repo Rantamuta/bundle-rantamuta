@@ -151,19 +151,21 @@ module.exports = {
             },
           ],
         },
-        postCommit: [
-          {
-            type: 'semanticEvent',
-            template: '{actor.You} {verb:put} {object.direct} down.',
-            audiencePolicy: 'self_and_others',
-            participants: {
-              actor: { selector: 'currentPlayer' },
+        render: {
+          instructions: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} {verb:put} {object.direct} down.',
+              audiencePolicy: 'self_and_others',
+              participants: {
+                actor: { selector: 'currentPlayer' },
+              },
+              objectText: {
+                direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+              },
             },
-            objectText: {
-              direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
-            },
-          },
-        ],
+          ],
+        },
       };
     }
 
@@ -201,20 +203,22 @@ module.exports = {
           },
         ],
       },
-      postCommit: [
-        {
-          type: 'semanticEvent',
-          template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
-          audiencePolicy: 'self_and_others',
-          participants: {
-            actor: { selector: 'currentPlayer' },
+      render: {
+        instructions: [
+          {
+            type: 'semanticEvent',
+            template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
+            audiencePolicy: 'self_and_others',
+            participants: {
+              actor: { selector: 'currentPlayer' },
+            },
+            objectText: {
+              direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+              indirect: `the ${displayLabel(resolution.indirectSpan, target, 'container')}`,
+            },
           },
-          objectText: {
-            direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
-            indirect: `the ${displayLabel(resolution.indirectSpan, target, 'container')}`,
-          },
-        },
-      ],
+        ],
+      },
     };
   }
 };

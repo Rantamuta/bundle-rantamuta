@@ -98,19 +98,21 @@ describe('bundle-rantamuta take command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.postCommit, [
-      {
-        type: 'semanticEvent',
-        template: '{actor.You} {verb:take} {object.direct}.',
-        audiencePolicy: 'self_and_others',
-        participants: {
-          actor: { selector: 'currentPlayer' },
+    assert.deepStrictEqual(result.render, {
+      instructions: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.You} {verb:take} {object.direct}.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: 'the gold coin',
+          },
         },
-        objectText: {
-          direct: 'the gold coin',
-        },
-      },
-    ]);
+      ],
+    });
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {

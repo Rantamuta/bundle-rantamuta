@@ -1435,7 +1435,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('executes postCommit broadcast selectors after render with phase counters', async function () {
+  it('executes render broadcast selectors after commit with render phase counters', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1480,15 +1480,17 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          render: { lines: ['target render'] },
-          postCommit: [
-            { type: 'broadcast', audience: 'player', message: 'pc-player' },
-            { type: 'broadcast', audience: 'room', message: 'pc-room' },
-            { type: 'broadcast', audience: 'area', message: 'pc-area' },
-            { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex', exceptSelector: 'currentRoomTargets' },
-            { type: 'broadcast', audience: 'room', message: 'pc-room-by-ref', targetSelector: 'roomByRef', targetRoomRef: 'test:excluded-room' },
-            { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex-by-ref', exceptSelector: 'targetsByRoomRef', exceptRoomRef: 'test:excluded-room' },
-          ],
+          render: {
+            lines: ['target render'],
+            instructions: [
+              { type: 'broadcast', audience: 'player', message: 'pc-player' },
+              { type: 'broadcast', audience: 'room', message: 'pc-room' },
+              { type: 'broadcast', audience: 'area', message: 'pc-area' },
+              { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex', exceptSelector: 'currentRoomTargets' },
+              { type: 'broadcast', audience: 'room', message: 'pc-room-by-ref', targetSelector: 'roomByRef', targetRoomRef: 'test:excluded-room' },
+              { type: 'broadcast', audience: 'areaExceptTargets', message: 'pc-area-ex-by-ref', exceptSelector: 'targetsByRoomRef', exceptRoomRef: 'test:excluded-room' },
+            ],
+          },
         }),
       };
 
@@ -1511,8 +1513,9 @@ describe('bundle-rantamuta command-dispatch', function () {
         'sayAt:pc-room-by-ref',
         'sayAtExcept:pc-area-ex-by-ref:1',
       ]);
-      assert.deepStrictEqual(trace.phases.postCommit, {
+      assert.deepStrictEqual(trace.phases.render, {
         ok: true,
+        linesRendered: 1,
         instructionsAttempted: 6,
         failures: 0,
       });
@@ -1523,7 +1526,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('dispatches target postCommit before bubble postCommit entries', async function () {
+  it('dispatches target render instructions before bubble render instructions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1555,20 +1558,24 @@ describe('bundle-rantamuta command-dispatch', function () {
           ...lookDef.metadata,
           reactions: [
             () => ({
-              postCommit: [
-                { type: 'broadcast', audience: 'player', message: 'bubble-1' },
-                { type: 'broadcast', audience: 'player', message: 'bubble-2' },
-              ],
+              render: {
+                instructions: [
+                  { type: 'broadcast', audience: 'player', message: 'bubble-1' },
+                  { type: 'broadcast', audience: 'player', message: 'bubble-2' },
+                ],
+              },
             }),
           ],
         },
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          render: { lines: ['target render'] },
-          postCommit: [
-            { type: 'broadcast', audience: 'player', message: 'target-post' },
-          ],
+          render: {
+            lines: ['target render'],
+            instructions: [
+              { type: 'broadcast', audience: 'player', message: 'target-post' },
+            ],
+          },
         }),
       };
 
@@ -1590,7 +1597,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('executes semanticEvent postCommit instructions after render', async function () {
+  it('executes semanticEvent render instructions after commit', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1629,17 +1636,19 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          render: { lines: ['target render'] },
-          postCommit: [
-            {
-              type: 'semanticEvent',
-              template: '{actor.you} {verb:wave}.',
-              audiencePolicy: 'self_and_others',
-              participants: {
-                actor: { selector: 'currentPlayer' },
+          render: {
+            lines: ['target render'],
+            instructions: [
+              {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:wave}.',
+                audiencePolicy: 'self_and_others',
+                participants: {
+                  actor: { selector: 'currentPlayer' },
+                },
               },
-            },
-          ],
+            ],
+          },
         }),
       };
 
@@ -1660,7 +1669,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects invalid semanticEvent instructions and continues remaining postCommit entries', async function () {
+  it('rejects invalid semanticEvent render instructions and continues remaining instructions', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1697,15 +1706,17 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          postCommit: [
-            {
-              type: 'semanticEvent',
-              template: '{actor.you} {verb:wave}.',
-              audiencePolicy: 'self_and_others',
-              participants: {},
-            },
-            { type: 'broadcast', audience: 'player', message: 'fallback' },
-          ],
+          render: {
+            instructions: [
+              {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:wave}.',
+                audiencePolicy: 'self_and_others',
+                participants: {},
+              },
+              { type: 'broadcast', audience: 'player', message: 'fallback' },
+            ],
+          },
         }),
       };
 
@@ -1716,9 +1727,10 @@ describe('bundle-rantamuta command-dispatch', function () {
       const trace = await handleCommand(state, { player }, 'look');
 
       assert.deepStrictEqual(messages, ['fallback']);
-      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: postCommit.semanticEvent actor render failed (SEMANTIC_PARTICIPANT_MISSING)')));
-      assert.deepStrictEqual(trace.phases.postCommit, {
+      assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: render.semanticEvent actor render failed (SEMANTIC_PARTICIPANT_MISSING)')));
+      assert.deepStrictEqual(trace.phases.render, {
         ok: false,
+        linesRendered: 0,
         instructionsAttempted: 2,
         failures: 1,
       });
@@ -1731,7 +1743,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects unknown postCommit instruction types and continues remaining instructions', async function () {
+  it('rejects unknown render instruction types and continues remaining instructions', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1761,10 +1773,12 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          postCommit: [
-            { type: 'mystery', audience: 'player', message: 'bad' },
-            { type: 'broadcast', audience: 'player', message: 'good' },
-          ],
+          render: {
+            instructions: [
+              { type: 'mystery', audience: 'player', message: 'bad' },
+              { type: 'broadcast', audience: 'player', message: 'good' },
+            ],
+          },
         }),
       };
 
@@ -1775,9 +1789,10 @@ describe('bundle-rantamuta command-dispatch', function () {
       const trace = await handleCommand(state, { player }, 'look');
 
       assert.deepStrictEqual(messages, ['good']);
-      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: Unsupported postCommit instruction type')));
-      assert.deepStrictEqual(trace.phases.postCommit, {
+      assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: Unsupported render instruction type')));
+      assert.deepStrictEqual(trace.phases.render, {
         ok: false,
+        linesRendered: 0,
         instructionsAttempted: 2,
         failures: 1,
       });
@@ -1790,7 +1805,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects unknown bubble postCommit instruction types and continues remaining instructions', async function () {
+  it('rejects unknown bubble render instruction types and continues remaining instructions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1814,7 +1829,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const player = asPlayer({
         name: 'Tester',
         room: {
-          title: 'Bubble PostCommit',
+          title: 'Bubble Render',
           description: 'Room line',
           area: {},
           getBroadcastTargets: () => [],
@@ -1827,10 +1842,12 @@ describe('bundle-rantamuta command-dispatch', function () {
           ...lookDef.metadata,
           reactions: [
             () => ({
-              postCommit: [
-                { type: 'mystery', audience: 'player', message: 'bad' },
-                { type: 'broadcast', audience: 'player', message: 'bubble-good' },
-              ],
+              render: {
+                instructions: [
+                  { type: 'mystery', audience: 'player', message: 'bad' },
+                  { type: 'broadcast', audience: 'player', message: 'bubble-good' },
+                ],
+              },
             }),
           ],
         },
@@ -1844,9 +1861,10 @@ describe('bundle-rantamuta command-dispatch', function () {
       const trace = await handleCommand(state, { player }, 'look');
 
       assert.ok(messages.includes('bubble-good'));
-      assert.ok(errors.some(message => message.includes('POST_COMMIT_DISPATCH: Unsupported postCommit instruction type')));
-      assert.deepStrictEqual(trace.phases.postCommit, {
+      assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: Unsupported render instruction type')));
+      assert.deepStrictEqual(trace.phases.render, {
         ok: false,
+        linesRendered: 2,
         instructionsAttempted: 2,
         failures: 1,
       });
@@ -1857,7 +1875,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('does not execute postCommit instructions when commit fails', async function () {
+  it('does not execute render instructions when commit fails', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1886,9 +1904,11 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: async () => ({
           ok: true,
           plan: { operations: [{ type: 'noop' }] },
-          postCommit: [
-            { type: 'broadcast', audience: 'player', message: 'should not emit' },
-          ],
+          render: {
+            instructions: [
+              { type: 'broadcast', audience: 'player', message: 'should not emit' },
+            ],
+          },
         }),
       };
 
@@ -1899,7 +1919,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const trace = await handleCommand(state, { player }, 'look');
 
       assert.ok(!messages.includes('should not emit'));
-      assert.strictEqual(trace.phases.postCommit, undefined);
+      assert.strictEqual(trace.phases.render, undefined);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;

@@ -136,20 +136,22 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.postCommit, [
-      {
-        type: 'semanticEvent',
-        template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
-        audiencePolicy: 'self_and_others',
-        participants: {
-          actor: { selector: 'currentPlayer' },
+    assert.deepStrictEqual(result.render, {
+      instructions: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: 'the rusty sword',
+            indirect: 'the old chest',
+          },
         },
-        objectText: {
-          direct: 'the rusty sword',
-          indirect: 'the old chest',
-        },
-      },
-    ]);
+      ],
+    });
   });
 
   it('returns drop-to-room plan for direct put and does not mutate directly', function () {
@@ -180,19 +182,21 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.postCommit, [
-      {
-        type: 'semanticEvent',
-        template: '{actor.You} {verb:put} {object.direct} down.',
-        audiencePolicy: 'self_and_others',
-        participants: {
-          actor: { selector: 'currentPlayer' },
+    assert.deepStrictEqual(result.render, {
+      instructions: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.You} {verb:put} {object.direct} down.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: 'the apple',
+          },
         },
-        objectText: {
-          direct: 'the apple',
-        },
-      },
-    ]);
+      ],
+    });
   });
 
   it('supports indirect container targets from player inventory', function () {
@@ -227,20 +231,22 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
-    assert.deepStrictEqual(result.postCommit, [
-      {
-        type: 'semanticEvent',
-        template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
-        audiencePolicy: 'self_and_others',
-        participants: {
-          actor: { selector: 'currentPlayer' },
+    assert.deepStrictEqual(result.render, {
+      instructions: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentPlayer' },
+          },
+          objectText: {
+            direct: 'the practice apple',
+            indirect: 'the practice chest',
+          },
         },
-        objectText: {
-          direct: 'the practice apple',
-          indirect: 'the practice chest',
-        },
-      },
-    ]);
+      ],
+    });
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {

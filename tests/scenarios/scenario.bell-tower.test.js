@@ -53,9 +53,9 @@ test('bell tower puzzle runs successfully end to end', () => {
   const ritualCompletionRun = runEvents.find(event => event.raw === 'put bronze clapper in cracked bell');
   assert.ok(ritualCompletionRun);
   assert.ok(ritualCompletionRun.phases);
-  assert.equal(ritualCompletionRun.phases.postCommit.ok, true);
-  assert.equal(ritualCompletionRun.phases.postCommit.failures, 0);
-  assert.ok(Number(ritualCompletionRun.phases.postCommit.instructionsAttempted) >= 1);
+  assert.equal(ritualCompletionRun.phases.render.ok, true);
+  assert.equal(ritualCompletionRun.phases.render.failures, 0);
+  assert.ok(Number(ritualCompletionRun.phases.render.instructionsAttempted) >= 1);
 
   const outputText = payload.events
     .filter(event => event.type === 'output')

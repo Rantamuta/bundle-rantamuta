@@ -250,19 +250,21 @@ module.exports = {
           },
         ],
       },
-      postCommit: [
-        {
-          type: 'semanticEvent',
-          template: '{actor.You} {verb:take} {object.direct}.',
-          audiencePolicy: 'self_and_others',
-          participants: {
-            actor: { selector: 'currentPlayer' },
+      render: {
+        instructions: [
+          {
+            type: 'semanticEvent',
+            template: '{actor.You} {verb:take} {object.direct}.',
+            audiencePolicy: 'self_and_others',
+            participants: {
+              actor: { selector: 'currentPlayer' },
+            },
+            objectText: {
+              direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+            },
           },
-          objectText: {
-            direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
-          },
-        },
-      ],
+        ],
+      },
     };
   }
 };
