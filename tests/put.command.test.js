@@ -137,7 +137,7 @@ describe('bundle-rantamuta put command', function () {
       ],
     });
     assert.deepStrictEqual(result.render, {
-      instructions: [
+      messages: [
         {
           type: 'semanticEvent',
           template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
@@ -183,7 +183,7 @@ describe('bundle-rantamuta put command', function () {
       ],
     });
     assert.deepStrictEqual(result.render, {
-      instructions: [
+      messages: [
         {
           type: 'semanticEvent',
           template: '{actor.You} {verb:put} {object.direct} down.',
@@ -232,7 +232,7 @@ describe('bundle-rantamuta put command', function () {
       ],
     });
     assert.deepStrictEqual(result.render, {
-      instructions: [
+      messages: [
         {
           type: 'semanticEvent',
           template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',

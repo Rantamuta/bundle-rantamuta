@@ -152,7 +152,7 @@ module.exports = {
           ],
         },
         render: {
-          instructions: [
+          messages: [
             {
               type: 'semanticEvent',
               template: '{actor.You} {verb:put} {object.direct} down.',
@@ -204,7 +204,7 @@ module.exports = {
         ],
       },
       render: {
-        instructions: [
+        messages: [
           {
             type: 'semanticEvent',
             template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
