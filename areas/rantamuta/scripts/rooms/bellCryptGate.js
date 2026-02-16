@@ -235,37 +235,14 @@ function isGoWithDirectExit(action, context) {
 module.exports = {
   listeners: {
     spawn: state => function onSpawn() {
-      const previousAllowAction = typeof this.allowAction === 'function'
-        ? this.allowAction
-        : null;
-      const previousRenderPredicates = this.renderPredicates && typeof this.renderPredicates === 'object'
-        ? this.renderPredicates
-        : {};
-
       this.renderPredicates = {
-        ...previousRenderPredicates,
-        slab_open: typeof previousRenderPredicates.slab_open === 'function'
-          ? previousRenderPredicates.slab_open
-          : () => isDescentOpen(state, this),
-        slab_blocking: typeof previousRenderPredicates.slab_blocking === 'function'
-          ? previousRenderPredicates.slab_blocking
-          : () => !isDescentOpen(state, this),
-        basin_runes_glowing: typeof previousRenderPredicates.basin_runes_glowing === 'function'
-          ? previousRenderPredicates.basin_runes_glowing
-          : () => basinHasPrayerStone(this),
-        basin_runes_dormant: typeof previousRenderPredicates.basin_runes_dormant === 'function'
-          ? previousRenderPredicates.basin_runes_dormant
-          : () => !basinHasPrayerStone(this),
+        slab_open: () => isDescentOpen(state, this),
+        slab_blocking: () => !isDescentOpen(state, this),
+        basin_runes_glowing: () => basinHasPrayerStone(this),
+        basin_runes_dormant: () => !basinHasPrayerStone(this),
       };
 
       this.allowAction = (action, context) => {
-        if (previousAllowAction) {
-          const previousResult = previousAllowAction.call(this, action, context);
-          if (previousResult !== undefined && previousResult !== null) {
-            return previousResult;
-          }
-        }
-
         if (!isGoWithDirectExit(action, context)) {
           return undefined;
         }

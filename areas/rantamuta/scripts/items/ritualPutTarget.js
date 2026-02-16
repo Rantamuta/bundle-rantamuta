@@ -345,22 +345,10 @@ module.exports = {
      * 3. addItem/removeItem wrappers: keep description synchronized whenever
      *    commit actually moves items in/out.
      *
-     * Note:
-     * We preserve any previously attached behavior by calling prior hook
-     * functions first and honoring their explicit result when present.
-     *
      * @param {*} state
      * @returns {function(this: *, ...args: *[]): void}
      */
     spawn: state => function onSpawn() {
-      // Preserve existing hook behavior if another script/decorator installed it.
-      const previousAllowAction = typeof this.allowAction === 'function'
-        ? this.allowAction
-        : null;
-      const previousBubbleEvent = typeof this.bubbleEvent === 'function'
-        ? this.bubbleEvent
-        : null;
-
       // Preserve current mutator-facing methods so we can wrap, not replace.
       const previousAddItem = typeof this.addItem === 'function'
         ? this.addItem
@@ -400,14 +388,6 @@ module.exports = {
        *   layers can continue).
        */
       this.allowAction = (action, context) => {
-        // Respect earlier hook chain first.
-        if (previousAllowAction) {
-          const previousResult = previousAllowAction.call(this, action, context);
-          if (previousResult !== undefined && previousResult !== null) {
-            return previousResult;
-          }
-        }
-
         // Ignore everything except "put <x> in <this>" style interactions.
         if (!isPutToIndirectTarget(action, context, this)) {
           return undefined;
@@ -443,14 +423,6 @@ module.exports = {
        * - Return null when no contribution should be added.
        */
       this.bubbleEvent = (action, context) => {
-        // Respect earlier hook chain first.
-        if (previousBubbleEvent) {
-          const previousResult = previousBubbleEvent.call(this, action, context);
-          if (previousResult !== undefined && previousResult !== null) {
-            return previousResult;
-          }
-        }
-
         // Ignore unrelated actions.
         if (!isPutToIndirectTarget(action, context, this)) {
           return null;
@@ -471,7 +443,7 @@ module.exports = {
         // Return data-only bubble contribution for dispatch/render.
         const contribution = {
           render: {
-            instructions: [
+            messages: [
               {
                 type: 'broadcast',
                 audience: 'player',
@@ -482,7 +454,7 @@ module.exports = {
         };
 
         if (willOpenDescentAfterCurrentPut(state, context)) {
-          contribution.render.instructions.push(
+          contribution.render.messages.push(
             {
               type: 'broadcast',
               audience: 'area',

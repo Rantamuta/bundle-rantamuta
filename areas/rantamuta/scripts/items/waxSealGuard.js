@@ -8,18 +8,7 @@
 module.exports = {
   listeners: {
     spawn: state => function onSpawn() {
-      const previousAllowAction = typeof this.allowAction === 'function'
-        ? this.allowAction
-        : null;
-
       this.allowAction = (action, context) => {
-        if (previousAllowAction) {
-          const previousResult = previousAllowAction.call(this, action, context);
-          if (previousResult !== undefined && previousResult !== null) {
-            return previousResult;
-          }
-        }
-
         if (!action || typeof action !== 'object' || action.verbId !== 'take' || action.role !== 'direct') {
           return undefined;
         }
