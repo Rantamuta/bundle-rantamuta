@@ -27,8 +27,8 @@ command: put bronze clapper in cracked bell
 command: x cracked bell
 command: take bronze clapper
 command: down
-command: pull rope
 command: down
+command: pull rope
 command: look
 command: down
 command: look

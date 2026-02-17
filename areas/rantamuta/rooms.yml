@@ -58,6 +58,7 @@
   items:
     - id: rantamuta:prayerStone
     - id: rantamuta:reliquary
+    - id: rantamuta:bellRope
 
 - id: bell_stair
   title: "Bell Stair"

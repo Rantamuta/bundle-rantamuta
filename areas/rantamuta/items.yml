@@ -42,6 +42,21 @@
         rejectMessage: "That does not belong in the bell."
         successRender: "The cracked bell rings clear, and the note leaves you unexpectedly uplifted."
 
+
+- id: bellRope
+  name: "bell rope"
+  roomDesc: "A bell rope dangles from the darkness above."
+  description: "A thick rope hangs from above, frayed at the end."
+  keywords: [ "bell", "rope" ]
+  type: OBJECT  
+  script: bellRopeScript
+  metadata:
+    pullable: true
+    permissions:
+      verbs:
+        take: "The bell rope is knotted securely to the rafters."
+  
+
 - id: reliquary
   name: "reliquary"
   roomDesc: "A reliquary sits in a fractured alcove."
