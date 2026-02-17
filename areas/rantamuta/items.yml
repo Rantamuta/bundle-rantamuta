@@ -58,10 +58,10 @@
   
 
 - id: reliquary
-  name: "reliquary"
+  name: "ornate reliquary"
   roomDesc: "A reliquary sits in a fractured alcove."
   description: "An ornate reliquary with a shallow circular recess."
-  keywords: [ "reliquary", "shallow", "circular", "recess" ]
+  keywords: [ "ornate", "reliquary", "shallow", "circular", "recess" ]
   type: "CONTAINER"
   script: ritualPutTarget
   maxItems: 1

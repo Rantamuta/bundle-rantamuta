@@ -16,20 +16,17 @@
 
 - id: bell_courtyard
   title: "Bell Courtyard"
-  description: "Broken flagstones ring a weathered bell-shrine. The bell tower rises to the north above the ruined walls. Cold air drifts from deeper ruins."
+  description: "Broken flagstones litter the ground. A bell tower looms to the north, its entrance set into ruined walls. Cold air drifts from deeper ruins."
   metadata:
     details:
       - name: "flagstones"
         keywords: [ "flagstone", "flagstones", "stone" ]
         description: "The flagstones are cracked and uneven, worn smooth by years of weather."
-      - name: "bell-shrine"
-        keywords: [ "bell-shrine", "shrine", "bell" ]
-        description: "The old shrine is weathered and split with long veins of stone cracks."
       - name: "bell tower"
         keywords: [ "tower", "bell tower", "belltower" ]
         description: "The tower looms over the courtyard, its upper stonework dark against the sky."
       - name: "ruined walls"
-        keywords: [ "wall", "walls", "ruined wall", "ruined walls" ]
+        keywords: [ "wall", "walls", "ruined wall", "ruined walls", "gaps" ]
         description: "Broken wall sections ring the courtyard, with gaps where whole courses collapsed."
       - name: "cold air"
         keywords: [ "air", "cold air", "draft" ]
