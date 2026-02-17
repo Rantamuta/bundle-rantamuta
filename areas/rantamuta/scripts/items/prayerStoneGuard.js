@@ -5,9 +5,11 @@
  * Prevent removing the prayer stone after it has been placed in the stone
  * basin as part of the Bell Tower ritual.
  */
-function createAllowAction(prayerStone) {
-  return (action, context) => {
-    if (!action || typeof action !== 'object' || action.verbId !== 'take' || action.role !== 'direct') {
+function createCanDirect(prayerStone) {
+  return (actor, verbId, context) => {
+    void actor;
+
+    if (verbId !== 'take') {
       return undefined;
     }
 
@@ -33,12 +35,12 @@ function createAllowAction(prayerStone) {
 
 function createSpawnListener() {
   return function onSpawn() {
-    this.allowAction = createAllowAction(this);
+    this.canDirect = createCanDirect(this);
   };
 }
 
 module.exports = {
   listeners: {
-    spawn: state => createSpawnListener(state),
+    spawn: () => createSpawnListener(),
   },
 };

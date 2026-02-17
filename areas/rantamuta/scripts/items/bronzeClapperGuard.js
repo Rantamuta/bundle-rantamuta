@@ -5,9 +5,11 @@
  * Prevent removing the bronze clapper after it has been placed in the cracked
  * bell as part of the Bell Tower ritual.
  */
-function createAllowAction(clapper) {
-  return (action, context) => {
-    if (!action || typeof action !== 'object' || action.verbId !== 'take' || action.role !== 'direct') {
+function createCanDirect(clapper) {
+  return (actor, verbId, context) => {
+    void actor;
+
+    if (verbId !== 'take') {
       return undefined;
     }
 
@@ -33,12 +35,12 @@ function createAllowAction(clapper) {
 
 function createSpawnListener() {
   return function onSpawn() {
-    this.allowAction = createAllowAction(this);
+    this.canDirect = createCanDirect(this);
   };
 }
 
 module.exports = {
   listeners: {
-    spawn: state => createSpawnListener(state),
+    spawn: () => createSpawnListener(),
   },
 };

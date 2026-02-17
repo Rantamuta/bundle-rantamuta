@@ -19,13 +19,12 @@
  *
  * Pipeline goal:
  * - Do not mutate world state in capture/target hooks.
- * - Only contribute policy decisions (allowAction) and reaction output
- *   (bubbleEvent). Actual item movement is still handled by the mutator/commit.
+ * - Only contribute policy decisions (canIndirect) and target-phase render
+ *   contributions (planIndirect). Actual item movement is still handled by the mutator/commit.
  */
 const {
   acceptsDirectTarget,
   getPutPolicy,
-  isPutToIndirectTarget,
 } = require('../helpers/putPolicy');
 const { evaluateExitGate } = require('../helpers/exitGate');
 
@@ -364,11 +363,24 @@ function wrapContainerMutators(entity) {
 
 /**
  * @param {*} entity
- * @returns {function(*, *): *}
+ * @returns {function(*, string, string | null, Record<string, *>): *}
  */
-function createAllowAction(entity) {
-  return (action, context) => {
-    if (!isPutToIndirectTarget(action, context, entity)) {
+function createCanIndirect(entity) {
+  return (actor, verbId, relationTokenCanonical, context) => {
+    void actor;
+
+    if (verbId !== 'put') {
+      return undefined;
+    }
+
+    if (relationTokenCanonical && relationTokenCanonical !== 'in') {
+      return undefined;
+    }
+
+    const entityResolution = context && context.entityResolution && typeof context.entityResolution === 'object'
+      ? context.entityResolution
+      : null;
+    if (!entityResolution || entityResolution.ruleKey !== 'directIndirect' || entityResolution.indirectTarget !== entity) {
       return undefined;
     }
 
@@ -377,7 +389,7 @@ function createAllowAction(entity) {
       return undefined;
     }
 
-    const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+    const directTarget = entityResolution.directTarget;
     if (acceptsDirectTarget(policy, directTarget)) {
       return undefined;
     }
@@ -391,11 +403,24 @@ function createAllowAction(entity) {
 /**
  * @param {*} state
  * @param {*} entity
- * @returns {function(*, *): *}
+ * @returns {function(*, string, string | null, Record<string, *>): *}
  */
-function createBubbleEvent(state, entity) {
-  return (action, context) => {
-    if (!isPutToIndirectTarget(action, context, entity)) {
+function createPlanIndirect(state, entity) {
+  return (actor, verbId, relationTokenCanonical, context) => {
+    void actor;
+
+    if (verbId !== 'put') {
+      return null;
+    }
+
+    if (relationTokenCanonical && relationTokenCanonical !== 'in') {
+      return null;
+    }
+
+    const entityResolution = context && context.entityResolution && typeof context.entityResolution === 'object'
+      ? context.entityResolution
+      : null;
+    if (!entityResolution || entityResolution.ruleKey !== 'directIndirect' || entityResolution.indirectTarget !== entity) {
       return null;
     }
 
@@ -404,7 +429,7 @@ function createBubbleEvent(state, entity) {
       return null;
     }
 
-    const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+    const directTarget = entityResolution.directTarget;
     if (!acceptsDirectTarget(policy, directTarget)) {
       return null;
     }
@@ -458,8 +483,8 @@ function createBubbleEvent(state, entity) {
 function createSpawnListener(state) {
   return function onSpawn() {
     wrapContainerMutators(this);
-    this.allowAction = createAllowAction(this);
-    this.bubbleEvent = createBubbleEvent(state, this);
+    this.canIndirect = createCanIndirect(this);
+    this.planIndirect = createPlanIndirect(state, this);
     syncPuzzleDescription(this);
   };
 }

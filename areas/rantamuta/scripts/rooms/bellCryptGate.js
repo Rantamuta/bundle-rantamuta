@@ -217,22 +217,6 @@ function attachBasinRunesSync(room) {
 }
 
 /**
- * @param {*} action
- * @param {*} context
- * @returns {boolean}
- */
-function isGoWithDirectExit(action, context) {
-  if (!action || typeof action !== 'object' || action.verbId !== 'go') {
-    return false;
-  }
-
-  const entityResolution = context && context.entityResolution && typeof context.entityResolution === 'object'
-    ? context.entityResolution
-    : null;
-  return !!(entityResolution && entityResolution.ruleKey === 'direct' && entityResolution.directTarget);
-}
-
-/**
  * @param {*} state
  * @param {*} room
  * @returns {Record<string, function(): boolean>}
@@ -250,14 +234,15 @@ function createRenderPredicates(state, room) {
  * @param {*} state
  * @returns {function(*, *): *}
  */
-function createAllowAction(state) {
-  return (action, context) => {
-    if (!isGoWithDirectExit(action, context)) {
+function createExitCanDirect(state, exit) {
+  return (actor, verbId) => {
+    void actor;
+
+    if (verbId !== 'go') {
       return undefined;
     }
 
-    const directTarget = context.entityResolution.directTarget;
-    const gate = evaluateExitGate(state, directTarget);
+    const gate = evaluateExitGate(state, exit);
     if (gate && gate.ok === false) {
       return gate.message;
     }
@@ -268,21 +253,76 @@ function createAllowAction(state) {
 
 /**
  * @param {*} state
+ * @param {*} exit
+ */
+function attachExitCanDirect(state, exit) {
+  if (!exit || typeof exit !== 'object') {
+    return;
+  }
+
+  exit.canDirect = createExitCanDirect(state, exit);
+}
+
+/**
+ * @param {*} state
+ * @param {*} room
+ */
+function attachDownExitPolicy(state, room) {
+  if (!room || typeof room !== 'object') {
+    return;
+  }
+
+  /**
+   * @param {*} exits
+   * @returns {*}
+   */
+  const apply = exits => {
+    if (!Array.isArray(exits)) {
+      return exits;
+    }
+
+    for (const exit of exits) {
+      if (exit && typeof exit === 'object' && normalizeRef(exit.direction) === 'down') {
+        attachExitCanDirect(state, exit);
+      }
+    }
+
+    return exits;
+  };
+
+  apply(room.exits);
+
+  if (!room.__downExitPolicyWrapped && typeof room.getExits === 'function') {
+    const previousGetExits = room.getExits;
+    room.getExits = function getExitsWithDownPolicy(...args) {
+      const exits = previousGetExits.apply(this, args);
+      return apply(exits);
+    };
+    room.__downExitPolicyWrapped = true;
+  }
+
+  apply(typeof room.getExits === 'function' ? room.getExits() : null);
+}
+
+/**
+ * @param {*} state
  * @returns {function(): void}
  */
 function createSpawnListener(state) {
   return function onSpawn() {
     this.renderPredicates = createRenderPredicates(state, this);
-    this.allowAction = createAllowAction(state);
+    attachDownExitPolicy(state, this);
     syncRunesDetailDescription(this);
   };
 }
 
 /**
+ * @param {*} state
  * @returns {function(): void}
  */
-function createReadyListener() {
+function createReadyListener(state) {
   return function onReady() {
+    attachDownExitPolicy(state, this);
     attachBasinRunesSync(this);
     syncRunesDetailDescription(this);
   };
@@ -291,6 +331,6 @@ function createReadyListener() {
 module.exports = {
   listeners: {
     spawn: state => createSpawnListener(state),
-    ready: () => createReadyListener(),
+    ready: state => createReadyListener(state),
   },
 };
