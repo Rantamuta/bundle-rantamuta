@@ -232,35 +232,65 @@ function isGoWithDirectExit(action, context) {
   return !!(entityResolution && entityResolution.ruleKey === 'direct' && entityResolution.directTarget);
 }
 
+/**
+ * @param {*} state
+ * @param {*} room
+ * @returns {Record<string, function(): boolean>}
+ */
+function createRenderPredicates(state, room) {
+  return {
+    slab_open: () => isDescentOpen(state, room),
+    slab_blocking: () => !isDescentOpen(state, room),
+    basin_runes_glowing: () => basinHasPrayerStone(room),
+    basin_runes_dormant: () => !basinHasPrayerStone(room),
+  };
+}
+
+/**
+ * @param {*} state
+ * @returns {function(*, *): *}
+ */
+function createAllowAction(state) {
+  return (action, context) => {
+    if (!isGoWithDirectExit(action, context)) {
+      return undefined;
+    }
+
+    const directTarget = context.entityResolution.directTarget;
+    const gate = evaluateExitGate(state, directTarget);
+    if (gate && gate.ok === false) {
+      return gate.message;
+    }
+
+    return undefined;
+  };
+}
+
+/**
+ * @param {*} state
+ * @returns {function(): void}
+ */
+function createSpawnListener(state) {
+  return function onSpawn() {
+    this.renderPredicates = createRenderPredicates(state, this);
+    this.allowAction = createAllowAction(state);
+    syncRunesDetailDescription(this);
+  };
+}
+
+/**
+ * @returns {function(): void}
+ */
+function createReadyListener() {
+  return function onReady() {
+    attachBasinRunesSync(this);
+    syncRunesDetailDescription(this);
+  };
+}
+
 module.exports = {
   listeners: {
-    spawn: state => function onSpawn() {
-      this.renderPredicates = {
-        slab_open: () => isDescentOpen(state, this),
-        slab_blocking: () => !isDescentOpen(state, this),
-        basin_runes_glowing: () => basinHasPrayerStone(this),
-        basin_runes_dormant: () => !basinHasPrayerStone(this),
-      };
-
-      this.allowAction = (action, context) => {
-        if (!isGoWithDirectExit(action, context)) {
-          return undefined;
-        }
-
-        const directTarget = context.entityResolution.directTarget;
-        const gate = evaluateExitGate(state, directTarget);
-        if (gate && gate.ok === false) {
-          return gate.message;
-        }
-
-        return undefined;
-      };
-
-      syncRunesDetailDescription(this);
-    },
-    ready: () => function onReady() {
-      attachBasinRunesSync(this);
-      syncRunesDetailDescription(this);
-    },
+    spawn: state => createSpawnListener(state),
+    ready: () => createReadyListener(),
   },
 };

@@ -114,59 +114,83 @@ function bellHasClapper(state) {
   return containerHasItemRef(crackedBell, BRONZE_CLAPPER_REF);
 }
 
+/**
+ * @param {*} state
+ * @returns {Record<string, *>}
+ */
+function createPullSuccessMessage(state) {
+  return () => {
+    if (bellHasClapper(state)) {
+      return {
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:pull} down on {object.direct}, and the bell tolls cheerfully.',
+        audiencePolicy: 'self_and_others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: 'the bell rope',
+        },
+      };
+    }
+
+    return {
+      type: 'semanticEvent',
+      template: '{actor.You} {verb:haul} down on {object.direct}, but only a distant, mournful clack answers.',
+      audiencePolicy: 'self_and_others',
+      participants: {
+        actor: { selector: 'currentPlayer' },
+      },
+      objectText: {
+        direct: 'the bell rope',
+      },
+    };
+  };
+}
+
+/**
+ * @param {*} state
+ * @param {*} rope
+ * @returns {function(*, *): *}
+ */
+function createBubbleEvent(state, rope) {
+  return (action, context) => {
+    if (!isDirectPullOnThis(action, context, rope)) {
+      return null;
+    }
+
+    if (!bellHasClapper(state)) {
+      return null;
+    }
+
+    return {
+      render: {
+        messages: [
+          {
+            type: 'broadcast',
+            audience: 'area',
+            targetSelector: 'currentArea',
+            message: BELL_TOLL_AREA_MESSAGE,
+          },
+        ],
+      },
+    };
+  };
+}
+
+/**
+ * @param {*} state
+ * @returns {function(): void}
+ */
+function createSpawnListener(state) {
+  return function onSpawn() {
+    this.pullSuccessMessage = createPullSuccessMessage(state);
+    this.bubbleEvent = createBubbleEvent(state, this);
+  };
+}
+
 module.exports = {
   listeners: {
-    spawn: state => function onSpawn() {
-      this.pullSuccessMessage = () => {
-        if (bellHasClapper(state)) {
-          return {
-            type: 'semanticEvent',
-            template: '{actor.You} {verb:pull} down on {object.direct}, and the bell tolls cheerfully.',
-            audiencePolicy: 'self_and_others',
-            participants: {
-              actor: { selector: 'currentPlayer' },
-            },
-            objectText: {
-              direct: 'the bell rope',
-            },
-          };
-        }
-
-        return {
-          type: 'semanticEvent',
-          template: '{actor.You} {verb:haul} down on {object.direct}, but only a distant, mournful clack answers.',
-          audiencePolicy: 'self_and_others',
-          participants: {
-            actor: { selector: 'currentPlayer' },
-          },
-          objectText: {
-            direct: 'the bell rope',
-          },
-        };
-      };
-
-      this.bubbleEvent = (action, context) => {
-        if (!isDirectPullOnThis(action, context, this)) {
-          return null;
-        }
-
-        if (!bellHasClapper(state)) {
-          return null;
-        }
-
-        return {
-          render: {
-            messages: [
-              {
-                type: 'broadcast',
-                audience: 'area',
-                targetSelector: 'currentArea',
-                message: BELL_TOLL_AREA_MESSAGE,
-              },
-            ],
-          },
-        };
-      };
-    },
+    spawn: state => createSpawnListener(state),
   },
 };

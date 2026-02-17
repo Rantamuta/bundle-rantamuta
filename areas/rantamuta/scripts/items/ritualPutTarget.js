@@ -334,157 +334,138 @@ function syncPuzzleDescription(entity) {
   }
 }
 
+/**
+ * @param {*} entity
+ */
+function wrapContainerMutators(entity) {
+  const previousAddItem = typeof entity.addItem === 'function'
+    ? entity.addItem
+    : null;
+  const previousRemoveItem = typeof entity.removeItem === 'function'
+    ? entity.removeItem
+    : null;
+
+  if (previousAddItem) {
+    entity.addItem = (item) => {
+      const result = previousAddItem.call(entity, item);
+      syncPuzzleDescription(entity);
+      return result;
+    };
+  }
+
+  if (previousRemoveItem) {
+    entity.removeItem = (item) => {
+      const result = previousRemoveItem.call(entity, item);
+      syncPuzzleDescription(entity);
+      return result;
+    };
+  }
+}
+
+/**
+ * @param {*} entity
+ * @returns {function(*, *): *}
+ */
+function createAllowAction(entity) {
+  return (action, context) => {
+    if (!isPutToIndirectTarget(action, context, entity)) {
+      return undefined;
+    }
+
+    const policy = getPutPolicy(entity);
+    if (!policy) {
+      return undefined;
+    }
+
+    const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+    if (acceptsDirectTarget(policy, directTarget)) {
+      return undefined;
+    }
+
+    return typeof policy.rejectMessage === 'string' && policy.rejectMessage.length > 0
+      ? policy.rejectMessage
+      : 'You can\'t put that there.';
+  };
+}
+
+/**
+ * @param {*} state
+ * @param {*} entity
+ * @returns {function(*, *): *}
+ */
+function createBubbleEvent(state, entity) {
+  return (action, context) => {
+    if (!isPutToIndirectTarget(action, context, entity)) {
+      return null;
+    }
+
+    const policy = getPutPolicy(entity);
+    if (!policy || typeof policy.successRender !== 'string' || policy.successRender.length === 0) {
+      return null;
+    }
+
+    const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
+    if (!acceptsDirectTarget(policy, directTarget)) {
+      return null;
+    }
+
+    const contribution = {
+      render: {
+        messages: [
+          {
+            type: 'broadcast',
+            audience: 'player',
+            message: policy.successRender,
+          },
+        ],
+      },
+    };
+
+    if (willOpenDescentAfterCurrentPut(state, context)) {
+      contribution.render.messages.push(
+        {
+          type: 'broadcast',
+          audience: 'area',
+          targetSelector: 'currentArea',
+          message: RITUAL_HUM_MESSAGE,
+        },
+        {
+          type: 'broadcast',
+          audience: 'areaExceptTargets',
+          targetSelector: 'currentArea',
+          exceptSelector: 'targetsByRoomRef',
+          exceptRoomRef: CRYPT_ROOM_REFERENCE,
+          message: RITUAL_AREA_GRIND_MESSAGE,
+        },
+        {
+          type: 'broadcast',
+          audience: 'room',
+          targetSelector: 'roomByRef',
+          targetRoomRef: CRYPT_ROOM_REFERENCE,
+          message: RITUAL_CRYPT_GRIND_MESSAGE,
+        }
+      );
+    }
+
+    return contribution;
+  };
+}
+
+/**
+ * @param {*} state
+ * @returns {function(this: *, ...args: *[]): void}
+ */
+function createSpawnListener(state) {
+  return function onSpawn() {
+    wrapContainerMutators(this);
+    this.allowAction = createAllowAction(this);
+    this.bubbleEvent = createBubbleEvent(state, this);
+    syncPuzzleDescription(this);
+  };
+}
+
 module.exports = {
   listeners: {
-    /**
-     * spawn runs when the item instance enters the game world.
-     *
-     * We install three things here:
-     * 1. allowAction: capture-phase veto for wrong offerings.
-     * 2. bubbleEvent: bubble-phase flavor line for correct offerings.
-     * 3. addItem/removeItem wrappers: keep description synchronized whenever
-     *    commit actually moves items in/out.
-     *
-     * @param {*} state
-     * @returns {function(this: *, ...args: *[]): void}
-     */
-    spawn: state => function onSpawn() {
-      // Preserve current mutator-facing methods so we can wrap, not replace.
-      const previousAddItem = typeof this.addItem === 'function'
-        ? this.addItem
-        : null;
-      const previousRemoveItem = typeof this.removeItem === 'function'
-        ? this.removeItem
-        : null;
-
-      // Commit path eventually calls addItem/removeItem when transferItem runs.
-      // Wrapping here lets us react to actual committed state transitions.
-      if (previousAddItem) {
-        this.addItem = (item) => {
-          const result = previousAddItem.call(this, item);
-          // After successful insertion, refresh long description from current state.
-          syncPuzzleDescription(this);
-          return result;
-        };
-      }
-
-      if (previousRemoveItem) {
-        this.removeItem = (item) => {
-          const result = previousRemoveItem.call(this, item);
-          // After successful removal, refresh long description from current state.
-          syncPuzzleDescription(this);
-          return result;
-        };
-      }
-
-      /**
-       * Capture-phase policy hook.
-       *
-       * Responsibilities:
-       * - Only care about `put` where this object is the indirect target.
-       * - Read policy from metadata (`acceptedItemRef`, `rejectMessage`).
-       * - Allow correct offerings; deny incorrect offerings.
-       * - Return `undefined` when this hook has no opinion (so other policy
-       *   layers can continue).
-       */
-      this.allowAction = (action, context) => {
-        // Ignore everything except "put <x> in <this>" style interactions.
-        if (!isPutToIndirectTarget(action, context, this)) {
-          return undefined;
-        }
-
-        // If no policy exists, this script has no veto opinion.
-        const policy = getPutPolicy(this);
-        if (!policy) {
-          return undefined;
-        }
-
-        // Entity Resolution already bound the direct target for us.
-        const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
-        if (acceptsDirectTarget(policy, directTarget)) {
-          // Correct item: allow the command to continue.
-          return undefined;
-        }
-
-        // Wrong item: deny with authored message or safe fallback.
-        return typeof policy.rejectMessage === 'string' && policy.rejectMessage.length > 0
-          ? policy.rejectMessage
-          : 'You can\'t put that there.';
-      };
-
-      /**
-       * Bubble-phase reaction hook.
-       *
-       * Responsibilities:
-       * - After command passes validation, optionally add flavor messaging.
-       * - If this put completes the Bell Tower ritual, enqueue area/room
-       *   broadcasts.
-       * - Do not mutate world state here.
-       * - Return null when no contribution should be added.
-       */
-      this.bubbleEvent = (action, context) => {
-        // Ignore unrelated actions.
-        if (!isPutToIndirectTarget(action, context, this)) {
-          return null;
-        }
-
-        // Need a configured success flavor line to contribute.
-        const policy = getPutPolicy(this);
-        if (!policy || typeof policy.successRender !== 'string' || policy.successRender.length === 0) {
-          return null;
-        }
-
-        // Only show this flavor line when the direct item is the accepted one.
-        const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
-        if (!acceptsDirectTarget(policy, directTarget)) {
-          return null;
-        }
-
-        // Return data-only bubble contribution for dispatch/render.
-        const contribution = {
-          render: {
-            messages: [
-              {
-                type: 'broadcast',
-                audience: 'player',
-                message: policy.successRender,
-              },
-            ],
-          },
-        };
-
-        if (willOpenDescentAfterCurrentPut(state, context)) {
-          contribution.render.messages.push(
-            {
-              type: 'broadcast',
-              audience: 'area',
-              targetSelector: 'currentArea',
-              message: RITUAL_HUM_MESSAGE,
-            },
-            {
-              type: 'broadcast',
-              audience: 'areaExceptTargets',
-              targetSelector: 'currentArea',
-              exceptSelector: 'targetsByRoomRef',
-              exceptRoomRef: CRYPT_ROOM_REFERENCE,
-              message: RITUAL_AREA_GRIND_MESSAGE,
-            },
-            {
-              type: 'broadcast',
-              audience: 'room',
-              targetSelector: 'roomByRef',
-              targetRoomRef: CRYPT_ROOM_REFERENCE,
-              message: RITUAL_CRYPT_GRIND_MESSAGE,
-            }
-          );
-        }
-
-        return contribution;
-      };
-
-      // Initialize description immediately on spawn so room/look text starts in
-      // the correct state even before any new command is run.
-      syncPuzzleDescription(this);
-    },
+    spawn: state => createSpawnListener(state),
   },
 };
