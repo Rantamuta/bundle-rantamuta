@@ -82,26 +82,6 @@ function containerHasItemRef(container, itemRef) {
 }
 
 /**
- * @param {*} action
- * @param {*} context
- * @param {*} rope
- * @returns {boolean}
- */
-function isDirectPullOnThis(action, context, rope) {
-  if (!action || typeof action !== 'object' || action.verbId !== 'pull' || action.role !== 'direct') {
-    return false;
-  }
-
-  const resolution = context && context.entityResolution && typeof context.entityResolution === 'object'
-    ? context.entityResolution
-    : null;
-
-  return !!resolution &&
-    resolution.ruleKey === 'direct' &&
-    resolution.directTarget === rope;
-}
-
-/**
  * @param {*} state
  * @returns {boolean}
  */
@@ -136,7 +116,7 @@ function createPullSuccessMessage(state) {
 
     return {
       type: 'semanticEvent',
-      template: '{actor.You} {verb:haul} down on {object.direct}, but only a distant, mournful clack answers.',
+      template: '{actor.You} {verb:haul} down on {object.direct}, but from above comes only a distant, mournful clack.',
       audiencePolicy: 'self_and_others',
       participants: {
         actor: { selector: 'currentPlayer' },
@@ -151,11 +131,20 @@ function createPullSuccessMessage(state) {
 /**
  * @param {*} state
  * @param {*} rope
- * @returns {function(*, *): *}
+ * @returns {function(*, string, Record<string, *>): *}
  */
-function createBubbleEvent(state, rope) {
-  return (action, context) => {
-    if (!isDirectPullOnThis(action, context, rope)) {
+function createPlanDirect(state, rope) {
+  return (actor, verbId, context) => {
+    void actor;
+
+    if (verbId !== 'pull') {
+      return null;
+    }
+
+    const resolution = context && context.entityResolution && typeof context.entityResolution === 'object'
+      ? context.entityResolution
+      : null;
+    if (!resolution || resolution.directTarget !== rope) {
       return null;
     }
 
@@ -185,7 +174,7 @@ function createBubbleEvent(state, rope) {
 function createSpawnListener(state) {
   return function onSpawn() {
     this.pullSuccessMessage = createPullSuccessMessage(state);
-    this.bubbleEvent = createBubbleEvent(state, this);
+    this.planDirect = createPlanDirect(state, this);
   };
 }
 
