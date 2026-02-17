@@ -1293,6 +1293,377 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('does not call reactIndirect for a direct-only command', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let reactIndirectCalled = 0;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-ri-none-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        reactIndirect() {
+          reactIndirectCalled += 1;
+          return null;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['inspect-ok'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+      assert.strictEqual(reactIndirectCalled, 0);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('calls reactDirect on the bound direct target with actor/verb/context', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let reactDirectCalled = 0;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-rd-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        reactDirect(actor, verbId, context) {
+          reactDirectCalled += 1;
+          assert.strictEqual(actor && actor.name, 'Tester');
+          assert.strictEqual(verbId, 'inspect');
+          assert.strictEqual(context && context.entityResolution && context.entityResolution.directTarget, this);
+          return null;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['inspect-ok'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+      assert.strictEqual(reactDirectCalled, 1);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('calls reactIndirect on the bound indirect target with canonical relation', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let reactIndirectCalled = 0;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const apple = {
+        uuid: 'apple-ri-1',
+        name: 'apple',
+        keywords: ['apple'],
+      };
+      const chest = {
+        uuid: 'chest-ri-1',
+        name: 'chest',
+        keywords: ['chest'],
+        type: 'CONTAINER',
+        maxItems: 3,
+        inventory: new Map(),
+        addItem() { },
+        removeItem() { },
+        reactIndirect(actor, verbId, relationTokenCanonical, context) {
+          reactIndirectCalled += 1;
+          assert.strictEqual(actor && actor.name, 'Tester');
+          assert.strictEqual(verbId, 'put');
+          assert.strictEqual(relationTokenCanonical, 'in');
+          assert.strictEqual(context && context.entityResolution && context.entityResolution.indirectTarget, this);
+          return null;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in', 'into'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['put-ok'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple into chest');
+      assert.strictEqual(reactIndirectCalled, 1);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('renders reactDirect lines after target render lines', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-rd-msg-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        reactDirect() {
+          return {
+            render: {
+              messages: ['react-direct-line'],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      const targetIndex = messages.indexOf('target-line');
+      const reactIndex = messages.indexOf('react-direct-line');
+      assert.ok(targetIndex >= 0);
+      assert.ok(reactIndex > targetIndex);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('preserves target -> reactDirect -> reactIndirect render ordering', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const apple = {
+        uuid: 'apple-r-order-1',
+        name: 'apple',
+        keywords: ['apple'],
+        reactDirect() {
+          return {
+            render: {
+              messages: ['direct-react-line'],
+            },
+          };
+        },
+      };
+      const chest = {
+        uuid: 'chest-r-order-1',
+        name: 'chest',
+        keywords: ['chest'],
+        type: 'CONTAINER',
+        maxItems: 3,
+        inventory: new Map(),
+        addItem() { },
+        removeItem() { },
+        reactIndirect() {
+          return {
+            render: {
+              messages: ['indirect-react-line'],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in', 'into'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple into chest');
+
+      const sequence = messages.filter(message =>
+        message === 'target-line' ||
+        message === 'direct-react-line' ||
+        message === 'indirect-react-line'
+      );
+      assert.deepStrictEqual(sequence, [
+        'target-line',
+        'direct-react-line',
+        'indirect-react-line',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('uses metadata.permissions role+relation policy with canonical relation token', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2879,85 +3250,6 @@ describe('bundle-rantamuta command-dispatch', function () {
         to: room,
       }]);
       assert.ok(messages.includes('You put the apple down.'));
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-      mutator.applyMutationPlan = originalApplyMutationPlan;
-    }
-  });
-
-  it('renders flavor line from indirect target bubbleEvent hook on correct offering', async function () {
-    const putDef = require('../commands/put');
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
-    const mutator = require(mutatorPath);
-    const originalApplyMutationPlan = mutator.applyMutationPlan;
-    const messages = [];
-
-    ranvier.Broadcast.sayAt = (target, message) => {
-      messages.push(String(message));
-    };
-    ranvier.Broadcast.prompt = () => { };
-    mutator.applyMutationPlan = () => { };
-
-    try {
-      const crystal = {
-        uuid: 'crystal-1',
-        entityReference: 'test:powerCrystal',
-        name: 'power crystal',
-        keywords: ['power', 'crystal'],
-      };
-      const socket = {
-        uuid: 'socket-2',
-        entityReference: 'test:mechanismSocket',
-        name: 'mechanism socket',
-        keywords: ['mechanism', 'socket'],
-        type: 'CONTAINER',
-        maxItems: 1,
-        inventory: new Map(),
-        bubbleEvent(action, context) {
-          if (!action || action.verbId !== 'put' || action.role !== 'indirect') {
-            return null;
-          }
-
-          const direct = context && context.entityResolution && context.entityResolution.directTarget;
-          if (!direct || direct.entityReference !== 'test:powerCrystal') {
-            return null;
-          }
-
-          return {
-            render: {
-              messages: ['The mechanism emits a steady tone.'],
-            },
-          };
-        },
-        addItem() { },
-        removeItem() { },
-      };
-      const player = asPlayer({
-        name: 'Tester',
-        inventory: new Map([[crystal.uuid, crystal]]),
-        room: { items: new Set([socket]) },
-        addItem() { },
-        removeItem() { },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: putDef.metadata,
-        execute: wrapLegacyRenderCommand(putDef.command({})),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'put' }) },
-      }, player);
-
-      await handleCommand(state, { player }, 'put power crystal in mechanism socket');
-
-      assert.ok(messages.includes('You put the power crystal in the mechanism socket.'));
-      assert.ok(messages.includes('The mechanism emits a steady tone.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
