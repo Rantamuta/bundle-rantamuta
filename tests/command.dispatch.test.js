@@ -623,7 +623,254 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('uses entity allowAction hook veto before target execution', async function () {
+  it('calls canDirect only for direct-role subjects and passes actor/verb/context', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+    let executeCalled = false;
+    let roomCanDirectCalls = 0;
+    let indirectCanDirectCalls = 0;
+    let indirectCanIndirectCalls = 0;
+    let directCanDirectCalls = 0;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const apple = {
+        uuid: 'apple-cd-role-1',
+        name: 'apple',
+        keywords: ['apple'],
+        canDirect(actor, verbId, context) {
+          directCanDirectCalls += 1;
+          assert.strictEqual(actor && actor.name, 'Tester');
+          assert.strictEqual(verbId, 'inspect');
+          assert.strictEqual(context && context.entityResolution && context.entityResolution.directTarget, this);
+          return undefined;
+        },
+      };
+      const chest = {
+        uuid: 'chest-cd-role-1',
+        name: 'chest',
+        keywords: ['chest'],
+        canDirect() {
+          indirectCanDirectCalls += 1;
+          return undefined;
+        },
+        canIndirect(actor, verbId, relationTokenCanonical) {
+          indirectCanIndirectCalls += 1;
+          assert.strictEqual(actor && actor.name, 'Tester');
+          assert.strictEqual(verbId, 'inspect');
+          assert.strictEqual(relationTokenCanonical, 'in');
+          return undefined;
+        },
+      };
+      const room = {
+        items: new Set([chest]),
+        canDirect() {
+          roomCanDirectCalls += 1;
+          return undefined;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room,
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => {
+          executeCalled = true;
+          return {
+            ok: true,
+            plan: { operations: [{ type: 'noop' }] },
+            render: { messages: ['inspect-ok'] },
+          };
+        },
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect apple in chest');
+
+      assert.strictEqual(executeCalled, true);
+      assert.ok(messages.includes('inspect-ok'));
+      assert.strictEqual(directCanDirectCalls, 1);
+      assert.strictEqual(indirectCanDirectCalls, 0);
+      assert.strictEqual(indirectCanIndirectCalls, 1);
+      assert.strictEqual(roomCanDirectCalls, 0);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('treats canDirect undefined/null/allow/malformed outcomes as non-veto and continues', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const cases = [
+        { label: 'undefined', outcome: undefined },
+        { label: 'null', outcome: null },
+        { label: 'true', outcome: true },
+        { label: 'allow-string', outcome: 'allow' },
+        { label: 'ok-true', outcome: { ok: true } },
+        { label: 'allow-true', outcome: { allow: true } },
+        { label: 'number-malformed', outcome: 42 },
+        { label: 'object-malformed', outcome: { nope: true } },
+      ];
+
+      for (const testCase of cases) {
+        messages.length = 0;
+        let executeCalled = false;
+        const relic = {
+          uuid: `relic-cd-${testCase.label}`,
+          name: 'sealed relic',
+          keywords: ['sealed', 'relic'],
+          canDirect() {
+            return testCase.outcome;
+          },
+        };
+        const player = asPlayer({
+          name: 'Tester',
+          inventory: new Map([[relic.uuid, relic]]),
+          room: { items: new Set() },
+          socket: { writable: false },
+        });
+        const command = {
+          metadata: {
+            entityResolution: {
+              rules: {
+                direct: {
+                  scopeProfile: {
+                    direct: ['player.inventory'],
+                  },
+                },
+              },
+            },
+          },
+          execute: async () => {
+            executeCalled = true;
+            return {
+              ok: true,
+              plan: { operations: [{ type: 'noop' }] },
+              render: { messages: [`ok-${testCase.label}`] },
+            };
+          },
+        };
+        const state = withPlayerManager({
+          CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+        }, player);
+
+        await handleCommand(state, { player }, 'inspect relic');
+
+        assert.strictEqual(executeCalled, true);
+        assert.ok(messages.includes(`ok-${testCase.label}`));
+      }
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('blocks on canDirect false and deny using FORBIDDEN_BLOCKED mapping', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const cases = [
+        { label: 'false', outcome: false },
+        { label: 'deny', outcome: 'deny' },
+      ];
+
+      for (const testCase of cases) {
+        messages.length = 0;
+        let executeCalled = false;
+        const relic = {
+          uuid: `relic-cd-deny-${testCase.label}`,
+          name: 'sealed relic',
+          keywords: ['sealed', 'relic'],
+          canDirect() {
+            return testCase.outcome;
+          },
+        };
+        const player = asPlayer({
+          name: 'Tester',
+          inventory: new Map([[relic.uuid, relic]]),
+          room: { items: new Set() },
+          socket: { writable: false },
+        });
+        const command = {
+          metadata: {
+            errorMessages: {
+              FORBIDDEN_BLOCKED: 'blocked-by-candirect',
+            },
+            entityResolution: {
+              rules: {
+                direct: {
+                  scopeProfile: {
+                    direct: ['player.inventory'],
+                  },
+                },
+              },
+            },
+          },
+          execute: async () => {
+            executeCalled = true;
+            return { ok: true, plan: { operations: [{ type: 'noop' }] } };
+          },
+        };
+        const state = withPlayerManager({
+          CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+        }, player);
+
+        await handleCommand(state, { player }, 'inspect relic');
+
+        assert.strictEqual(executeCalled, false);
+        assert.ok(messages.includes('blocked-by-candirect'));
+      }
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('surfaces canDirect string veto text directly', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -638,14 +885,11 @@ describe('bundle-rantamuta command-dispatch', function () {
 
     try {
       const relic = {
-        uuid: 'relic-1',
+        uuid: 'relic-cd-string-1',
         name: 'sealed relic',
         keywords: ['sealed', 'relic'],
-        allowAction(action) {
-          if (action && action.verbId === 'inspect' && action.role === 'direct') {
-            return 'You sense a ward and leave it untouched.';
-          }
-          return true;
+        canDirect() {
+          return 'A ward blocks your hand.';
         },
       };
       const player = asPlayer({
@@ -653,10 +897,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         inventory: new Map([[relic.uuid, relic]]),
         room: { items: new Set() },
         socket: { writable: false },
-        addItem() { },
-        removeItem() { },
       });
-
       const command = {
         metadata: {
           entityResolution: {
@@ -674,7 +915,6 @@ describe('bundle-rantamuta command-dispatch', function () {
           return { ok: true, plan: { operations: [{ type: 'noop' }] } };
         },
       };
-
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'inspect' }) },
       }, player);
@@ -682,20 +922,19 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'inspect relic');
 
       assert.strictEqual(executeCalled, false);
-      assert.ok(messages.includes('You sense a ward and leave it untouched.'));
+      assert.ok(messages.includes('A ward blocks your hand.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
     }
   });
 
-  it('prioritizes runtime allowAction over metadata.permissions for capture policy', async function () {
+  it('uses canDirect structured veto object code/message', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const messages = [];
-    let executeCalled = false;
 
     ranvier.Broadcast.sayAt = (target, message) => {
       messages.push(String(message));
@@ -703,10 +942,87 @@ describe('bundle-rantamuta command-dispatch', function () {
     ranvier.Broadcast.prompt = () => { };
 
     try {
-      const relic = {
-        uuid: 'relic-rh-1',
-        name: 'sealed relic',
-        keywords: ['sealed', 'relic'],
+      const relicByCode = {
+        uuid: 'relic-cd-object-code',
+        name: 'alpha relic',
+        keywords: ['alpha', 'relic'],
+        canDirect() {
+          return { ok: false, code: 'WARD_LOCKED' };
+        },
+      };
+      const relicByMessage = {
+        uuid: 'relic-cd-object-message',
+        name: 'beta relic',
+        keywords: ['beta', 'relic'],
+        canDirect() {
+          return {
+            allow: false,
+            code: 'WARD_LOCKED',
+            message: 'The relic hums and refuses your touch.',
+            details: { source: 'test' },
+          };
+        },
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([
+          [relicByCode.uuid, relicByCode],
+          [relicByMessage.uuid, relicByMessage],
+        ]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          errorMessages: {
+            WARD_LOCKED: 'The relic remains locked.',
+          },
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({ ok: true, plan: { operations: [{ type: 'noop' }] } }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect alpha relic');
+      assert.ok(messages.includes('The relic remains locked.'));
+
+      messages.length = 0;
+      await handleCommand(state, { player }, 'inspect beta relic');
+      assert.ok(messages.includes('The relic hums and refuses your touch.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('applies canDirect before metadata.permissions for the same entity', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relicDeny = {
+        uuid: 'relic-cd-precedence-deny',
+        name: 'relic deny',
+        keywords: ['relic', 'deny'],
         metadata: {
           permissions: {
             verbs: {
@@ -714,11 +1030,95 @@ describe('bundle-rantamuta command-dispatch', function () {
             },
           },
         },
-        allowAction(action) {
-          if (action && action.verbId === 'inspect' && action.role === 'direct') {
-            return 'The ward rejects your touch.';
-          }
+        canDirect() {
+          return 'Runtime direct policy veto.';
+        },
+      };
+      const relicAllow = {
+        uuid: 'relic-cd-precedence-allow',
+        name: 'relic allow',
+        keywords: ['relic', 'allow'],
+        metadata: {
+          permissions: {
+            verbs: {
+              inspect: 'Metadata deny should not run after canDirect allow.',
+            },
+          },
+        },
+        canDirect() {
           return true;
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([
+          [relicDeny.uuid, relicDeny],
+          [relicAllow.uuid, relicAllow],
+        ]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['inspect-ran'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic deny');
+      assert.ok(messages.includes('Runtime direct policy veto.'));
+
+      messages.length = 0;
+      await handleCommand(state, { player }, 'inspect relic allow');
+      assert.ok(messages.includes('inspect-ran'));
+      assert.ok(!messages.includes('Metadata deny should not run after canDirect allow.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
+  it('stops target/bubble/commit when canDirect vetoes', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const events = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      events.push('commit');
+    };
+
+    try {
+      const relic = {
+        uuid: 'relic-cd-stop-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        canDirect() {
+          return 'The relic refuses you.';
         },
       };
       const player = asPlayer({
@@ -726,10 +1126,84 @@ describe('bundle-rantamuta command-dispatch', function () {
         inventory: new Map([[relic.uuid, relic]]),
         room: { items: new Set() },
         socket: { writable: false },
-        addItem() { },
-        removeItem() { },
       });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+          bubble: () => [() => {
+            events.push('bubble');
+            return { render: { messages: ['bubble-line'] } };
+          }],
+        },
+        execute: async () => {
+          events.push('target');
+          return {
+            ok: true,
+            plan: { operations: [{ type: 'noop' }] },
+            render: { messages: ['target-line'] },
+          };
+        },
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
 
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.ok(messages.includes('The relic refuses you.'));
+      assert.deepStrictEqual(events, []);
+      assert.ok(!messages.includes('target-line'));
+      assert.ok(!messages.includes('bubble-line'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('handles canDirect exceptions as command failure and skips execute/commit', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let executeCalled = false;
+    let commitCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      commitCalled = true;
+    };
+
+    try {
+      const relic = {
+        uuid: 'relic-cd-throw-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        canDirect() {
+          throw new Error('canDirect exploded');
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
       const command = {
         metadata: {
           entityResolution: {
@@ -747,7 +1221,6 @@ describe('bundle-rantamuta command-dispatch', function () {
           return { ok: true, plan: { operations: [{ type: 'noop' }] } };
         },
       };
-
       const state = withPlayerManager({
         CommandManager: { find: () => ({ command, alias: 'inspect' }) },
       }, player);
@@ -755,7 +1228,65 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'inspect relic');
 
       assert.strictEqual(executeCalled, false);
-      assert.ok(messages.includes('The ward rejects your touch.'));
+      assert.strictEqual(commitCalled, false);
+      assert.ok(messages.includes('Command failed.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('is deterministic for identical state/input with canDirect veto', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-cd-det-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        canDirect() {
+          return 'The ward rejects your touch.';
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({ ok: true, plan: { operations: [{ type: 'noop' }] } }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+      await handleCommand(state, { player }, 'inspect relic');
+
+      const vetoLines = messages.filter(line => line === 'The ward rejects your touch.');
+      assert.strictEqual(vetoLines.length, 2);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -2355,84 +2886,6 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('vetoes wrong offering via indirect target allowAction hook', async function () {
-    const putDef = require('../commands/put');
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
-    const mutator = require(mutatorPath);
-    const originalApplyMutationPlan = mutator.applyMutationPlan;
-    const messages = [];
-    let mutatorCalled = false;
-
-    ranvier.Broadcast.sayAt = (target, message) => {
-      messages.push(String(message));
-    };
-    ranvier.Broadcast.prompt = () => { };
-    mutator.applyMutationPlan = () => {
-      mutatorCalled = true;
-    };
-
-    try {
-      const wrongItem = {
-        uuid: 'cog-1',
-        entityReference: 'test:tinCog',
-        name: 'tin cog',
-        keywords: ['tin', 'cog'],
-      };
-      const socket = {
-        uuid: 'socket-1',
-        entityReference: 'test:mechanismSocket',
-        name: 'mechanism socket',
-        keywords: ['mechanism', 'socket'],
-        type: 'CONTAINER',
-        maxItems: 1,
-        inventory: new Map(),
-        allowAction(action, context) {
-          if (!action || action.verbId !== 'put' || action.role !== 'indirect') {
-            return undefined;
-          }
-
-          const direct = context && context.entityResolution && context.entityResolution.directTarget;
-          if (direct && direct.entityReference === 'test:powerCrystal') {
-            return undefined;
-          }
-
-          return 'That does not belong in the mechanism socket.';
-        },
-        addItem() { },
-        removeItem() { },
-      };
-      const player = asPlayer({
-        name: 'Tester',
-        inventory: new Map([[wrongItem.uuid, wrongItem]]),
-        room: { items: new Set([socket]) },
-        addItem() { },
-        removeItem() { },
-        socket: { writable: false },
-      });
-
-      const command = {
-        metadata: putDef.metadata,
-        execute: wrapLegacyRenderCommand(putDef.command({})),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'put' }) },
-      }, player);
-
-      await handleCommand(state, { player }, 'put tin cog in mechanism socket');
-
-      assert.strictEqual(mutatorCalled, false);
-      assert.ok(messages.includes('That does not belong in the mechanism socket.'));
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-      mutator.applyMutationPlan = originalApplyMutationPlan;
-    }
-  });
-
   it('renders flavor line from indirect target bubbleEvent hook on correct offering', async function () {
     const putDef = require('../commands/put');
     const ranvierPath = require.resolve('ranvier');
@@ -3099,224 +3552,6 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       assert.strictEqual(mutatorCalled, false);
       assert.ok(messages.includes('The portcullis is down.'));
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-      mutator.applyMutationPlan = originalApplyMutationPlan;
-    }
-  });
-
-  it('blocks go down via room allowAction gate until required placements exist', async function () {
-    const goDef = require('../commands/go');
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
-    const mutator = require(mutatorPath);
-    const originalApplyMutationPlan = mutator.applyMutationPlan;
-    const messages = [];
-    let mutatorCalled = false;
-
-    ranvier.Broadcast.sayAt = (target, message) => {
-      messages.push(String(message));
-    };
-    ranvier.Broadcast.prompt = () => { };
-    mutator.applyMutationPlan = () => {
-      mutatorCalled = true;
-    };
-
-    try {
-      const destination = {
-        entityReference: 'test:lowerVault',
-        title: 'Lower Vault',
-        description: 'A sealed lower vault.',
-        items: new Set(),
-        getDoor: () => null,
-      };
-      const room = {
-        entityReference: 'test:upperVault',
-        getExits: () => [{
-          direction: 'down',
-          roomId: destination.entityReference,
-          metadata: {
-            gate: {
-              denyMessage: 'A reinforced hatch blocks the descent.',
-              requiredPlacements: [
-                { containerRef: 'test:controlSocket', itemRef: 'test:powerCrystal' },
-              ],
-            },
-          },
-        }],
-        allowAction(action, context) {
-          if (!action || action.verbId !== 'go' || action.role !== null) {
-            return undefined;
-          }
-
-          const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
-          const gate = directTarget && directTarget.metadata && directTarget.metadata.gate;
-          if (!gate) {
-            return undefined;
-          }
-
-          const required = Array.isArray(gate.requiredPlacements) ? gate.requiredPlacements : [];
-          const denyMessage = typeof gate.denyMessage === 'string' ? gate.denyMessage : 'You can\'t go that way.';
-          const items = state && state.ItemManager && state.ItemManager.items
-            ? Array.from(state.ItemManager.items)
-            : [];
-          const hasAll = required.every(requirement => {
-            const container = items.find(item => item && item.entityReference === requirement.containerRef);
-            if (!container || !container.inventory || typeof container.inventory.values !== 'function') {
-              return false;
-            }
-
-            return Array.from(container.inventory.values()).some(item => item && item.entityReference === requirement.itemRef);
-          });
-
-          return hasAll ? undefined : denyMessage;
-        },
-      };
-      const controlSocket = {
-        entityReference: 'test:controlSocket',
-        inventory: new Map(),
-      };
-      const command = {
-        metadata: goDef.metadata,
-        execute: wrapLegacyRenderCommand(goDef.command({
-          RoomManager: {
-            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
-          },
-        })),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'go' }) },
-        ItemManager: { items: new Set([controlSocket]) },
-      }, null);
-
-      const player = asPlayer({
-        name: 'Tester',
-        room,
-        moveTo: () => { },
-        socket: { writable: false },
-      });
-      state.PlayerManager.getPlayer = () => player;
-
-      await handleCommand(state, { player }, 'go down');
-
-      assert.strictEqual(mutatorCalled, false);
-      assert.ok(messages.includes('A reinforced hatch blocks the descent.'));
-    } finally {
-      ranvier.Broadcast.sayAt = originalSayAt;
-      ranvier.Broadcast.prompt = originalPrompt;
-      mutator.applyMutationPlan = originalApplyMutationPlan;
-    }
-  });
-
-  it('allows go down via room allowAction gate when required placements are satisfied', async function () {
-    const goDef = require('../commands/go');
-    const ranvierPath = require.resolve('ranvier');
-    const ranvier = require(ranvierPath);
-    const originalSayAt = ranvier.Broadcast.sayAt;
-    const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
-    const mutator = require(mutatorPath);
-    const originalApplyMutationPlan = mutator.applyMutationPlan;
-    let committedPlan = null;
-
-    ranvier.Broadcast.sayAt = () => { };
-    ranvier.Broadcast.prompt = () => { };
-    mutator.applyMutationPlan = (stateArg, planArg) => {
-      committedPlan = planArg;
-    };
-
-    try {
-      const destination = {
-        entityReference: 'test:lowerVault',
-        title: 'Lower Vault',
-        description: 'A sealed lower vault.',
-        items: new Set(),
-        getDoor: () => null,
-      };
-      const crystal = { entityReference: 'test:powerCrystal' };
-      const controlSocket = {
-        entityReference: 'test:controlSocket',
-        inventory: new Map([['crystal-1', crystal]]),
-      };
-      const room = {
-        entityReference: 'test:upperVault',
-        getExits: () => [{
-          direction: 'down',
-          roomId: destination.entityReference,
-          metadata: {
-            gate: {
-              denyMessage: 'A reinforced hatch blocks the descent.',
-              requiredPlacements: [
-                { containerRef: 'test:controlSocket', itemRef: 'test:powerCrystal' },
-              ],
-            },
-          },
-        }],
-        allowAction(action, context) {
-          if (!action || action.verbId !== 'go' || action.role !== null) {
-            return undefined;
-          }
-
-          const directTarget = context && context.entityResolution && context.entityResolution.directTarget;
-          const gate = directTarget && directTarget.metadata && directTarget.metadata.gate;
-          if (!gate) {
-            return undefined;
-          }
-
-          const required = Array.isArray(gate.requiredPlacements) ? gate.requiredPlacements : [];
-          const denyMessage = typeof gate.denyMessage === 'string' ? gate.denyMessage : 'You can\'t go that way.';
-          const items = state && state.ItemManager && state.ItemManager.items
-            ? Array.from(state.ItemManager.items)
-            : [];
-          const hasAll = required.every(requirement => {
-            const container = items.find(item => item && item.entityReference === requirement.containerRef);
-            if (!container || !container.inventory || typeof container.inventory.values !== 'function') {
-              return false;
-            }
-
-            return Array.from(container.inventory.values()).some(item => item && item.entityReference === requirement.itemRef);
-          });
-
-          return hasAll ? undefined : denyMessage;
-        },
-      };
-      const command = {
-        metadata: goDef.metadata,
-        execute: wrapLegacyRenderCommand(goDef.command({
-          RoomManager: {
-            getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
-          },
-        })),
-      };
-      const state = withPlayerManager({
-        CommandManager: { find: () => ({ command, alias: 'go' }) },
-        ItemManager: { items: new Set([controlSocket, crystal]) },
-      }, null);
-
-      const player = asPlayer({
-        name: 'Tester',
-        room,
-        moveTo: () => { },
-        socket: { writable: false },
-      });
-      state.PlayerManager.getPlayer = () => player;
-
-      await handleCommand(state, { player }, 'go down');
-
-      assert.deepStrictEqual(committedPlan, {
-        operations: [
-          {
-            type: 'movePlayer',
-            player,
-            toRoom: destination,
-            direction: 'down',
-          },
-        ],
-      });
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
