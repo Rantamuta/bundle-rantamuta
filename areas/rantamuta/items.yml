@@ -47,14 +47,14 @@
   name: "bell rope"
   roomDesc: "A bell rope dangles from the darkness above."
   description: "A thick rope hangs from above, frayed at the end."
-  keywords: [ "bell", "rope" ]
+  keywords: ["thick", "bell", "rope" ]
   type: OBJECT  
   script: bellRopeScript
   metadata:
     pullable: true
     permissions:
       verbs:
-        take: "The bell rope is knotted securely to the rafters."
+        take: "The bell rope is securely attached, somewhere far above in the darkness."
   
 
 - id: reliquary
