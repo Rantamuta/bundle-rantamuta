@@ -1174,6 +1174,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerError = ranvier.Logger.error;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
@@ -1185,6 +1186,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       messages.push(String(message));
     };
     ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.error = () => { };
     mutator.applyMutationPlan = () => {
       commitCalled = true;
     };
@@ -1233,6 +1235,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.error = originalLoggerError;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
@@ -1669,6 +1672,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerError = ranvier.Logger.error;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
@@ -1680,6 +1684,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       messages.push(String(message));
     };
     ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.error = () => { };
     mutator.applyMutationPlan = (stateArg, planArg) => {
       committedPlan = planArg;
     };
@@ -1732,6 +1737,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.error = originalLoggerError;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
@@ -1831,6 +1837,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerError = ranvier.Logger.error;
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
@@ -1841,6 +1848,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       messages.push(String(message));
     };
     ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.error = () => { };
     mutator.applyMutationPlan = () => {
       commitCalled = true;
     };
@@ -1890,6 +1898,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.error = originalLoggerError;
       mutator.applyMutationPlan = originalApplyMutationPlan;
     }
   });
