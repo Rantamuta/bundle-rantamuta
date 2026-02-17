@@ -1,0 +1,8 @@
+- id: crossroads
+  title: "Ristitie"
+  description: "A worn crossroads marks the center of a small village, the ground packed hard by years of travel. Timber houses stand close together, their lower walls built from heavy, dark stone blocks. Beyond the last buildings rise stands of pine, spruce, and birch, with a few rowan trees scattered among them."
+  exits:
+    - roomId: rantamuta:square
+      direction: south
+    - roomId: village:main_street
+      direction: north
