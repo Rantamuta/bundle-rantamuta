@@ -40,3 +40,38 @@
       direction: north
     - roomId: test:lab
       direction: east
+
+- id: predicates
+  title: "Predicate Test Room"
+  description: "A deterministic benchmark room for predicate render measurements."
+  metadata:
+    flags:
+      variantPrimary: true
+      variantSecondary: false
+      variantNever: false
+      fragmentA: true
+      fragmentB: true
+      fragmentC: false
+      fragmentD: true
+      fragmentE: false
+    descriptionVariants:
+      - when: bench_variant_primary
+        text: "Primary benchmark variant is active."
+      - when: bench_variant_secondary
+        text: "Secondary benchmark variant is active."
+      - when: bench_variant_never
+        text: "This variant should never be selected."
+    descriptionFragments:
+      - when: bench_fragment_a
+        text: "Fragment A contributes deterministic text."
+      - when: bench_fragment_b
+        text: "Fragment B contributes deterministic text."
+      - when: bench_fragment_c
+        text: "Fragment C should not render."
+      - when: bench_fragment_d
+        text: "Fragment D contributes deterministic text."
+      - when: bench_fragment_e
+        text: "Fragment E should not render."
+  items:
+    - id: test:labApple
+    - id: test:labChest
