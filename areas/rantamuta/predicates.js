@@ -50,9 +50,6 @@ function basinRunesGlowing(q) {
 }
 
 module.exports = {
-  slab_open: ({ q }) => isDescentOpen(q),
-  slab_blocking: ({ q }) => !isDescentOpen(q),
-  basin_runes_glowing: ({ q }) => basinRunesGlowing(q),
-  basin_runes_dormant: ({ q }) => !basinRunesGlowing(q),
+  is_slab_open: ({ q }) => isDescentOpen(q),
+  is_basin_runes_glowing: ({ q }) => basinRunesGlowing(q),
 };
-

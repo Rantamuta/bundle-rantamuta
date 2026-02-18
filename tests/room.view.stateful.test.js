@@ -41,8 +41,8 @@ describe('room view stateful rendering', function () {
       description: 'Base description.',
       metadata: {
         descriptionVariants: [
-          { when: 'slab_open', text: 'Variant A.' },
-          { when: 'fallback_open', text: 'Variant B.' },
+          { when: 'is_slab_open', text: 'Variant A.' },
+          { when: 'is_fallback_open', text: 'Variant B.' },
         ],
       },
     });
@@ -50,8 +50,8 @@ describe('room view stateful rendering', function () {
     const lines = buildRoomViewLines(room, {
       world: {
         PredicateRuntime: createPredicateRuntimeStub({
-          slab_open: () => true,
-          fallback_open: () => true,
+          is_slab_open: () => true,
+          is_fallback_open: () => true,
         }),
       },
     });
@@ -67,7 +67,7 @@ describe('room view stateful rendering', function () {
       description: 'Base description.',
       metadata: {
         descriptionVariants: [
-          { when: 'slab_open', text: 'Variant A.' },
+          { when: 'is_slab_open', text: 'Variant A.' },
         ],
       },
     });
@@ -75,7 +75,7 @@ describe('room view stateful rendering', function () {
     const lines = buildRoomViewLines(room, {
       world: {
         PredicateRuntime: createPredicateRuntimeStub({
-          slab_open: () => false,
+          is_slab_open: () => false,
         }),
       },
     });
@@ -86,14 +86,50 @@ describe('room view stateful rendering', function () {
     ]);
   });
 
+  it('supports whenNot for variants', function () {
+    const room = makeRoom({
+      description: 'Base description.',
+      metadata: {
+        descriptionVariants: [
+          { whenNot: 'is_slab_open', text: 'Variant when blocked.' },
+        ],
+      },
+    });
+
+    const blockedLines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          is_slab_open: () => false,
+        }),
+      },
+    });
+
+    const openLines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          is_slab_open: () => true,
+        }),
+      },
+    });
+
+    assert.deepStrictEqual(blockedLines, [
+      '<bold>Stateful Room</bold>',
+      'Variant when blocked.',
+    ]);
+    assert.deepStrictEqual(openLines, [
+      '<bold>Stateful Room</bold>',
+      'Base description.',
+    ]);
+  });
+
   it('appends all matching description fragments in declaration order', function () {
     const room = makeRoom({
       description: 'Base description.',
       metadata: {
         descriptionFragments: [
-          { when: 'first_true', text: 'Fragment one.' },
-          { when: 'second_false', text: 'Fragment two should not render.' },
-          { when: 'third_true', text: 'Fragment three.' },
+          { when: 'is_first_true', text: 'Fragment one.' },
+          { when: 'is_second_false', text: 'Fragment two should not render.' },
+          { when: 'is_third_true', text: 'Fragment three.' },
         ],
       },
     });
@@ -101,9 +137,9 @@ describe('room view stateful rendering', function () {
     const lines = buildRoomViewLines(room, {
       world: {
         PredicateRuntime: createPredicateRuntimeStub({
-          first_true: () => true,
-          second_false: () => false,
-          third_true: () => true,
+          is_first_true: () => true,
+          is_second_false: () => false,
+          is_third_true: () => true,
         }),
       },
     });
@@ -116,6 +152,45 @@ describe('room view stateful rendering', function () {
     ]);
   });
 
+  it('supports whenNot for fragments', function () {
+    const room = makeRoom({
+      description: 'Base description.',
+      metadata: {
+        descriptionFragments: [
+          { whenNot: 'is_slab_open', text: 'Blocked fragment.' },
+          { when: 'is_slab_open', text: 'Open fragment.' },
+        ],
+      },
+    });
+
+    const blockedLines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          is_slab_open: () => false,
+        }),
+      },
+    });
+
+    const openLines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          is_slab_open: () => true,
+        }),
+      },
+    });
+
+    assert.deepStrictEqual(blockedLines, [
+      '<bold>Stateful Room</bold>',
+      'Base description.',
+      'Blocked fragment.',
+    ]);
+    assert.deepStrictEqual(openLines, [
+      '<bold>Stateful Room</bold>',
+      'Base description.',
+      'Open fragment.',
+    ]);
+  });
+
   it('passes normalized render context to predicate runtime', function () {
     const actor = { name: 'Tester' };
     const area = { name: 'test-area', bundle: 'bundle-test' };
@@ -125,7 +200,7 @@ describe('room view stateful rendering', function () {
       area,
       metadata: {
         descriptionVariants: [
-          { when: 'slab_open', text: 'Variant A.' },
+          { when: 'is_slab_open', text: 'Variant A.' },
         ],
       },
     });
@@ -133,7 +208,7 @@ describe('room view stateful rendering', function () {
     const world = {
       tick: 123,
       PredicateRuntime: createPredicateRuntimeStub({
-        slab_open: (ctx) => {
+        is_slab_open: (ctx) => {
           seen.push(ctx);
           return true;
         },
@@ -160,10 +235,10 @@ describe('room view stateful rendering', function () {
   it('does not mutate room metadata while evaluating variants/fragments', function () {
     const metadata = {
       descriptionVariants: [
-        { when: 'slab_open', text: 'Variant A.' },
+        { when: 'is_slab_open', text: 'Variant A.' },
       ],
       descriptionFragments: [
-        { when: 'frag_open', text: 'Fragment A.' },
+        { when: 'is_fragment_open', text: 'Fragment A.' },
       ],
     };
     const room = makeRoom({
@@ -173,8 +248,8 @@ describe('room view stateful rendering', function () {
 
     const world = {
       PredicateRuntime: createPredicateRuntimeStub({
-        slab_open: () => false,
-        frag_open: () => true,
+        is_slab_open: () => false,
+        is_fragment_open: () => true,
       }),
     };
 
@@ -192,11 +267,11 @@ describe('room view stateful rendering', function () {
       description: 'Base description.',
       metadata: {
         descriptionVariants: [
-          { when: 'slab_open', text: 'Variant A.' },
+          { when: 'is_slab_open', text: 'Variant A.' },
         ],
       },
       renderPredicates: {
-        slab_open: () => true,
+        is_slab_open: () => true,
       },
     });
 

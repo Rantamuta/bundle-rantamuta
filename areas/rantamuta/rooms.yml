@@ -85,13 +85,13 @@
         keywords: [ "rune", "runes", "glyph", "glyphs", "etching", "etchings" ]
         description: "Ancient runes curl around the basin lip, each line cut with unnerving precision."
     descriptionFragments:
-      - when: slab_blocking
+      - whenNot: is_slab_open
         text: "A dull stone slab blocks the descent."
-      - when: slab_open
+      - when: is_slab_open
         text: "A heavy slab has been forced aside, revealing stone stairs descending into darkness."
-      - when: basin_runes_dormant
+      - whenNot: is_basin_runes_glowing
         text: "The basin runes lie cold and silent, as if waiting for a final word."
-      - when: basin_runes_glowing
+      - when: is_basin_runes_glowing
         text: "A faint, mystic glow pulses through the basin runes, bathing the crypt in gentle light."
   exits:
     - roomId: rantamuta:bell_nave
