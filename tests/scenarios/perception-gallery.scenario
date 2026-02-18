@@ -1,0 +1,63 @@
+# Perception Gallery showcase path
+# Demonstrates `when` + `whenNot` transitions in rantamuta gallery rooms.
+
+room: rantamuta:square
+seedInventory: rantamuta:resonantShard
+
+# Initial gallery state: no shard in hand, shard on plinth, ritual incomplete.
+command: look
+command: east
+command: put shard
+command: look
+
+# Pick up shard: flips viewer-held and shard-in-room predicates.
+command: take resonant shard
+command: look
+
+# Question Apse before ritual completion (slab not open yet).
+command: east
+command: look
+
+# Begin ritual progress: place wax seal.
+command: west
+command: west
+command: north
+command: take wax seal
+command: north
+command: take prayer stone
+command: put wax seal in reliquary
+
+# Return to gallery: wax-seal predicate now true; clapper predicate still false.
+command: south
+command: south
+command: east
+command: look
+
+# Complete remaining placements for full harmonic state.
+command: west
+command: north
+command: north
+command: down
+command: take bronze clapper
+command: put prayer stone in stone basin
+command: up
+command: up
+command: up
+command: put bronze clapper in cracked bell
+
+# Return to gallery and verify completed-state prose.
+command: down
+command: down
+command: south
+command: south
+command: east
+command: look
+
+# Question Apse after ritual completion (slab-open path).
+command: east
+command: look
+
+# Put shard back to flip shard predicates in the opposite direction.
+command: west
+command: put resonant shard
+command: look

@@ -96,3 +96,10 @@
         acceptedItemRef: "rantamuta:prayerStone"
         rejectMessage: "The basin's runes remain dark."
         successRender: "Ripples of light shimmer across the basin."
+
+- id: resonantShard
+  name: "resonant shard"
+  roomDesc: "A resonant shard glitters atop a low plinth."
+  description: "A palm-sized shard of smoky crystal. It vibrates with a soft, sustained tone when held near worked stone."
+  keywords: [ "resonant", "shard", "crystal" ]
+  type: "OBJECT"

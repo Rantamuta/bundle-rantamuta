@@ -7,12 +7,69 @@
 
 - id: square
   title: "Rantamuta Square"
-  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north."
+  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, and a new gallery opens to the east."
   exits:
     - roomId: rantamuta:start
       direction: south
     - roomId: rantamuta:bell_courtyard
       direction: north
+    - roomId: rantamuta:perception_gallery
+      direction: east
+
+- id: perception_gallery
+  title: "Perception Gallery"
+  description: "An arc of polished stone mirrors catches every footfall."
+  metadata:
+    flags:
+      mirrorsAwake: true
+    descriptionVariants:
+      - when: is_gallery_harmonic
+        text: "The mirrors resonate in clear tones, reflecting your movement a heartbeat before you make it."
+      - whenNot: is_gallery_harmonic
+        text: "The mirrors stand dim and uncertain, as if waiting for the tower's song to settle."
+    descriptionFragments:
+      - when: is_gallery_feature_enabled
+        text: "A brass plaque reads: \"Truth is a pattern seen from many angles.\""
+      - when: is_gallery_mirrors_awake
+        text: "Hairline sigils glow faintly at the edges of each mirror."
+      - when: does_viewer_hold_resonant_shard
+        text: "The shard in your possession makes the mirror-light bend toward your hands."
+      - whenNot: does_viewer_hold_resonant_shard
+        text: "An empty socket in the central plinth seems shaped for a small crystal shard."
+      - when: is_resonant_shard_in_gallery
+        text: "A resonant shard lies on the plinth, humming softly."
+      - whenNot: is_resonant_shard_in_gallery
+        text: "The plinth is bare, but a ghostly hum lingers in the stone."
+      - when: is_wax_seal_in_reliquary
+        text: "Somewhere in the tower, the reliquary's seal answers with a distant warmth."
+      - whenNot: is_wax_seal_in_reliquary
+        text: "The mirrors show a reliquary-shaped shadow that never quite seals shut."
+      - when: is_bronze_clapper_in_bell
+        text: "In every reflection, a bell swings with a clapper of bronze."
+      - whenNot: is_bronze_clapper_in_bell
+        text: "In every reflection, the bell hangs silent, its heart missing."
+  exits:
+    - roomId: rantamuta:square
+      direction: west
+    - roomId: rantamuta:question_apse
+      direction: east
+
+- id: question_apse
+  title: "Question Apse"
+  description: "Three stone arches hold carved questions instead of saints."
+  metadata:
+    descriptionFragments:
+      - when: is_slab_open
+        text: "One arch reads: \"What opens when all offerings are in place?\""
+      - whenNot: is_slab_open
+        text: "One arch reads: \"What remains sealed until all offerings are in place?\""
+      - when: does_viewer_hold_resonant_shard
+        text: "The shard vibrates in answer, and the letters briefly shine."
+      - whenNot: does_viewer_hold_resonant_shard
+        text: "The carved letters look inert, waiting for a matching tone."
+  exits:
+    - roomId: rantamuta:perception_gallery
+      direction: west
 
 - id: bell_courtyard
   title: "Bell Courtyard"
@@ -118,3 +175,5 @@
   exits:
     - roomId: rantamuta:bell_crypt
       direction: up
+  items:
+    - id: rantamuta:resonantShard
