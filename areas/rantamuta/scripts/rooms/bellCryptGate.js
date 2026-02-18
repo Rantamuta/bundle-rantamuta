@@ -40,50 +40,6 @@ function valuesAsArray(collection) {
 
 /**
  * @param {*} room
- * @returns {* | null}
- */
-function findDownExit(room) {
-  if (!room || typeof room !== 'object') {
-    return null;
-  }
-
-  const exits = typeof room.getExits === 'function'
-    ? room.getExits()
-    : room.exits;
-  if (!Array.isArray(exits)) {
-    return null;
-  }
-
-  for (const exit of exits) {
-    if (exit && typeof exit === 'object' && String(exit.direction || '').trim().toLowerCase() === 'down') {
-      return exit;
-    }
-  }
-
-  return null;
-}
-
-/**
- * @param {*} state
- * @param {*} room
- * @returns {boolean}
- */
-function isDescentOpen(state, room) {
-  const downExit = findDownExit(room);
-  if (!downExit) {
-    return false;
-  }
-
-  const gate = evaluateExitGate(state, downExit);
-  if (!gate) {
-    return true;
-  }
-
-  return gate.ok !== false;
-}
-
-/**
- * @param {*} room
  * @param {string} entityRef
  * @returns {* | null}
  */
@@ -218,20 +174,6 @@ function attachBasinRunesSync(room) {
 
 /**
  * @param {*} state
- * @param {*} room
- * @returns {Record<string, function(): boolean>}
- */
-function createRenderPredicates(state, room) {
-  return {
-    slab_open: () => isDescentOpen(state, room),
-    slab_blocking: () => !isDescentOpen(state, room),
-    basin_runes_glowing: () => basinHasPrayerStone(room),
-    basin_runes_dormant: () => !basinHasPrayerStone(room),
-  };
-}
-
-/**
- * @param {*} state
  * @returns {function(*, *): *}
  */
 function createExitCanDirect(state, exit) {
@@ -310,7 +252,6 @@ function attachDownExitPolicy(state, room) {
  */
 function createSpawnListener(state) {
   return function onSpawn() {
-    this.renderPredicates = createRenderPredicates(state, this);
     attachDownExitPolicy(state, this);
     syncRunesDetailDescription(this);
   };
