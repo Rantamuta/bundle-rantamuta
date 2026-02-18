@@ -1,8 +1,33 @@
 - id: crossroads
   title: "Ristitie"
-  description: "A worn crossroads marks the center of a small village, the ground packed hard by years of travel. Timber houses stand close together, their lower walls built from heavy, dark stone blocks. Beyond the last buildings rise stands of pine, spruce, and birch, with a few rowan trees scattered among them."
-  exits:
-    - roomId: rantamuta:square
-      direction: south
-    - roomId: village:main_street
-      direction: north
+  description: "Here four roads meet in a flat, circular clearing at the center of a small village of stone and timber houses. Just off the western side of the clearing stands a slender stone temple. To the north squats a tavern, broad and smoke-darkened. Next to the tavern is an open square, empty for now.\n\nFrom the clearing, a packed dirt road runs west beneath thicker trees and east along the square. A narrow track slips northwest between the temple and the tavern, climbing into the forest. The southern road wanders off towards other settlements, far away. At the exact center of the village circle, set flush with the ground, is a dark stone disc."
+  metadata:
+    details:
+      - name: "village"
+        keywords: [ "small", "village", "circle", "circular", "clearing" ]
+        description: "The village is arranged around a broad widening of the road. Its houses stand within the remains of older granite structures. Dark stone walls, some shoulder-high and some nearly intact, form the lower courses of dwellings that have been rebuilt with timber.\n\nThe roads converge here from four directions. The tavern and the stone temple anchor the circle, while the market square to the northeast leaves space for gatherings.\n\nBeyond these few structures, forest presses close."
+      - name: "houses"
+        keywords: [ "stone", "timber", "house", "houses", "building", "buildings" ]
+        description: "The village houses are built inside the remnants of older stone buildings. Timber frames top foundations built long ago, and rise from granite walls that once stood high. Time has softened the join between ruin and living dwelling."
+      - name: "trees"
+        keywords: [ "forest", "tree", "trees", "pine", "spruce", "birch", "rowan" ]
+        description: "Pine and spruce dominate the higher ground, their trunks straight and close. Birch stands lighter among them, and rowan trees grow nearer the road. The forest presses close on all sides except for the wide open field."
+      - name: "road"
+        keywords: [ "packed", "dirt", "road", "roads", "track", "crossroads", "path", "crossroad" ]
+        description: "The road south leads to Kaupunki, far away. The road west winds into the forest, while the one east runs along the square and out of sight. The track northwest climbs into the trees, narrow and less traveled."
+      - name: "temple"
+        keywords: [ "slender", "stone", "temple" ]
+        description: "The temple is narrow, square and topped with a dome. A small bronze bell hangs above the doorway. Carved into the lintel is a circle overlaid by a thin crescent line."
+      - name: "circle"
+        keywords: [  "lintel", "thin", "crescent", "line", "symbol", "circle" ]
+        description: "The symbol is a simple circle with a thin crescent line overlaid across its upper half. It is deeply incised, while the crescent is more shallow and worn."
+      - name: "tavern"
+        keywords: [ "broad", "smoke-darkened", "smoke", "darkened", "tavern" ]
+        description: "The tavern is broad and solidly built, its beams darkened by years of smoke. The doorway is wider than most in the village and stands propped open, allowing voices and the scent of ale to drift into the road. The yard beside it is packed firm by wagon wheels, and a simple rail stands ready for tethering horses."
+      - name: "square"
+        keywords: [ "open", "market", "square" ]
+        description: "The open square is flat and compacted, marked by old post holes and faint outlines where stalls are raised during market days. The space feels temporarily empty rather than unused."
+      - name: "disc"
+        keywords: [ "small", "circular","depression", "shallow", "lines", "granite", "block", "dark", "stone", "disc" ]
+        description: "The disc in the center of the village circle is formed of tightly fitted granite blocks, darker and smoother than the surrounding earth. It is level despite the shifting ground around it.  Shallow lines radiate inward from the outer rim at regular intervals. Some are clear; others are nearly worn away. Near the center lies a small circular depression, no wider than a coin. Within it, faint and nearly erased, is a circle intersected by a thin crescent.  Along the inner edge of the rim runs a narrow band of repeating marks: short line, gap, long line, paired notch. The pattern resembles notation more than ornament."
+
