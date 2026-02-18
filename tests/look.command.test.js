@@ -199,9 +199,9 @@ describe('bundle-rantamuta look command', function () {
         messages: [
           '<bold>Item Room</bold>',
           'Room with items.',
-          'Exits: north, east',
           'A brass key glints here.',
           'You see plain box here.',
+          'Exits: north, east',
         ],
       },
     });

@@ -69,9 +69,9 @@ describe('bundle-rantamuta player-lifecycle', function () {
     assert.deepStrictEqual(roomLines, [
       [player, '<bold>Test Lab</bold>'],
       [player, 'A practice room for manually testing item pickup and placement.'],
-      [player, 'Exits: north, west'],
       [player, 'A practice apple rests here.'],
       [player, 'You see practice chest here.'],
+      [player, 'Exits: north, west'],
     ]);
 
     assert.strictEqual(promptedPlayer, player);

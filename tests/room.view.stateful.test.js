@@ -8,6 +8,20 @@ const {
   evaluateRenderPredicate,
 } = require('../lib/helpers/room-view-helper');
 
+function createPredicateRuntimeStub(predicateMap = {}) {
+  return {
+    evaluate: (name, context) => {
+      const predicate = predicateMap[name];
+
+      if (typeof predicate === 'function') {
+        return predicate(context);
+      }
+
+      return predicate === true;
+    },
+  };
+}
+
 function makeRoom(def = {}) {
   return {
     title: def.title || 'Stateful Room',
@@ -31,13 +45,16 @@ describe('room view stateful rendering', function () {
           { when: 'fallback_open', text: 'Variant B.' },
         ],
       },
-      renderPredicates: {
-        slab_open: () => true,
-        fallback_open: () => true,
-      },
     });
 
-    const lines = buildRoomViewLines(room);
+    const lines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          slab_open: () => true,
+          fallback_open: () => true,
+        }),
+      },
+    });
 
     assert.deepStrictEqual(lines, [
       '<bold>Stateful Room</bold>',
@@ -53,12 +70,15 @@ describe('room view stateful rendering', function () {
           { when: 'slab_open', text: 'Variant A.' },
         ],
       },
-      renderPredicates: {
-        slab_open: () => false,
-      },
     });
 
-    const lines = buildRoomViewLines(room);
+    const lines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          slab_open: () => false,
+        }),
+      },
+    });
 
     assert.deepStrictEqual(lines, [
       '<bold>Stateful Room</bold>',
@@ -76,14 +96,17 @@ describe('room view stateful rendering', function () {
           { when: 'third_true', text: 'Fragment three.' },
         ],
       },
-      renderPredicates: {
-        first_true: () => true,
-        second_false: () => false,
-        third_true: () => true,
-      },
     });
 
-    const lines = buildRoomViewLines(room);
+    const lines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          first_true: () => true,
+          second_false: () => false,
+          third_true: () => true,
+        }),
+      },
+    });
 
     assert.deepStrictEqual(lines, [
       '<bold>Stateful Room</bold>',
@@ -93,11 +116,10 @@ describe('room view stateful rendering', function () {
     ]);
   });
 
-  it('passes normalized render context to predicates', function () {
+  it('passes normalized render context to predicate runtime', function () {
     const actor = { name: 'Tester' };
-    const world = { tick: 123 };
-    const area = { name: 'test-area' };
-    let seenContext = null;
+    const area = { name: 'test-area', bundle: 'bundle-test' };
+    const seen = [];
 
     const room = makeRoom({
       area,
@@ -106,13 +128,17 @@ describe('room view stateful rendering', function () {
           { when: 'slab_open', text: 'Variant A.' },
         ],
       },
-      renderPredicates: {
+    });
+
+    const world = {
+      tick: 123,
+      PredicateRuntime: createPredicateRuntimeStub({
         slab_open: (ctx) => {
-          seenContext = ctx;
+          seen.push(ctx);
           return true;
         },
-      },
-    });
+      }),
+    };
 
     const lines = buildRoomViewLines(room, { actor, world });
 
@@ -120,12 +146,15 @@ describe('room view stateful rendering', function () {
       '<bold>Stateful Room</bold>',
       'Variant A.',
     ]);
-    assert.ok(seenContext);
+
+    assert.strictEqual(seen.length, 1);
+    const seenContext = seen[0];
     assert.strictEqual(seenContext.actor, actor);
     assert.strictEqual(seenContext.room, room);
     assert.strictEqual(seenContext.area, area);
     assert.strictEqual(seenContext.world, world);
-    assert.ok(Object.isFrozen(seenContext));
+    assert.strictEqual(seenContext.source, 'room.view.variants');
+    assert.strictEqual(seenContext.entity, room);
   });
 
   it('does not mutate room metadata while evaluating variants/fragments', function () {
@@ -140,30 +169,63 @@ describe('room view stateful rendering', function () {
     const room = makeRoom({
       description: 'Base description.',
       metadata,
-      renderPredicates: {
-        slab_open: () => false,
-        frag_open: () => true,
-      },
     });
 
+    const world = {
+      PredicateRuntime: createPredicateRuntimeStub({
+        slab_open: () => false,
+        frag_open: () => true,
+      }),
+    };
+
     const before = JSON.stringify(metadata);
-    const first = buildRoomViewLines(room);
-    const second = buildRoomViewLines(room);
+    const first = buildRoomViewLines(room, { world });
+    const second = buildRoomViewLines(room, { world });
     const after = JSON.stringify(metadata);
 
     assert.strictEqual(before, after);
     assert.deepStrictEqual(first, second);
   });
 
-  it('evaluateRenderPredicate returns false for missing keys and thrown predicates', function () {
+  it('does not fallback to room.renderPredicates', function () {
     const room = makeRoom({
+      description: 'Base description.',
+      metadata: {
+        descriptionVariants: [
+          { when: 'slab_open', text: 'Variant A.' },
+        ],
+      },
       renderPredicates: {
-        boom: () => {
-          throw new Error('boom');
-        },
+        slab_open: () => true,
       },
     });
-    const context = normalizeRenderContext(room, {});
+
+    const lines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({}),
+      },
+    });
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Stateful Room</bold>',
+      'Base description.',
+    ]);
+  });
+
+  it('evaluateRenderPredicate returns false for missing keys and thrown runtime predicates', function () {
+    const room = makeRoom();
+    const world = {
+      PredicateRuntime: {
+        evaluate: (name) => {
+          if (name === 'boom') {
+            throw new Error('boom');
+          }
+
+          return false;
+        },
+      },
+    };
+    const context = normalizeRenderContext(room, { world });
 
     assert.strictEqual(evaluateRenderPredicate(room, 'missing', context), false);
     assert.strictEqual(evaluateRenderPredicate(room, 'boom', context), false);

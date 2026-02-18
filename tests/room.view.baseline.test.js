@@ -15,7 +15,7 @@ function makeRoom(def = {}) {
 }
 
 describe('room view baseline behavior', function () {
-  it('renders title, description, exits, then room items in stable order', function () {
+  it('renders title, description, room items, then exits in stable order', function () {
     const room = makeRoom({
       title: 'Baseline Chamber',
       description: 'A deterministic chamber for baseline tests.',
@@ -31,9 +31,9 @@ describe('room view baseline behavior', function () {
     assert.deepStrictEqual(lines, [
       '<bold>Baseline Chamber</bold>',
       'A deterministic chamber for baseline tests.',
-      'Exits: north, west',
       'A brass lantern hangs from a hook.',
       'You see plain crate here.',
+      'Exits: north, west',
     ]);
   });
 
