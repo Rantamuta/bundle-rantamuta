@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-02-18T16:19:03.846Z",
+  "host": {
+    "node": "v22.22.0",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "suites": [
+    {
+      "suite": "predicate-runtime",
+      "unit": "ns/op",
+      "generatedAt": "2026-02-18T16:18:38.728Z",
+      "metadata": {
+        "warmupSamples": 25,
+        "measuredSamples": 150,
+        "batchSize": 2000
+      },
+      "cases": [
+        {
+          "name": "bench_always_true",
+          "stats": {
+            "p50": 608.4,
+            "p95": 736.6449999999998,
+            "p99": 916.9704999999988,
+            "mean": 622.6576666666664
+          },
+          "opsPerSecond": 1606018
+        },
+        {
+          "name": "bench_always_false",
+          "stats": {
+            "p50": 618.3,
+            "p95": 967.532499999999,
+            "p99": 1133.9329999999995,
+            "mean": 665.7676666666667
+          },
+          "opsPerSecond": 1502025
+        },
+        {
+          "name": "bench_room_flag_primary",
+          "stats": {
+            "p50": 693.8,
+            "p95": 988.2774999999999,
+            "p99": 1207.2534999999993,
+            "mean": 736.2899999999996
+          },
+          "opsPerSecond": 1358160
+        },
+        {
+          "name": "bench_area_flag_enabled",
+          "stats": {
+            "p50": 697,
+            "p95": 1009.8399999999997,
+            "p99": 1133.653,
+            "mean": 753.9430000000002
+          },
+          "opsPerSecond": 1326360
+        },
+        {
+          "name": "bench_room_has_apple",
+          "stats": {
+            "p50": 833.3,
+            "p95": 1010.6874999999997,
+            "p99": 1127.21,
+            "mean": 848.3899999999998
+          },
+          "opsPerSecond": 1178703
+        },
+        {
+          "name": "bench_room_container_has_apple",
+          "stats": {
+            "p50": 827.75,
+            "p95": 1043.4524999999999,
+            "p99": 1197.7509999999993,
+            "mean": 864.1476666666663
+          },
+          "opsPerSecond": 1157209
+        },
+        {
+          "name": "bench_actor_has_apple",
+          "stats": {
+            "p50": 756.8,
+            "p95": 1523.9249999999988,
+            "p99": 2141.4284999999995,
+            "mean": 890.4190000000002
+          },
+          "opsPerSecond": 1123066
+        },
+        {
+          "name": "bench_actor_has_focus",
+          "stats": {
+            "p50": 718.375,
+            "p95": 1304.7149999999983,
+            "p99": 1698.6294999999986,
+            "mean": 802.0276666666666
+          },
+          "opsPerSecond": 1246839
+        },
+        {
+          "name": "bench_actor_quest_active",
+          "stats": {
+            "p50": 708.7750000000001,
+            "p95": 943.0149999999995,
+            "p99": 1194.123999999999,
+            "mean": 754.8533333333335
+          },
+          "opsPerSecond": 1324760
+        },
+        {
+          "name": "bench_actor_quest_completed",
+          "stats": {
+            "p50": 714.8,
+            "p95": 862.535,
+            "p99": 980.9264999999994,
+            "mean": 732.7690000000003
+          },
+          "opsPerSecond": 1364686
+        },
+        {
+          "name": "bench_composite_small",
+          "stats": {
+            "p50": 937.175,
+            "p95": 1114.61,
+            "p99": 1183.1499999999999,
+            "mean": 963.5119999999995
+          },
+          "opsPerSecond": 1037869
+        },
+        {
+          "name": "bench_composite_large",
+          "stats": {
+            "p50": 1582.425,
+            "p95": 1915.935,
+            "p99": 2116.137999999999,
+            "mean": 1622.5153333333335
+          },
+          "opsPerSecond": 616326
+        },
+        {
+          "name": "bench_invalid_return",
+          "stats": {
+            "p50": 937.175,
+            "p95": 1184.0249999999996,
+            "p99": 1410.2059999999997,
+            "mean": 988.838666666667
+          },
+          "opsPerSecond": 1011287
+        },
+        {
+          "name": "bench_throws",
+          "stats": {
+            "p50": 5585.575,
+            "p95": 6100.409999999999,
+            "p99": 6857.228499999998,
+            "mean": 5651.319000000001
+          },
+          "opsPerSecond": 176949
+        },
+        {
+          "name": "bench_missing_predicate",
+          "stats": {
+            "p50": 553.35,
+            "p95": 659.8025,
+            "p99": 746.5099999999998,
+            "mean": 560.3953333333334
+          },
+          "opsPerSecond": 1784454
+        }
+      ]
+    },
+    {
+      "suite": "room-view",
+      "unit": "ns/op",
+      "generatedAt": "2026-02-18T16:18:45.683Z",
+      "metadata": {
+        "warmupSamples": 20,
+        "measuredSamples": 120,
+        "batchSize": 600
+      },
+      "cases": [
+        {
+          "name": "baseline_no_predicates",
+          "stats": {
+            "p50": 501.4166666666667,
+            "p95": 1259.7166666666667,
+            "p99": 1592.746666666667,
+            "mean": 560.5624999999999
+          },
+          "opsPerSecond": 1783922
+        },
+        {
+          "name": "variants_1_true",
+          "stats": {
+            "p50": 1308.75,
+            "p95": 1630.1833333333332,
+            "p99": 1749.99,
+            "mean": 1327.1569444444447
+          },
+          "opsPerSecond": 753490
+        },
+        {
+          "name": "variants_5_first",
+          "stats": {
+            "p50": 1225.5,
+            "p95": 1625.7833333333333,
+            "p99": 1807.2100000000003,
+            "mean": 1261.711111111111
+          },
+          "opsPerSecond": 792574
+        },
+        {
+          "name": "variants_20_last",
+          "stats": {
+            "p50": 14685.75,
+            "p95": 16432.333333333336,
+            "p99": 16939.698333333334,
+            "mean": 14870.612499999994
+          },
+          "opsPerSecond": 67246
+        },
+        {
+          "name": "fragments_5_half",
+          "stats": {
+            "p50": 4554.166666666666,
+            "p95": 6713.033333333333,
+            "p99": 8324.501666666667,
+            "mean": 4904.769444444444
+          },
+          "opsPerSecond": 203883
+        },
+        {
+          "name": "fragments_20_all",
+          "stats": {
+            "p50": 15933.833333333334,
+            "p95": 17412.13333333333,
+            "p99": 18344.11666666667,
+            "mean": 16139.640277777778
+          },
+          "opsPerSecond": 61959
+        },
+        {
+          "name": "mixed_20_20",
+          "stats": {
+            "p50": 31045.083333333336,
+            "p95": 37391.70833333333,
+            "p99": 40399.72833333333,
+            "mean": 32238.623611111117
+          },
+          "opsPerSecond": 31018
+        },
+        {
+          "name": "mixed_with_items",
+          "stats": {
+            "p50": 6100.833333333334,
+            "p95": 7296.283333333333,
+            "p99": 7821.723333333333,
+            "mean": 6266.2416666666695
+          },
+          "opsPerSecond": 159585
+        }
+      ]
+    },
+    {
+      "suite": "scenario-runner",
+      "unit": "ns/op",
+      "generatedAt": "2026-02-18T16:19:03.835Z",
+      "metadata": {
+        "scenario": "bundles/bundle-rantamuta/tests/scenarios/predicate-bench.scenario",
+        "warmupSamples": 3,
+        "measuredSamples": 12
+      },
+      "cases": [
+        {
+          "name": "scenario_plain_output",
+          "stats": {
+            "p50": 572589350,
+            "p95": 608792435,
+            "p99": 620974407,
+            "mean": 575781691.6666666
+          },
+          "opsPerSecond": 1
+        },
+        {
+          "name": "scenario_json_output",
+          "stats": {
+            "p50": 618510200,
+            "p95": 672334200,
+            "p99": 674374040,
+            "mean": 625448183.3333334
+          },
+          "opsPerSecond": 1
+        }
+      ]
+    }
+  ]
+}
