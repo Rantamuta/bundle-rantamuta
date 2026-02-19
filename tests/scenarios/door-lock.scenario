@@ -1,3 +1,11 @@
-# Locked door baseline in test area.
+# Locked door lifecycle in test area:
+# - baseline lock blocks movement
+# - open button unlocks + opens
+# - close button closes + locks again
 room: test:door
+command: go north
+command: push north open button
+command: go north
+command: go south
+command: push north close button
 command: go north

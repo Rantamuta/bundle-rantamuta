@@ -8,6 +8,9 @@
   exits:
     - roomId: test:northdoor
       direction: north
+  items:
+    - id: test:northOpenButton
+    - id: test:northCloseButton
 
 - id: northdoor
   title: "North Door Room"

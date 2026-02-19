@@ -35,3 +35,47 @@
     permissions:
       verbs:
         take: "You cannot take the chest. It is extremely heavy."
+
+- id: northOpenButton
+  name: "north open button"
+  roomDesc: "A labeled button marked OPEN protrudes from the wall."
+  description: "A sturdy brass button labeled OPEN for the north door."
+  keywords: [ "north", "open", "button" ]
+  type: "OBJECT"
+  script: doorControlButton
+  metadata:
+    pushable: true
+    mutationInstruction:
+      type: openDoor
+      direction: north
+    doorContext:
+      fromRoomRef: test:door
+      roomRef: test:northdoor
+    expectedDoorState:
+      closed: false
+      locked: false
+    roomMessages:
+      currentRoom: "The north door opens."
+      otherRoom: "The south door opens."
+
+- id: northCloseButton
+  name: "north close button"
+  roomDesc: "A second button marked CLOSE sits beside the first."
+  description: "A heavy iron button labeled CLOSE for the north door."
+  keywords: [ "north", "close", "button" ]
+  type: "OBJECT"
+  script: doorControlButton
+  metadata:
+    pushable: true
+    mutationInstruction:
+      type: closeAndLockDoor
+      direction: north
+    doorContext:
+      fromRoomRef: test:door
+      roomRef: test:northdoor
+    expectedDoorState:
+      closed: true
+      locked: true
+    roomMessages:
+      currentRoom: "The north door closes."
+      otherRoom: "The south door closes."

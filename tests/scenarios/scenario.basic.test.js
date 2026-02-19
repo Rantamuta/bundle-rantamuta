@@ -180,14 +180,21 @@ test('scenario runner canonicalizes n to go north', () => {
   assert.match(result.stdout, /Lab North Walk/);
 });
 
-test('scenario runner door-lock scenario blocks go north on locked door', () => {
+test('scenario runner door-lock scenario validates open travel and re-locked block', () => {
   const result = runScenario([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/door-lock.scenario',
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /push north open button/);
+  assert.match(result.stdout, /You push the north open button\./);
+  assert.match(result.stdout, /The north door opens\./);
+  assert.match(result.stdout, /North Door Room/);
+  assert.match(result.stdout, /push north close button/);
+  assert.match(result.stdout, /You push the north close button\./);
+  assert.match(result.stdout, /The north door closes\./);
   assert.match(result.stdout, /go north/);
-  assert.match(result.stdout, /The way is locked\./);
+  assert.ok((result.stdout.match(/The way is locked\./g) || []).length >= 2);
 });
 
 test('scenario runner canonicalizes x <thing> to look <thing>', () => {
