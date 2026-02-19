@@ -186,15 +186,29 @@ test('scenario runner door-lock scenario validates open travel and re-locked blo
   ]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /The north door is shut and locked\./);
   assert.match(result.stdout, /push north open button/);
   assert.match(result.stdout, /You push the north open button\./);
   assert.match(result.stdout, /The north door opens\./);
+  assert.match(result.stdout, /The south doorway stands open from this side as well\./);
   assert.match(result.stdout, /North Door Room/);
   assert.match(result.stdout, /push north close button/);
   assert.match(result.stdout, /You push the north close button\./);
   assert.match(result.stdout, /The north door closes\./);
+  assert.match(result.stdout, /The north door is shut and locked\./);
   assert.match(result.stdout, /go north/);
   assert.ok((result.stdout.match(/The way is locked\./g) || []).length >= 2);
+});
+
+test('scenario runner shows asymmetry note in north room when south->north door is closed', () => {
+  const result = runScenario([
+    '--room', 'test:northdoor',
+    '--command', 'look',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /North Door Room/);
+  assert.match(result.stdout, /The south doorway still looks push-through from here, even while the lock holds from the other side\./);
 });
 
 test('scenario runner canonicalizes x <thing> to look <thing>', () => {

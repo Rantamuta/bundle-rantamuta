@@ -3,9 +3,11 @@
 # - open button unlocks + opens
 # - close button closes + locks again
 room: test:door
+command: look
 command: go north
 command: push north open button
 command: go north
 command: go south
 command: push north close button
+command: look
 command: go north

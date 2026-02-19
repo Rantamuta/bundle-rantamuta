@@ -13,6 +13,19 @@ const CHEST_REF = 'test:labChest';
 const APPLE_REF = 'test:labApple';
 
 module.exports = {
+  is_north_door_open: ({ q, context }) => {
+    const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
+    if (roomRef.endsWith(':door')) {
+      return q.outboundDoorOpen('north');
+    }
+
+    if (roomRef.endsWith(':northdoor')) {
+      return q.inboundDoorOpen('south');
+    }
+
+    return false;
+  },
+
   bench_always_true: () => true,
   bench_always_false: () => false,
 
@@ -56,4 +69,3 @@ module.exports = {
   bench_fragment_d: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentD'),
   bench_fragment_e: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentE'),
 };
-

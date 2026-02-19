@@ -253,7 +253,9 @@ describe('bundle-rantamuta predicate runtime', function () {
             && q.actorHasItem('query:key')
             && q.actorHasEffect('blessed')
             && q.actorQuestActive('query:questA')
-            && q.actorQuestCompleted('query:questB');
+            && q.actorQuestCompleted('query:questB')
+            && q.outboundDoorOpen('north')
+            && q.inboundDoorOpen('south');
         },
         nullActorChecks: ({ q }) => {
           return !q.actorHasItem('query:key')
@@ -284,6 +286,16 @@ describe('bundle-rantamuta predicate runtime', function () {
         { entityReference: 'query:coin' },
         basin,
       ],
+      exits: [
+        { direction: 'north', roomId: 'query:hall' },
+        { direction: 'south', roomId: 'query:ante' },
+      ],
+      getDoor(fromRoom) {
+        if (fromRoom && fromRoom.entityReference === 'query:ante') {
+          return { closed: false, locked: false };
+        }
+        return null;
+      },
       area: {
         bundle: 'bundle-test',
         name: 'query',
@@ -302,7 +314,29 @@ describe('bundle-rantamuta predicate runtime', function () {
 
     const world = {
       RoomManager: {
-        getRoom: (roomRef) => roomRef === 'query:crypt' ? room : null,
+        getRoom: (roomRef) => {
+          if (roomRef === 'query:crypt') {
+            return room;
+          }
+
+          if (roomRef === 'query:hall') {
+            return {
+              entityReference: 'query:hall',
+              getDoor(fromRoom) {
+                if (fromRoom && fromRoom.entityReference === 'query:crypt') {
+                  return { closed: false, locked: false };
+                }
+                return null;
+              },
+            };
+          }
+
+          if (roomRef === 'query:ante') {
+            return { entityReference: 'query:ante' };
+          }
+
+          return null;
+        },
       },
       AreaManager: {
         getAreaByReference: (areaRef) => areaRef === 'query' ? room.area : null,

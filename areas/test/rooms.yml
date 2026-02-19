@@ -5,6 +5,12 @@
 - id: door
   title: "Door Test Room"
   description: "A harness room for validating locked and closed door behavior."
+  metadata:
+    descriptionFragments:
+      - when: is_north_door_open
+        text: "The north door stands open."
+      - whenNot: is_north_door_open
+        text: "The north door is shut and locked."
   exits:
     - roomId: test:northdoor
       direction: north
@@ -15,6 +21,12 @@
 - id: northdoor
   title: "North Door Room"
   description: "A room north of the door harness with a locked default door."
+  metadata:
+    descriptionFragments:
+      - when: is_north_door_open
+        text: "The south doorway stands open from this side as well."
+      - whenNot: is_north_door_open
+        text: "The south doorway still looks push-through from here, even while the lock holds from the other side."
   exits:
     - roomId: test:door
       direction: south
