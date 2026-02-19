@@ -49,8 +49,8 @@
       type: openDoor
       direction: north
     doorContext:
-      fromRoomRef: test:door
-      roomRef: test:northdoor
+      fromRoomRef: test:doorRoom
+      roomRef: test:northDoorRoom
     expectedDoorState:
       closed: false
       locked: false
@@ -71,8 +71,8 @@
       type: closeAndLockDoor
       direction: north
     doorContext:
-      fromRoomRef: test:door
-      roomRef: test:northdoor
+      fromRoomRef: test:doorRoom
+      roomRef: test:northDoorRoom
     expectedDoorState:
       closed: true
       locked: true

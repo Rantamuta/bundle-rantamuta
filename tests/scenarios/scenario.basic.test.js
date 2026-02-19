@@ -202,7 +202,7 @@ test('scenario runner door-lock scenario validates open travel and re-locked blo
 
 test('scenario runner shows asymmetry note in north room when south->north door is closed', () => {
   const result = runScenario([
-    '--room', 'test:northdoor',
+    '--room', 'test:northDoorRoom',
     '--command', 'look',
   ]);
 

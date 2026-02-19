@@ -15,11 +15,11 @@ const APPLE_REF = 'test:labApple';
 module.exports = {
   is_north_door_open: ({ q, context }) => {
     const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
-    if (roomRef.endsWith(':door')) {
+    if (roomRef.endsWith(':doorroom')) {
       return q.outboundDoorOpen('north');
     }
 
-    if (roomRef.endsWith(':northdoor')) {
+    if (roomRef.endsWith(':northdoorroom')) {
       return q.inboundDoorOpen('south');
     }
 
