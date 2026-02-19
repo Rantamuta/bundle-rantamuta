@@ -2,6 +2,24 @@
   title: "Test Room"
   description: "Deterministic room used by automated scenario tests."
 
+- id: door
+  title: "Door Test Room"
+  description: "A harness room for validating locked and closed door behavior."
+  exits:
+    - roomId: test:northdoor
+      direction: north
+
+- id: northdoor
+  title: "North Door Room"
+  description: "A room north of the door harness with a locked default door."
+  exits:
+    - roomId: test:door
+      direction: south
+  doors:
+    test:door:
+      closed: true
+      locked: true
+
 - id: lab
   title: "Test Lab"
   description: "A practice room for manually testing item pickup and placement."

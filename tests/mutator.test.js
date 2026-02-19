@@ -58,6 +58,37 @@ function createPlayerInRoom(room) {
   return player;
 }
 
+function createDoorDestinationRoom(entityReference, fromRoomRef, doorState = { locked: false, closed: true }) {
+  const doors = new Map([[fromRoomRef, { ...doorState }]]);
+
+  return {
+    entityReference,
+    getDoor(fromRoom) {
+      if (!fromRoom || typeof fromRoom !== 'object' || typeof fromRoom.entityReference !== 'string') {
+        return null;
+      }
+
+      return doors.get(fromRoom.entityReference) || null;
+    },
+    openDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.closed = false;
+    },
+    unlockDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.locked = false;
+    },
+  };
+}
+
 describe('bundle-rantamuta mutator', function () {
   it('applies transferItem instruction and returns inverse operation', function () {
     const item = { id: 'test:sword' };
@@ -316,4 +347,160 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(start.players.has(player), true);
     assert.strictEqual(destination.players.has(player), false);
   });
+
+  it('applies openDoor instruction by roomRef and returns inverse operation', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: true,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'openDoor',
+      actor,
+      roomRef: destination.entityReference,
+    });
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, false);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+
+    undo();
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, true);
+  });
+
+  it('applies openDoor instruction by direction and returns inverse operation', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+      getExits() {
+        return [{ direction: 'north', roomId: 'test:destination' }];
+      },
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: false,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'openDoor',
+      actor,
+      direction: 'north',
+    });
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, false);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+
+    undo();
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+  });
+
+  it('warns and noops when openDoor roomRef is unavailable', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom() {
+          return null;
+        },
+      },
+    };
+
+    const originalWarn = ranvier.Logger.warn;
+    /** @type {string[]} */
+    const warnings = [];
+    ranvier.Logger.warn = (message) => {
+      warnings.push(String(message));
+    };
+
+    try {
+      assert.doesNotThrow(() => {
+        const undo = applyMutationInstruction(state, {
+          type: 'openDoor',
+          actor,
+          roomRef: 'test:missing',
+        });
+        undo();
+      });
+    } finally {
+      ranvier.Logger.warn = originalWarn;
+    }
+
+    assert.ok(warnings.some(message => message.includes('openDoor: roomRef "test:missing" was not found')));
+  });
+
+  it('noops openDoor when actor is absent', function () {
+    const state = {
+      RoomManager: {
+        getRoom() {
+          return null;
+        },
+      },
+    };
+
+    assert.doesNotThrow(() => {
+      const undo = applyMutationInstruction(state, {
+        type: 'openDoor',
+        roomRef: 'test:any',
+      });
+      undo();
+    });
+  });
+
+  it('rolls back openDoor when a later operation fails', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: false,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          {
+            type: 'openDoor',
+            actor,
+            roomRef: destination.entityReference,
+          },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+  });
+
 });

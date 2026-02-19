@@ -1,0 +1,3 @@
+# Locked door baseline in test area.
+room: test:door
+command: go north

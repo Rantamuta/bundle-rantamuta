@@ -180,6 +180,16 @@ test('scenario runner canonicalizes n to go north', () => {
   assert.match(result.stdout, /Lab North Walk/);
 });
 
+test('scenario runner door-lock scenario blocks go north on locked door', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/door-lock.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /go north/);
+  assert.match(result.stdout, /The way is locked\./);
+});
+
 test('scenario runner canonicalizes x <thing> to look <thing>', () => {
   const result = runScenario([
     '--room', 'test:lab',
