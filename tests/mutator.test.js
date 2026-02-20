@@ -552,6 +552,72 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, false);
   });
 
+  it('applies canonical doorMutation open instruction by roomRef and returns inverse operation', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: true,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'doorMutation',
+      mutation: 'open',
+      actor,
+      roomRef: destination.entityReference,
+    });
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, false);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+
+    undo();
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, true);
+  });
+
+  it('applies canonical doorMutation unlock instruction by roomRef and returns inverse operation', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: true,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'doorMutation',
+      mutation: 'unlock',
+      actor,
+      roomRef: destination.entityReference,
+    });
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+
+    undo();
+
+    assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+    assert.strictEqual(destination.getDoor(fromRoom).locked, true);
+  });
+
   it('applies closeAndLockDoor instruction by direction and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
