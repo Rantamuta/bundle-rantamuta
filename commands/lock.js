@@ -2,6 +2,7 @@
 'use strict';
 
 const {
+  createDoorCommandEntityResolutionRules,
   normalizeRef,
   displayName,
   resolveDoorActionContext,
@@ -64,21 +65,7 @@ module.exports = {
   aliases: [],
   metadata: {
     entityResolution: {
-      rules: {
-        direct: {
-          scopeProfile: {
-            direct: ['room.exits', 'room.items'],
-          },
-        },
-        directIndirect: {
-          acceptedRelations: ['with'],
-          allowUnresolvedIndirect: true,
-          scopeProfile: {
-            direct: ['room.exits', 'room.items'],
-            indirect: ['player.inventory'],
-          },
-        },
-      },
+      rules: createDoorCommandEntityResolutionRules(),
     },
     errorMessages: {
       FORM_MISSING_DIRECT: 'Lock what?',
