@@ -1667,6 +1667,334 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('suppresses command success render when planDirect requests renderPolicy.replaceSuccess', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-replace-success-direct-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        planDirect() {
+          return {
+            renderPolicy: {
+              replaceSuccess: true,
+            },
+            render: {
+              messages: ['plan-direct-line'],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      const sequence = messages.filter(message =>
+        message === 'target-line' ||
+        message === 'plan-direct-line'
+      );
+      assert.deepStrictEqual(sequence, ['plan-direct-line']);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('suppresses command success render once when both planDirect and planIndirect request replacement', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const apple = {
+        uuid: 'apple-replace-both-1',
+        name: 'apple',
+        keywords: ['apple'],
+        planDirect() {
+          return {
+            renderPolicy: {
+              replaceSuccess: true,
+            },
+            render: {
+              messages: ['direct-plan-line'],
+            },
+          };
+        },
+      };
+      const chest = {
+        uuid: 'chest-replace-both-1',
+        name: 'chest',
+        keywords: ['chest'],
+        type: 'CONTAINER',
+        maxItems: 3,
+        inventory: new Map(),
+        addItem() { },
+        removeItem() { },
+        planIndirect() {
+          return {
+            renderPolicy: {
+              replaceSuccess: true,
+            },
+            render: {
+              messages: ['indirect-plan-line'],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in', 'into'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple into chest');
+
+      const sequence = messages.filter(message =>
+        message === 'target-line' ||
+        message === 'direct-plan-line' ||
+        message === 'indirect-plan-line'
+      );
+      assert.deepStrictEqual(sequence, [
+        'direct-plan-line',
+        'indirect-plan-line',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('warns and falls back to command success render when replaceSuccess is requested without plan render messages', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerWarn = ranvier.Logger.warn;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const warnings = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.warn = message => {
+      warnings.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-replace-empty-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        planDirect() {
+          return {
+            renderPolicy: {
+              replaceSuccess: true,
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.ok(messages.includes('target-line'));
+      assert.ok(warnings.some(message => message.includes('RENDER_POLICY_REPLACE_EMPTY')));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.warn = originalLoggerWarn;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('treats explicit empty-string plan render messages as valid replacement output', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerWarn = ranvier.Logger.warn;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const warnings = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.warn = message => {
+      warnings.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const relic = {
+        uuid: 'relic-replace-empty-string-1',
+        name: 'sealed relic',
+        keywords: ['sealed', 'relic'],
+        planDirect() {
+          return {
+            renderPolicy: {
+              replaceSuccess: true,
+            },
+            render: {
+              messages: [''],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map([[relic.uuid, relic]]),
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              direct: {
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'inspect' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'inspect relic');
+
+      assert.ok(messages.includes(''));
+      assert.ok(!messages.includes('target-line'));
+      assert.ok(!warnings.some(message => message.includes('RENDER_POLICY_REPLACE_EMPTY')));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.warn = originalLoggerWarn;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('ignores invalid planDirect plan.operations and continues with render + base commit plan', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1734,6 +2062,77 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.deepStrictEqual(committedPlan, { operations: [{ type: 'noop' }] });
       const ordered = messages.filter(line => line === 'target-line' || line === 'plan-direct-render-ok');
       assert.deepStrictEqual(ordered, ['target-line', 'plan-direct-render-ok']);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      ranvier.Logger.error = originalLoggerError;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('ignores bubble renderPolicy.replaceSuccess and keeps command success render', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const originalLoggerError = ranvier.Logger.error;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    const errors = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    ranvier.Logger.error = message => {
+      errors.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+          reactions: [
+            () => ({
+              renderPolicy: {
+                replaceSuccess: true,
+              },
+              render: {
+                messages: ['bubble-line'],
+              },
+            }),
+          ],
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'sing' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'sing');
+
+      const sequence = messages.filter(message =>
+        message === 'target-line' ||
+        message === 'bubble-line'
+      );
+      assert.deepStrictEqual(sequence, ['target-line', 'bubble-line']);
+      assert.ok(errors.some(message => message.includes('renderPolicy.replaceSuccess')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
