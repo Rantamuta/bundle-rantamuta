@@ -466,7 +466,7 @@ describe('bundle-rantamuta mutator', function () {
       ranvier.Logger.warn = originalWarn;
     }
 
-    assert.ok(warnings.some(message => message.includes('openDoor: roomRef "test:missing" was not found')));
+    assert.ok(warnings.some(message => message.includes('openDoor: destination_missing')));
   });
 
   it('noops openDoor when actor is absent', function () {
@@ -764,7 +764,7 @@ describe('bundle-rantamuta mutator', function () {
       ranvier.Logger.warn = originalWarn;
     }
 
-    assert.ok(warnings.some(message => message.includes('closeAndLockDoor: roomRef "test:missing" was not found')));
+    assert.ok(warnings.some(message => message.includes('closeAndLockDoor: destination_missing')));
   });
 
   it('noops closeAndLockDoor when actor is absent', function () {
