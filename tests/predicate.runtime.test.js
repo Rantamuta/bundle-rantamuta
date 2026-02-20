@@ -550,6 +550,44 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
+  it('returns false and warns once for unresolvable door query input', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'querywarn',
+      `module.exports = {
+        unresolvedDoorQueries: ({ q }) => {
+          return !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('', 'querywarn:hall')
+            && !q.isDoorLockedBetween('querywarn:crypt', '');
+        },
+      };`
+    );
+
+    const warnings = [];
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: message => warnings.push(String(message)),
+        error: () => {},
+      },
+    });
+
+    const context = makeRenderContext('querywarn', {
+      source: 'room.fragment',
+    });
+
+    assert.strictEqual(runtime.evaluate('unresolvedDoorQueries', context), true);
+    assert.strictEqual(runtime.evaluate('unresolvedDoorQueries', context), true);
+
+    const queryWarnings = warnings.filter(line => line.includes('Predicate query q.isDoor'));
+    assert.strictEqual(queryWarnings.length, 4);
+  });
+
   it('ignores invalid registry exports and returns false', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
