@@ -63,6 +63,7 @@ function createDoorDestinationRoom(entityReference, fromRoomRef, doorState = { l
 
   return {
     entityReference,
+    doors,
     getDoor(fromRoom) {
       if (!fromRoom || typeof fromRoom !== 'object' || typeof fromRoom.entityReference !== 'string') {
         return null;
