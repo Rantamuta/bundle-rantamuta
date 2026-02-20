@@ -181,4 +181,46 @@ describe('virtual-door-service pairing scan', function () {
     assert.strictEqual(result.pairByRoomRefs.size, 0);
     assert.ok(warnings.some(message => message.includes('conflicting lockedBy values')));
   });
+
+  it('reconciles disagreement and immediately reflects effective state to both directional records', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: false, locked: false } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: false, locked: true } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+
+    assert.ok(pair);
+    assert.deepStrictEqual(pair.state, { closed: true, locked: true });
+    assert.deepStrictEqual(roomA.doors.get('test:b'), { closed: true, locked: true });
+    assert.deepStrictEqual(roomB.doors.get('test:a'), { closed: true, locked: true });
+  });
+
+  it('reconciles closed disagreement without introducing lock', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: false } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: false, locked: false } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+
+    assert.ok(pair);
+    assert.deepStrictEqual(pair.state, { closed: true, locked: false });
+    assert.deepStrictEqual(roomA.doors.get('test:b'), { closed: true, locked: false });
+    assert.deepStrictEqual(roomB.doors.get('test:a'), { closed: true, locked: false });
+  });
 });
