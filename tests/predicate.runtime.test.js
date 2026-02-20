@@ -367,6 +367,97 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
+  it('uses virtual-door effective state for virtualized room pairs', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'virtual',
+      `module.exports = {
+        virtualDoorChecks: ({ q }) => {
+          return q.isDoorClosed('north')
+            && q.isDoorLocked('north')
+            && q.isDoorClosedBetween('virtual:a', 'virtual:b')
+            && q.isDoorLockedBetween('virtual:a', 'virtual:b');
+        },
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'virtual',
+      metadata: { flags: {} },
+    };
+
+    const roomA = {
+      entityReference: 'virtual:a',
+      area,
+      exits: [{ direction: 'north', roomId: 'virtual:b' }],
+      doors: new Map([
+        ['virtual:b', { closed: true, locked: true }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const roomB = {
+      entityReference: 'virtual:b',
+      area,
+      exits: [{ direction: 'south', roomId: 'virtual:a' }],
+      doors: new Map([
+        // Deliberately "open" on this side so directional-only outbound reads would be false.
+        ['virtual:a', { closed: false, locked: false }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const world = {
+      RoomManager: {
+        rooms: new Map([
+          [roomA.entityReference, roomA],
+          [roomB.entityReference, roomB],
+        ]),
+        getRoom(roomRef) {
+          return this.rooms.get(roomRef) || null;
+        },
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'virtual' ? area : null,
+        getArea: name => name === 'virtual' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('virtualDoorChecks', {
+      actor: null,
+      room: roomA,
+      area,
+      world,
+      source: 'room.fragment',
+    }), true);
+  });
+
   it('ignores invalid registry exports and returns false', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
