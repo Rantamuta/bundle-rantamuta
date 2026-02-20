@@ -1,24 +1,63 @@
 // @ts-check
 'use strict';
 
+const {
+  normalizeRef,
+  displayName,
+  resolveDoorActionContext,
+  selectExplicitKeyCandidate,
+  selectAutoKeyCandidate,
+} = require('../lib/doors/door-command-helper');
+
 /**
  * @param {string} code
  * @param {Record<string, *>} [details]
- * @returns {{ ok: false, error: { code: string, details?: Record<string, *> } }}
+ * @param {string} [message]
+ * @returns {{ ok: false, error: { code: string, details?: Record<string, *>, message?: string } }}
  */
-function fail(code, details) {
+function fail(code, details, message) {
   return {
     ok: false,
-    error: { code, details },
+    error: { code, details, message },
   };
 }
 
 /**
- * @param {*} value
- * @returns {string}
+ * @param {*} player
+ * @param {*} resolution
+ * @param {*} door
+ * @returns {{ key: * | null, explicit: boolean, message?: string }}
  */
-function normalizeDirection(value) {
-  return String(value || '').trim().toLowerCase();
+function resolveUnlockKey(player, resolution, door) {
+  const lockedBy = normalizeRef(door && door.lockedBy);
+  const explicit = resolution && resolution.ruleKey === 'directIndirect';
+  if (!lockedBy) {
+    return { key: null, explicit };
+  }
+
+  if (explicit) {
+    const selected = selectExplicitKeyCandidate(player, resolution.indirectSpan || [], lockedBy);
+    if (!selected.selected) {
+      const keyPhrase = Array.isArray(resolution.indirectSpan)
+        ? resolution.indirectSpan.join(' ').trim()
+        : '';
+      const keyLabel = keyPhrase || 'that key';
+      return {
+        key: null,
+        explicit: true,
+        message: `You try the ${keyLabel}, but it does not fit the lock.`,
+      };
+    }
+
+    return { key: selected.selected, explicit: true };
+  }
+
+  const auto = selectAutoKeyCandidate(player, lockedBy);
+  if (!auto) {
+    return { key: null, explicit: false };
+  }
+
+  return { key: auto, explicit: false };
 }
 
 module.exports = {
@@ -33,6 +72,7 @@ module.exports = {
         },
         directIndirect: {
           acceptedRelations: ['with'],
+          allowUnresolvedIndirect: true,
           scopeProfile: {
             direct: ['room.exits', 'room.items'],
             indirect: ['player.inventory'],
@@ -54,12 +94,13 @@ module.exports = {
       },
       TARGET_NOT_DOOR: 'You cannot do that with that target.',
       DOOR_NO_ROOM: 'You are nowhere.',
+      GO_DESTINATION_MISSING: 'You can\'t go that way.',
+      DOOR_ALREADY_UNLOCKED: 'The door is already unlocked.',
+      DOOR_CANNOT_UNLOCK: 'You cannot unlock the door.',
     },
   },
   command: state => (args, player, alias, context) => {
-    void state;
     void args;
-    void player;
     void alias;
 
     const resolution = context && context.entityResolution;
@@ -71,29 +112,60 @@ module.exports = {
       return fail('TARGET_NOT_FOUND', { role: 'direct' });
     }
 
-    if (resolution.ruleKey === 'directIndirect' && !resolution.indirectTarget) {
-      return fail('TARGET_NOT_FOUND', { role: 'indirect' });
+    const doorContext = resolveDoorActionContext(state, player, resolution);
+    if (doorContext.ok === false) {
+      return fail(doorContext.code);
     }
 
-    const currentRoom = player && player.room && typeof player.room === 'object'
-      ? player.room
-      : null;
-    if (!currentRoom) {
-      return fail('DOOR_NO_ROOM');
+    if (doorContext.door.locked !== true) {
+      return fail('DOOR_ALREADY_UNLOCKED', undefined, `The ${doorContext.doorLabel} is already unlocked.`);
     }
 
-    const roomRef = resolution.directTarget && typeof resolution.directTarget.roomId === 'string'
-      ? resolution.directTarget.roomId.trim()
-      : '';
-    if (!roomRef) {
-      return fail('TARGET_NOT_DOOR');
+    const keyResolution = resolveUnlockKey(player, resolution, doorContext.door);
+    if (normalizeRef(doorContext.door.lockedBy) && !keyResolution.key) {
+      if (keyResolution.explicit) {
+        return fail('DOOR_WRONG_KEY', undefined, keyResolution.message);
+      }
+
+      return fail('DOOR_CANNOT_UNLOCK', undefined, `You cannot unlock the ${doorContext.doorLabel}.`);
     }
 
-    const direction = normalizeDirection(resolution.directTarget && resolution.directTarget.direction);
-    const fromRoomRef = typeof currentRoom.entityReference === 'string'
-      ? currentRoom.entityReference
-      : undefined;
-    const doorLabel = direction ? `${direction} door` : 'door';
+    /** @type {Array<Record<string, *>>} */
+    const messages = [];
+    if (keyResolution.explicit && keyResolution.key) {
+      messages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:unlock} the {object.direct} with the {object.indirect}.',
+        audiencePolicy: 'self',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: doorContext.doorLabel,
+          indirect: displayName(keyResolution.key) || 'key',
+        },
+      });
+    } else {
+      messages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:unlock} the {object.direct}.',
+        audiencePolicy: 'self',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: doorContext.doorLabel,
+        },
+      });
+    }
+
+    messages.push({
+      type: 'broadcast',
+      audience: 'room',
+      targetSelector: 'roomByRef',
+      targetRoomRef: doorContext.roomRef,
+      message: `The ${doorContext.oppositeDoorLabel} unlocks with a click.`,
+    });
 
     return {
       ok: true,
@@ -103,26 +175,12 @@ module.exports = {
             type: 'doorMutation',
             mutation: 'unlock',
             actor: player,
-            fromRoomRef,
-            direction: direction || undefined,
-            roomRef,
+            direction: doorContext.direction,
           },
         ],
       },
       render: {
-        messages: [
-          {
-            type: 'semanticEvent',
-            template: '{actor.You} {verb:unlock} {object.direct}.',
-            audiencePolicy: 'self_and_others',
-            participants: {
-              actor: { selector: 'currentPlayer' },
-            },
-            objectText: {
-              direct: `the ${doorLabel}`,
-            },
-          },
-        ],
+        messages,
       },
     };
   },

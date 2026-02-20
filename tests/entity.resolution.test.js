@@ -142,6 +142,60 @@ describe('bundle-rantamuta entity-resolution', function () {
     assert.strictEqual(result.error.code, 'FORM_UNSUPPORTED_RELATION');
   });
 
+  it('allows unresolved indirect binding when rule opts in via allowUnresolvedIndirect', function () {
+    const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const command = makeCommand({
+      rules: {
+        directIndirect: {
+          acceptedRelations: ['with'],
+          allowUnresolvedIndirect: true,
+          scopeProfile: {
+            direct: ['player.inventory'],
+            indirect: ['player.inventory'],
+          },
+        },
+      },
+    });
+    const player = createPlayer({ inventoryItems: [sword] });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('unlock rusty sword with missing key'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.ruleKey, 'directIndirect');
+    assert.strictEqual(result.value.directTarget, sword);
+    assert.strictEqual(result.value.indirectTarget, undefined);
+    assert.strictEqual(result.value.indirectResolutionError.code, 'TARGET_NOT_FOUND');
+  });
+
+  it('keeps failing unresolved indirect binding when allowUnresolvedIndirect is not enabled', function () {
+    const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
+    const command = makeCommand({
+      rules: {
+        directIndirect: {
+          acceptedRelations: ['with'],
+          scopeProfile: {
+            direct: ['player.inventory'],
+            indirect: ['player.inventory'],
+          },
+        },
+      },
+    });
+    const player = createPlayer({ inventoryItems: [sword] });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('unlock rusty sword with missing key'));
+
+    assert.strictEqual(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.error.code, 'TARGET_NOT_FOUND');
+  });
+
   it('supports intransitive offramp with empty bindings', function () {
     const command = makeCommand({
       rules: {

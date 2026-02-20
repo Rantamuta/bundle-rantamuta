@@ -1,24 +1,19 @@
 // @ts-check
 'use strict';
 
+const { resolveDoorActionContext } = require('../lib/doors/door-command-helper');
+
 /**
  * @param {string} code
  * @param {Record<string, *>} [details]
- * @returns {{ ok: false, error: { code: string, details?: Record<string, *> } }}
+ * @param {string} [message]
+ * @returns {{ ok: false, error: { code: string, details?: Record<string, *>, message?: string } }}
  */
-function fail(code, details) {
+function fail(code, details, message) {
   return {
     ok: false,
-    error: { code, details },
+    error: { code, details, message },
   };
-}
-
-/**
- * @param {*} value
- * @returns {string}
- */
-function normalizeDirection(value) {
-  return String(value || '').trim().toLowerCase();
 }
 
 module.exports = {
@@ -43,12 +38,12 @@ module.exports = {
       },
       TARGET_NOT_DOOR: 'You cannot do that with that target.',
       DOOR_NO_ROOM: 'You are nowhere.',
+      GO_DESTINATION_MISSING: 'You can\'t go that way.',
+      DOOR_ALREADY_CLOSED: 'The door is already closed.',
     },
   },
   command: state => (args, player, alias, context) => {
-    void state;
     void args;
-    void player;
     void alias;
 
     const resolution = context && context.entityResolution;
@@ -60,25 +55,14 @@ module.exports = {
       return fail('TARGET_NOT_FOUND', { role: 'direct' });
     }
 
-    const currentRoom = player && player.room && typeof player.room === 'object'
-      ? player.room
-      : null;
-    if (!currentRoom) {
-      return fail('DOOR_NO_ROOM');
+    const doorContext = resolveDoorActionContext(state, player, resolution);
+    if (doorContext.ok === false) {
+      return fail(doorContext.code);
     }
 
-    const roomRef = resolution.directTarget && typeof resolution.directTarget.roomId === 'string'
-      ? resolution.directTarget.roomId.trim()
-      : '';
-    if (!roomRef) {
-      return fail('TARGET_NOT_DOOR');
+    if (doorContext.door.closed === true) {
+      return fail('DOOR_ALREADY_CLOSED', undefined, `The ${doorContext.doorLabel} is already closed.`);
     }
-
-    const direction = normalizeDirection(resolution.directTarget && resolution.directTarget.direction);
-    const fromRoomRef = typeof currentRoom.entityReference === 'string'
-      ? currentRoom.entityReference
-      : undefined;
-    const doorLabel = direction ? `${direction} door` : 'door';
 
     return {
       ok: true,
@@ -88,9 +72,7 @@ module.exports = {
             type: 'doorMutation',
             mutation: 'close',
             actor: player,
-            fromRoomRef,
-            direction: direction || undefined,
-            roomRef,
+            direction: doorContext.direction,
           },
         ],
       },
@@ -98,14 +80,21 @@ module.exports = {
         messages: [
           {
             type: 'semanticEvent',
-            template: '{actor.You} {verb:close} {object.direct}.',
-            audiencePolicy: 'self_and_others',
+            template: '{actor.You} {verb:close} the {object.direct}.',
+            audiencePolicy: 'self',
             participants: {
               actor: { selector: 'currentPlayer' },
             },
             objectText: {
-              direct: `the ${doorLabel}`,
+              direct: doorContext.doorLabel,
             },
+          },
+          {
+            type: 'broadcast',
+            audience: 'room',
+            targetSelector: 'roomByRef',
+            targetRoomRef: doorContext.roomRef,
+            message: `The ${doorContext.oppositeDoorLabel} closes.`,
           },
         ],
       },
