@@ -619,6 +619,83 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, true);
   });
 
+  it('warns and noops when canonical doorMutation target cannot be resolved', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom() {
+          return null;
+        },
+      },
+    };
+
+    const originalWarn = ranvier.Logger.warn;
+    /** @type {string[]} */
+    const warnings = [];
+    ranvier.Logger.warn = message => warnings.push(String(message));
+
+    try {
+      assert.doesNotThrow(() => {
+        const undo = applyMutationInstruction(state, {
+          type: 'doorMutation',
+          mutation: 'open',
+          actor,
+          roomRef: 'test:missing',
+        });
+        undo();
+      });
+    } finally {
+      ranvier.Logger.warn = originalWarn;
+    }
+
+    assert.ok(warnings.some(message => message.includes('doorMutation(open): destination_missing')));
+  });
+
+  it('treats idempotent canonical doorMutation success as no-op without warnings', function () {
+    const fromRoom = {
+      entityReference: 'test:start',
+    };
+    const destination = createDoorDestinationRoom('test:destination', fromRoom.entityReference, {
+      locked: false,
+      closed: true,
+    });
+    const actor = { room: fromRoom };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === destination.entityReference ? destination : null;
+        },
+      },
+    };
+
+    const originalWarn = ranvier.Logger.warn;
+    /** @type {string[]} */
+    const warnings = [];
+    ranvier.Logger.warn = message => warnings.push(String(message));
+
+    try {
+      const undo = applyMutationInstruction(state, {
+        type: 'doorMutation',
+        mutation: 'close',
+        actor,
+        roomRef: destination.entityReference,
+      });
+
+      assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+      assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+      undo();
+      assert.strictEqual(destination.getDoor(fromRoom).closed, true);
+      assert.strictEqual(destination.getDoor(fromRoom).locked, false);
+    } finally {
+      ranvier.Logger.warn = originalWarn;
+    }
+
+    assert.strictEqual(warnings.length, 0);
+  });
+
   it('applies closeAndLockDoor instruction by direction and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
