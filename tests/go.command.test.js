@@ -25,6 +25,7 @@ function createRoom(def = {}) {
 function createPlayer(def = {}) {
   return {
     room: def.room || null,
+    inventory: def.inventory || new Map(),
   };
 }
 
@@ -117,7 +118,7 @@ describe('bundle-rantamuta go command', function () {
     });
   });
 
-  it('returns GO_EXIT_CLOSED when destination door is closed', function () {
+  it('auto-opens closed unlocked doors and returns doorMutation+move plan', function () {
     const currentRoom = createRoom({ entityReference: 'test:current' });
     const destination = createRoom({
       entityReference: 'test:destination',
@@ -137,10 +138,65 @@ describe('bundle-rantamuta go command', function () {
       },
     });
 
-    assert.deepStrictEqual(result, {
-      ok: false,
-      error: { code: 'GO_EXIT_CLOSED', details: undefined },
+    assert.deepStrictEqual(result.plan.operations, [
+      {
+        type: 'doorMutation',
+        mutation: 'open',
+        actor: player,
+        fromRoomRef: currentRoom.entityReference,
+        direction: 'east',
+        roomRef: destination.entityReference,
+      },
+      {
+        type: 'movePlayer',
+        player,
+        toRoom: destination,
+        direction: 'east',
+      },
+    ]);
+  });
+
+  it('auto-unlocks and opens locked doors when actor carries matching key', function () {
+    const currentRoom = createRoom({ entityReference: 'test:current' });
+    const destination = createRoom({
+      entityReference: 'test:destination',
+      doors: new Map([[currentRoom.entityReference, { locked: true, closed: true, lockedBy: 'test:bronze_key' }]]),
     });
+    const execute = goCommand.command({
+      RoomManager: {
+        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+      },
+    });
+    const player = createPlayer({
+      room: currentRoom,
+      inventory: new Map([
+        ['k1', { entityReference: 'test:bronze_key' }],
+      ]),
+    });
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'direct',
+        directTarget: { direction: 'east', roomId: destination.entityReference },
+      },
+    });
+
+    assert.deepStrictEqual(result.plan.operations, [
+      {
+        type: 'doorMutation',
+        mutation: 'unlockAndOpen',
+        actor: player,
+        fromRoomRef: currentRoom.entityReference,
+        direction: 'east',
+        roomRef: destination.entityReference,
+      },
+      {
+        type: 'movePlayer',
+        player,
+        toRoom: destination,
+        direction: 'east',
+      },
+    ]);
   });
 
   it('returns movePlayer plan and destination room render lines on success', function () {

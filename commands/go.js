@@ -23,6 +23,59 @@ function normalizeDirection(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeRef(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * @param {*} collection
+ * @returns {Array<*>}
+ */
+function valuesAsArray(collection) {
+  if (!collection) {
+    return [];
+  }
+
+  if (Array.isArray(collection)) {
+    return collection;
+  }
+
+  if (typeof collection.values === 'function') {
+    return Array.from(collection.values());
+  }
+
+  if (typeof collection[Symbol.iterator] === 'function') {
+    return Array.from(collection);
+  }
+
+  return [];
+}
+
+/**
+ * @param {*} player
+ * @param {*} door
+ * @returns {boolean}
+ */
+function hasMatchingDoorKey(player, door) {
+  const lockedBy = normalizeRef(door && door.lockedBy);
+  if (!lockedBy) {
+    return false;
+  }
+
+  for (const item of valuesAsArray(player && player.inventory)) {
+    const keyRef = normalizeRef(item && (item.entityReference || item.ref || item.id));
+    if (keyRef && keyRef === lockedBy) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 module.exports = {
   metadata: {
     entityResolution: {
@@ -74,24 +127,44 @@ module.exports = {
     const door = typeof destination.getDoor === 'function'
       ? destination.getDoor(currentRoom)
       : null;
+
+    /** @type {Array<Record<string, *>>} */
+    const operations = [];
     if (door && door.locked) {
-      return fail('GO_EXIT_LOCKED');
+      if (!hasMatchingDoorKey(player, door)) {
+        return fail('GO_EXIT_LOCKED');
+      }
+
+      operations.push({
+        type: 'doorMutation',
+        mutation: 'unlockAndOpen',
+        actor: player,
+        fromRoomRef: currentRoom.entityReference,
+        direction,
+        roomRef: destination.entityReference,
+      });
+    } else if (door && door.closed) {
+      operations.push({
+        type: 'doorMutation',
+        mutation: 'open',
+        actor: player,
+        fromRoomRef: currentRoom.entityReference,
+        direction,
+        roomRef: destination.entityReference,
+      });
     }
-    if (door && door.closed) {
-      return fail('GO_EXIT_CLOSED');
-    }
+
+    operations.push({
+      type: 'movePlayer',
+      player,
+      toRoom: destination,
+      direction,
+    });
 
     return {
       ok: true,
       plan: {
-        operations: [
-          {
-            type: 'movePlayer',
-            player,
-            toRoom: destination,
-            direction,
-          },
-        ],
+        operations,
       },
       render: {
         messages: buildRoomViewLines(destination, {

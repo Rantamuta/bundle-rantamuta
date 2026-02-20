@@ -4224,7 +4224,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('renders go door-state failures for locked and closed exits', async function () {
+  it('renders go locked failure and auto-opens closed exits', async function () {
     const goDef = require('../commands/go');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -4295,7 +4295,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'go south');
 
       assert.ok(messages.includes('The way is locked.'));
-      assert.ok(messages.includes('The way is closed.'));
+      assert.ok(!messages.includes('The way is closed.'));
+      assert.ok(messages.includes('<bold>Closed</bold>'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
