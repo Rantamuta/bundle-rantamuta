@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { Logger } = require('ranvier');
 
 const { _scanVirtualDoorPairs } = require('../lib/doors/virtual-door-service');
 
@@ -24,6 +25,19 @@ function createState(rooms) {
 }
 
 describe('virtual-door-service pairing scan', function () {
+  let originalWarn;
+  let warnings;
+
+  beforeEach(function () {
+    warnings = [];
+    originalWarn = Logger.warn;
+    Logger.warn = message => warnings.push(String(message));
+  });
+
+  afterEach(function () {
+    Logger.warn = originalWarn;
+  });
+
   it('finds an eligible reciprocal pair', function () {
     const roomA = createRoom({
       entityReference: 'test:a',
@@ -42,6 +56,8 @@ describe('virtual-door-service pairing scan', function () {
     assert.strictEqual(result.pairByEdgeKey.size, 2);
     assert.ok(result.pairByEdgeKey.has('test:a->test:b'));
     assert.ok(result.pairByEdgeKey.has('test:b->test:a'));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+    assert.strictEqual(pair.lockedBy, null);
   });
 
   it('skips pairing when reciprocal exit is missing', function () {
@@ -109,5 +125,60 @@ describe('virtual-door-service pairing scan', function () {
 
     const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
     assert.strictEqual(result.pairByRoomRefs.size, 0);
+  });
+
+  it('resolves lockedBy when both sides define the same key', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true, lockedBy: 'test:goldKey' } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true, lockedBy: 'test:goldKey' } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+
+    assert.ok(pair);
+    assert.strictEqual(pair.lockedBy, 'test:goldkey');
+  });
+
+  it('resolves lockedBy when only one side defines a key', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true, lockedBy: 'test:goldKey' } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+
+    assert.ok(pair);
+    assert.strictEqual(pair.lockedBy, 'test:goldkey');
+  });
+
+  it('disables virtualization and warns when lockedBy conflicts', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true, lockedBy: 'test:goldKey' } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true, lockedBy: 'test:ironKey' } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    assert.strictEqual(result.pairByRoomRefs.size, 0);
+    assert.ok(warnings.some(message => message.includes('conflicting lockedBy values')));
   });
 });
