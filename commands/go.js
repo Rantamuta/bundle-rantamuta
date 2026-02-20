@@ -2,6 +2,20 @@
 'use strict';
 
 const { buildRoomViewLines } = require('../lib/helpers/room-view-helper');
+const OPPOSITE_DIRECTION = Object.freeze({
+  north: 'south',
+  south: 'north',
+  east: 'west',
+  west: 'east',
+  up: 'down',
+  down: 'up',
+  northeast: 'southwest',
+  southwest: 'northeast',
+  northwest: 'southeast',
+  southeast: 'northwest',
+  in: 'out',
+  out: 'in',
+});
 
 /**
  * @param {string} code
@@ -76,6 +90,15 @@ function hasMatchingDoorKey(player, door) {
   return false;
 }
 
+/**
+ * @param {string} direction
+ * @returns {string}
+ */
+function oppositeDirection(direction) {
+  const normalized = normalizeDirection(direction);
+  return OPPOSITE_DIRECTION[normalized] || '';
+}
+
 module.exports = {
   metadata: {
     entityResolution: {
@@ -130,6 +153,8 @@ module.exports = {
 
     /** @type {Array<Record<string, *>>} */
     const operations = [];
+    /** @type {null | 'open' | 'unlockAndOpen'} */
+    let autoDoorMutation = null;
     if (door && door.locked) {
       if (!hasMatchingDoorKey(player, door)) {
         return fail('GO_EXIT_LOCKED');
@@ -139,19 +164,17 @@ module.exports = {
         type: 'doorMutation',
         mutation: 'unlockAndOpen',
         actor: player,
-        fromRoomRef: currentRoom.entityReference,
         direction,
-        roomRef: destination.entityReference,
       });
+      autoDoorMutation = 'unlockAndOpen';
     } else if (door && door.closed) {
       operations.push({
         type: 'doorMutation',
         mutation: 'open',
         actor: player,
-        fromRoomRef: currentRoom.entityReference,
         direction,
-        roomRef: destination.entityReference,
       });
+      autoDoorMutation = 'open';
     }
 
     operations.push({
@@ -159,7 +182,63 @@ module.exports = {
       player,
       toRoom: destination,
       direction,
+      ...(autoDoorMutation !== null ? { suppressRoomBroadcast: true } : {}),
     });
+
+    const doorLabel = direction ? `${direction} door` : 'door';
+    const oppositeDoorLabel = oppositeDirection(direction)
+      ? `${oppositeDirection(direction)} door`
+      : 'door';
+
+    /** @type {Array<Record<string, *>>} */
+    const composedMessages = [];
+    if (autoDoorMutation === 'unlockAndOpen') {
+      composedMessages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:unlock} the {object.direct}, {verb:open} it, and {verb:leave}.',
+        audiencePolicy: 'self',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: doorLabel,
+        },
+      });
+      composedMessages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:open} the {object.direct} and {verb:arrive}.',
+        audiencePolicy: 'others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: oppositeDoorLabel,
+        },
+      });
+    } else if (autoDoorMutation === 'open') {
+      composedMessages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:open} the {object.direct} and {verb:leave}.',
+        audiencePolicy: 'self',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: doorLabel,
+        },
+      });
+      composedMessages.push({
+        type: 'semanticEvent',
+        template: '{actor.You} {verb:open} the {object.direct} and {verb:arrive}.',
+        audiencePolicy: 'others',
+        participants: {
+          actor: { selector: 'currentPlayer' },
+        },
+        objectText: {
+          direct: oppositeDoorLabel,
+        },
+      });
+    }
 
     return {
       ok: true,
@@ -167,12 +246,15 @@ module.exports = {
         operations,
       },
       render: {
-        messages: buildRoomViewLines(destination, {
-          actor: player,
-          room: destination,
-          area: destination.area || null,
-          world: state,
-        }),
+        messages: [
+          ...composedMessages,
+          ...buildRoomViewLines(destination, {
+            actor: player,
+            room: destination,
+            area: destination.area || null,
+            world: state,
+          }),
+        ],
       },
     };
   },

@@ -143,15 +143,14 @@ describe('bundle-rantamuta go command', function () {
         type: 'doorMutation',
         mutation: 'open',
         actor: player,
-        fromRoomRef: currentRoom.entityReference,
         direction: 'east',
-        roomRef: destination.entityReference,
       },
       {
         type: 'movePlayer',
         player,
         toRoom: destination,
         direction: 'east',
+        suppressRoomBroadcast: true,
       },
     ]);
   });
@@ -186,15 +185,14 @@ describe('bundle-rantamuta go command', function () {
         type: 'doorMutation',
         mutation: 'unlockAndOpen',
         actor: player,
-        fromRoomRef: currentRoom.entityReference,
         direction: 'east',
-        roomRef: destination.entityReference,
       },
       {
         type: 'movePlayer',
         player,
         toRoom: destination,
         direction: 'east',
+        suppressRoomBroadcast: true,
       },
     ]);
   });

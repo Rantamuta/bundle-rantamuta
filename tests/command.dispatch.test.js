@@ -4244,6 +4244,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         title: 'Locked',
         description: 'Locked room',
         items: new Set(),
+        doors: new Map([[currentRoom.entityReference, { locked: true, closed: true }]]),
         getDoor: (fromRoom) => fromRoom && fromRoom.entityReference === currentRoom.entityReference
           ? { locked: true, closed: true }
           : null,
@@ -4253,20 +4254,23 @@ describe('bundle-rantamuta command-dispatch', function () {
         title: 'Closed',
         description: 'Closed room',
         items: new Set(),
+        doors: new Map([[currentRoom.entityReference, { locked: false, closed: true }]]),
         getDoor: (fromRoom) => fromRoom && fromRoom.entityReference === currentRoom.entityReference
           ? { locked: false, closed: true }
           : null,
       };
 
+      const playerRoom = {
+        ...currentRoom,
+        getExits: () => [
+          { direction: 'north', roomId: lockedDestination.entityReference },
+          { direction: 'south', roomId: closedDestination.entityReference },
+        ],
+      };
+
       const player = asPlayer({
         name: 'Tester',
-        room: {
-          ...currentRoom,
-          getExits: () => [
-            { direction: 'north', roomId: lockedDestination.entityReference },
-            { direction: 'south', roomId: closedDestination.entityReference },
-          ],
-        },
+        room: playerRoom,
         moveTo: () => { },
         socket: { writable: false },
       });
@@ -4276,6 +4280,9 @@ describe('bundle-rantamuta command-dispatch', function () {
         execute: wrapLegacyRenderCommand(goDef.command({
           RoomManager: {
             getRoom: (roomId) => {
+              if (roomId === playerRoom.entityReference) {
+                return playerRoom;
+              }
               if (roomId === lockedDestination.entityReference) {
                 return lockedDestination;
               }
