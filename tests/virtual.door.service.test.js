@@ -463,4 +463,30 @@ describe('virtual-door-service mutateDoor', function () {
 
     disposeVirtualDoorService(state);
   });
+
+  it('warns once that direct legacy virtual-door writes are out of contract', function () {
+    const warnings = [];
+    Logger.warn = message => warnings.push(String(message));
+
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    ensureVirtualDoorService(state);
+    roomB.openDoor(roomA);
+    roomB.openDoor(roomA);
+
+    assert.strictEqual(warnings.filter(message => message.includes('out of contract')).length, 1);
+
+    disposeVirtualDoorService(state);
+  });
 });
