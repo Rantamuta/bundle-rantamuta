@@ -1,7 +1,11 @@
 const assert = require('assert');
 const { Logger } = require('ranvier');
 
-const { _scanVirtualDoorPairs } = require('../lib/doors/virtual-door-service');
+const {
+  _scanVirtualDoorPairs,
+  ensureVirtualDoorService,
+  disposeVirtualDoorService,
+} = require('../lib/doors/virtual-door-service');
 
 function createRoom(def) {
   const exits = Array.isArray(def.exits) ? def.exits : [];
@@ -222,5 +226,149 @@ describe('virtual-door-service pairing scan', function () {
     assert.deepStrictEqual(pair.state, { closed: true, locked: false });
     assert.deepStrictEqual(roomA.doors.get('test:b'), { closed: true, locked: false });
     assert.deepStrictEqual(roomB.doors.get('test:a'), { closed: true, locked: false });
+  });
+});
+
+describe('virtual-door-service mutateDoor', function () {
+  let originalWarn;
+
+  beforeEach(function () {
+    originalWarn = Logger.warn;
+    Logger.warn = () => {};
+  });
+
+  afterEach(function () {
+    Logger.warn = originalWarn;
+  });
+
+  it('applies open mutation through virtual pair by explicit roomRef', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      roomRef: 'test:b',
+      mutation: 'open',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.virtual, true);
+    assert.strictEqual(roomA.doors.get('test:b').closed, false);
+    assert.strictEqual(roomA.doors.get('test:b').locked, false);
+    assert.strictEqual(roomB.doors.get('test:a').closed, false);
+    assert.strictEqual(roomB.doors.get('test:a').locked, false);
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('applies closeAndLock mutation by direction', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: false, locked: false } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: false, locked: false } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      direction: 'north',
+      mutation: 'closeAndLock',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.virtual, true);
+    assert.strictEqual(roomA.doors.get('test:b').closed, true);
+    assert.strictEqual(roomA.doors.get('test:b').locked, true);
+    assert.strictEqual(roomB.doors.get('test:a').closed, true);
+    assert.strictEqual(roomB.doors.get('test:a').locked, true);
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('falls back to directional-only mutation when edge is non-virtual', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b', virtualDoor: false }],
+      doors: {},
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      roomRef: 'test:b',
+      mutation: 'unlock',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.virtual, false);
+    assert.strictEqual(roomB.doors.get('test:a').closed, true);
+    assert.strictEqual(roomB.doors.get('test:a').locked, false);
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('returns destination_missing when direction cannot be resolved', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [],
+      doors: {},
+    });
+    const state = createState([roomA]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      direction: 'north',
+      mutation: 'open',
+    });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'destination_missing');
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('throws on unsupported mutation verb', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [],
+      doors: {},
+    });
+    const state = createState([roomA]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    assert.throws(() => service.mutateDoor({
+      actor: { room: roomA },
+      mutation: 'invalidVerb',
+    }), /unsupported mutation/);
+
+    disposeVirtualDoorService(state);
   });
 });
