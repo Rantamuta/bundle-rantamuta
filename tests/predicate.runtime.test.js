@@ -254,8 +254,10 @@ describe('bundle-rantamuta predicate runtime', function () {
             && q.actorHasEffect('blessed')
             && q.actorQuestActive('query:questA')
             && q.actorQuestCompleted('query:questB')
-            && q.outboundDoorOpen('north')
-            && q.inboundDoorOpen('south');
+            && !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('query:crypt', 'query:hall')
+            && !q.isDoorLockedBetween('query:crypt', 'query:hall');
         },
         nullActorChecks: ({ q }) => {
           return !q.actorHasItem('query:key')
