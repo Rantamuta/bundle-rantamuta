@@ -271,14 +271,18 @@ describe('virtual-door-service pairing scan', function () {
 
 describe('virtual-door-service mutateDoor', function () {
   let originalWarn;
+  let originalError;
 
   beforeEach(function () {
     originalWarn = Logger.warn;
+    originalError = Logger.error;
     Logger.warn = () => {};
+    Logger.error = () => {};
   });
 
   afterEach(function () {
     Logger.warn = originalWarn;
+    Logger.error = originalError;
   });
 
   it('applies open mutation through virtual pair by explicit roomRef', function () {
@@ -486,6 +490,51 @@ describe('virtual-door-service mutateDoor', function () {
     roomB.openDoor(roomA);
 
     assert.strictEqual(warnings.filter(message => message.includes('out of contract')).length, 1);
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('rolls back both directional records when atomic reflection fails mid-write', function () {
+    const doorAtoB = { closed: true, locked: true };
+    const doorBtoA = { closed: true, locked: true };
+
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': doorAtoB },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': doorBtoA },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    let rawClosed = true;
+    Object.defineProperty(doorBtoA, 'closed', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return rawClosed;
+      },
+      set() {
+        throw new Error('boom-on-closed');
+      },
+    });
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      roomRef: 'test:b',
+      mutation: 'open',
+    });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'reflect_failed');
+    assert.strictEqual(roomA.doors.get('test:b').closed, true);
+    assert.strictEqual(roomA.doors.get('test:b').locked, true);
+    assert.strictEqual(roomB.doors.get('test:a').closed, true);
+    assert.strictEqual(roomB.doors.get('test:a').locked, true);
 
     disposeVirtualDoorService(state);
   });
