@@ -366,6 +366,38 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.players.has(player), false);
   });
 
+  it('suppresses leave/arrive room broadcasts for movePlayer when suppressRoomBroadcast is true', function () {
+    const start = createRoom('start');
+    const destination = createRoom('destination');
+    const player = createPlayerInRoom(start);
+    player.name = 'Tester';
+    start.getBroadcastTargets = () => [player];
+    destination.getBroadcastTargets = () => [player];
+
+    const originalSayAtExcept = ranvier.Broadcast.sayAtExcept;
+    const calls = [];
+    ranvier.Broadcast.sayAtExcept = (target, message, exceptTargets) => {
+      calls.push({ target, message: String(message), exceptTargets });
+    };
+
+    try {
+      const undo = applyMutationInstruction({}, {
+        type: 'movePlayer',
+        player,
+        toRoom: destination,
+        direction: 'north',
+        suppressRoomBroadcast: true,
+      });
+
+      assert.strictEqual(player.room, destination);
+      assert.strictEqual(calls.length, 0);
+
+      undo();
+    } finally {
+      ranvier.Broadcast.sayAtExcept = originalSayAtExcept;
+    }
+  });
+
   it('applies openDoor instruction by roomRef and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
