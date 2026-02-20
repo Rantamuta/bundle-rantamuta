@@ -13,6 +13,14 @@ function fail(code, details) {
   };
 }
 
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeDirection(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 module.exports = {
   aliases: [],
   metadata: {
@@ -33,7 +41,8 @@ module.exports = {
       AMBIGUOUS_TARGET: {
         direct: 'Which do you mean?',
       },
-      DOOR_NOT_IMPLEMENTED: 'Not implemented yet.',
+      TARGET_NOT_DOOR: 'You cannot do that with that target.',
+      DOOR_NO_ROOM: 'You are nowhere.',
     },
   },
   command: state => (args, player, alias, context) => {
@@ -51,6 +60,55 @@ module.exports = {
       return fail('TARGET_NOT_FOUND', { role: 'direct' });
     }
 
-    return fail('DOOR_NOT_IMPLEMENTED');
+    const currentRoom = player && player.room && typeof player.room === 'object'
+      ? player.room
+      : null;
+    if (!currentRoom) {
+      return fail('DOOR_NO_ROOM');
+    }
+
+    const roomRef = resolution.directTarget && typeof resolution.directTarget.roomId === 'string'
+      ? resolution.directTarget.roomId.trim()
+      : '';
+    if (!roomRef) {
+      return fail('TARGET_NOT_DOOR');
+    }
+
+    const direction = normalizeDirection(resolution.directTarget && resolution.directTarget.direction);
+    const fromRoomRef = typeof currentRoom.entityReference === 'string'
+      ? currentRoom.entityReference
+      : undefined;
+    const doorLabel = direction ? `${direction} door` : 'door';
+
+    return {
+      ok: true,
+      plan: {
+        operations: [
+          {
+            type: 'doorMutation',
+            mutation: 'close',
+            actor: player,
+            fromRoomRef,
+            direction: direction || undefined,
+            roomRef,
+          },
+        ],
+      },
+      render: {
+        messages: [
+          {
+            type: 'semanticEvent',
+            template: '{actor.You} {verb:close} {object.direct}.',
+            audiencePolicy: 'self_and_others',
+            participants: {
+              actor: { selector: 'currentPlayer' },
+            },
+            objectText: {
+              direct: `the ${doorLabel}`,
+            },
+          },
+        ],
+      },
+    };
   },
 };

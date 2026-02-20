@@ -11,10 +11,11 @@ const unlockCommand = require('../commands/unlock');
 /**
  * @param {*} commandModule
  * @param {{ ruleKey: string, directTarget?: *, indirectTarget?: * }} resolution
+ * @param {*} [player]
  * @returns {*}
  */
-function execute(commandModule, resolution) {
-  return commandModule.command({})('', {}, null, {
+function execute(commandModule, resolution, player = { room: { entityReference: 'test:doorroom' } }) {
+  return commandModule.command({})('', player, null, {
     entityResolution: resolution,
   });
 }
@@ -113,37 +114,91 @@ describe('bundle-rantamuta door command surfaces', function () {
     });
   });
 
-  it('returns baseline DOOR_NOT_IMPLEMENTED for supported open/close/lock/unlock forms', function () {
-    const directTarget = { id: 'north-exit' };
-    const indirectTarget = { id: 'bronze-key' };
+  it('maps open/close/lock/unlock to doorMutation operations for resolved exits', function () {
+    const player = {
+      room: {
+        entityReference: 'test:doorroom',
+      },
+    };
+    const directTarget = {
+      direction: 'north',
+      roomId: 'test:northdoorroom',
+    };
+    const indirectTarget = { entityReference: 'test:bronze_key' };
 
     assert.deepStrictEqual(
-      execute(openCommand, { ruleKey: 'direct', directTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      openCommand.command({})('', player, null, {
+        entityResolution: { ruleKey: 'direct', directTarget },
+      }).plan.operations[0],
+      {
+        type: 'doorMutation',
+        mutation: 'open',
+        actor: player,
+        fromRoomRef: 'test:doorroom',
+        direction: 'north',
+        roomRef: 'test:northdoorroom',
+      }
     );
     assert.deepStrictEqual(
-      execute(openCommand, { ruleKey: 'directIndirect', directTarget, indirectTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      closeCommand.command({})('', player, null, {
+        entityResolution: { ruleKey: 'direct', directTarget },
+      }).plan.operations[0],
+      {
+        type: 'doorMutation',
+        mutation: 'close',
+        actor: player,
+        fromRoomRef: 'test:doorroom',
+        direction: 'north',
+        roomRef: 'test:northdoorroom',
+      }
     );
     assert.deepStrictEqual(
-      execute(closeCommand, { ruleKey: 'direct', directTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      lockCommand.command({})('', player, null, {
+        entityResolution: { ruleKey: 'directIndirect', directTarget, indirectTarget },
+      }).plan.operations[0],
+      {
+        type: 'doorMutation',
+        mutation: 'closeAndLock',
+        actor: player,
+        fromRoomRef: 'test:doorroom',
+        direction: 'north',
+        roomRef: 'test:northdoorroom',
+      }
     );
     assert.deepStrictEqual(
-      execute(lockCommand, { ruleKey: 'direct', directTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      unlockCommand.command({})('', player, null, {
+        entityResolution: { ruleKey: 'directIndirect', directTarget, indirectTarget },
+      }).plan.operations[0],
+      {
+        type: 'doorMutation',
+        mutation: 'unlock',
+        actor: player,
+        fromRoomRef: 'test:doorroom',
+        direction: 'north',
+        roomRef: 'test:northdoorroom',
+      }
+    );
+  });
+
+  it('returns TARGET_NOT_DOOR when direct target is not an exit', function () {
+    const notADoor = { entityReference: 'test:rock' };
+
+    assert.deepStrictEqual(
+      execute(openCommand, { ruleKey: 'direct', directTarget: notADoor }),
+      { ok: false, error: { code: 'TARGET_NOT_DOOR', details: undefined } }
     );
     assert.deepStrictEqual(
-      execute(lockCommand, { ruleKey: 'directIndirect', directTarget, indirectTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      execute(closeCommand, { ruleKey: 'direct', directTarget: notADoor }),
+      { ok: false, error: { code: 'TARGET_NOT_DOOR', details: undefined } }
     );
     assert.deepStrictEqual(
-      execute(unlockCommand, { ruleKey: 'direct', directTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      execute(lockCommand, { ruleKey: 'direct', directTarget: notADoor }),
+      { ok: false, error: { code: 'TARGET_NOT_DOOR', details: undefined } }
     );
     assert.deepStrictEqual(
-      execute(unlockCommand, { ruleKey: 'directIndirect', directTarget, indirectTarget }),
-      { ok: false, error: { code: 'DOOR_NOT_IMPLEMENTED', details: undefined } }
+      execute(unlockCommand, { ruleKey: 'direct', directTarget: notADoor }),
+      { ok: false, error: { code: 'TARGET_NOT_DOOR', details: undefined } }
     );
+
   });
 });
