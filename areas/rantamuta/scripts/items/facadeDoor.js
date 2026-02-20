@@ -18,6 +18,10 @@ function normalizeRef(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizeDirection(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function actorHasKey(actor, keyRef) {
   const needle = normalizeRef(keyRef);
   if (!needle) return true;
@@ -30,10 +34,11 @@ function actorHasKey(actor, keyRef) {
 
 function verbFlavor(flavor, verbId) {
   const base = String(verbId || '').trim().toLowerCase();
-  return {
-    actor: typeof flavor[`${base}Actor`] === 'string' ? flavor[`${base}Actor`] : `You ${base} the brass iris gate.`,
-    others: typeof flavor[`${base}Others`] === 'string' ? flavor[`${base}Others`] : `{actor.name} ${base}s the brass iris gate.`,
-  };
+  if (typeof flavor[base] === 'string') {
+    return flavor[base];
+  }
+
+  return `{actor.You} {verb:${base}} the brass iris gate.`;
 }
 
 module.exports = {
@@ -49,6 +54,21 @@ module.exports = {
       // Make this item usable as a door target for open/close/lock/unlock.
       this.roomId = String(cfg.roomId || '').trim();
       this.direction = String(cfg.direction || '').trim().toLowerCase();
+
+      // Hint `go` to suppress generic composed unlock/open+leave messaging on this facade edge.
+      const currentRoom = this.room && typeof this.room === 'object'
+        ? this.room
+        : null;
+      const targetRoomRef = normalizeRef(this.roomId);
+      const targetDirection = normalizeDirection(this.direction);
+      for (const exit of valuesAsArray(currentRoom && currentRoom.exits)) {
+        const exitRoomRef = normalizeRef(exit && exit.roomId);
+        const exitDirection = normalizeDirection(exit && exit.direction);
+        if (exitRoomRef === targetRoomRef && exitDirection === targetDirection) {
+          exit.suppressComposedDoorMovementMessages = true;
+          break;
+        }
+      }
 
       this.canDirect = (actor, verbId, context) => {
         void context;
@@ -83,11 +103,7 @@ module.exports = {
             messages: [
               {
                 type: 'semanticEvent',
-                template: '{actor.You} {verb:open} the {object.direct}.',
-                templates: {
-                  actor: applied.actor,
-                  others: applied.others,
-                },
+                template: applied,
                 audiencePolicy: 'self_and_others',
                 participants: {
                   actor: { selector: 'currentPlayer' },
