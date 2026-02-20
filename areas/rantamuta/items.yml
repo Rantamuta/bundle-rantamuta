@@ -103,3 +103,78 @@
   description: "A palm-sized shard of smoky crystal. It vibrates with a soft, sustained tone when held near worked stone."
   keywords: [ "resonant", "shard", "crystal" ]
   type: "OBJECT"
+
+- id: astralSignet
+  name: "astral signet"
+  roomDesc: "An astral signet rests in a bed of old mortar."
+  description: "A small brass signet etched with seven-pointed starwork."
+  keywords: [ "astral", "signet", "brass", "star", "seal" ]
+  type: "OBJECT"
+
+- id: brassIrisFacade
+  name: "brass iris gate"
+  roomDesc: "A brass iris gate is set into the north arch."
+  description: "Nested brass petals overlap like an eyelid over the passage."
+  keywords: [ "brass", "iris", "gate", "door" ]
+  type: "OBJECT"
+  script: facadeDoor
+  metadata:
+    permissions:
+      verbs:
+        take: "The gate is bolted into the stone ring."
+    facadeDoor:
+      roomId: rantamuta:observatory_inner
+      direction: north
+      requiredKeyRef: rantamuta:astralSignet
+      denied:
+        open: "The iris does not respond. A star-signet is required."
+        lock: "You cannot find the sigil notch to set the lock."
+        unlock: "The lock refuses your hand without a star-signet."
+      remote:
+        open: "From the far side, the south iris petals glide open."
+        close: "From the far side, the south iris petals seal shut."
+        lock: "From the far side, tiny lock pins click into place."
+        unlock: "From the far side, the lock pins withdraw with a soft tick."
+      flavor:
+        openActor: "You guide the brass iris open with a silver hum."
+        openOthers: "{actor.name} guides the brass iris open with a silver hum."
+        closeActor: "You draw the brass petals shut until they interlock."
+        closeOthers: "{actor.name} draws the brass petals shut until they interlock."
+        lockActor: "You set the star lock; the gate answers with a sharp click."
+        lockOthers: "{actor.name} sets the star lock with a sharp click."
+        unlockActor: "You ease the lock free; the brass petals loosen."
+        unlockOthers: "{actor.name} eases the lock free; the brass petals loosen."
+
+- id: starChartShutter
+  name: "star-chart shutter"
+  roomDesc: "A star-chart shutter spans the south arch in overlapping metal leaves."
+  description: "A fitted shutter engraved with constellations and directional glyphs."
+  keywords: [ "star", "chart", "shutter", "door", "constellation" ]
+  type: "OBJECT"
+  script: facadeDoor
+  metadata:
+    permissions:
+      verbs:
+        take: "The shutter is anchored to a ring of counterweights."
+    facadeDoor:
+      roomId: rantamuta:observatory_foyer
+      direction: south
+      requiredKeyRef: rantamuta:astralSignet
+      denied:
+        open: "The shutter stays sealed. A matching signet seems required."
+        lock: "The lock channels do not align without the signet."
+        unlock: "The lock channels resist your touch."
+      remote:
+        open: "From the foyer side, the north iris petals bloom open."
+        close: "From the foyer side, the north iris petals close into a tight spiral."
+        lock: "From the foyer side, a lock pin snaps into place."
+        unlock: "From the foyer side, the lock pin releases with a soft click."
+      flavor:
+        openActor: "You turn the star-chart shutter and the leaves peel back in sequence."
+        openOthers: "{actor.name} turns the star-chart shutter and the leaves peel back in sequence."
+        closeActor: "You fold the shutter leaves inward until the chart seals."
+        closeOthers: "{actor.name} folds the shutter leaves inward until the chart seals."
+        lockActor: "You set the signet into place and the chart-lock engages."
+        lockOthers: "{actor.name} sets the signet and the chart-lock engages."
+        unlockActor: "You free the chart-lock and the shutter relaxes."
+        unlockOthers: "{actor.name} frees the chart-lock and the shutter relaxes."

@@ -7,7 +7,7 @@
 
 - id: square
   title: "Rantamuta Square"
-  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, and a new gallery opens to the east."
+  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, a mirror-lined gallery opens to the east, and a narrow alley runs west toward an old observatory."
   exits:
     - roomId: rantamuta:start
       direction: south
@@ -15,6 +15,51 @@
       direction: north
     - roomId: rantamuta:perception_gallery
       direction: east
+    - roomId: rantamuta:observatory_alley
+      direction: west
+
+- id: observatory_alley
+  title: "Observatory Alley"
+  description: "A tight stone alley bends beneath leaning walls and copper drainpipes. A weathered arch to the west opens into an observatory foyer."
+  exits:
+    - roomId: rantamuta:square
+      direction: east
+    - roomId: rantamuta:observatory_foyer
+      direction: west
+  items:
+    - id: rantamuta:astralSignet
+
+- id: observatory_foyer
+  title: "Observatory Foyer"
+  description: "A circular foyer lined with dormant brass mechanisms and faded star charts. A brass iris gate is set into the northern arch."
+  exits:
+    - roomId: rantamuta:observatory_alley
+      direction: east
+    - roomId: rantamuta:observatory_inner
+      direction: north
+      virtualDoor: rantamuta:brassIrisFacade
+  doors:
+    rantamuta:observatory_inner:
+      closed: true
+      locked: true
+      lockedBy: rantamuta:astralSignet
+  items:
+    - id: rantamuta:brassIrisFacade
+
+- id: observatory_inner
+  title: "Inner Observatory"
+  description: "The old observatory dome rises overhead, its glass ribs scarred by weather and soot. A star-chart shutter marks the southern way back."
+  exits:
+    - roomId: rantamuta:observatory_foyer
+      direction: south
+      virtualDoor: rantamuta:starChartShutter
+  doors:
+    rantamuta:observatory_foyer:
+      closed: false
+      locked: false
+      lockedBy: rantamuta:astralSignet
+  items:
+    - id: rantamuta:starChartShutter
 
 - id: perception_gallery
   title: "Perception Gallery"

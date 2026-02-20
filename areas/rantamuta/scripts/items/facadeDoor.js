@@ -75,7 +75,10 @@ module.exports = {
         const applied = verbFlavor(flavor, verb);
         const remoteMessage = typeof remote[verb] === 'string' ? remote[verb] : '';
 
-        return {
+        const contribution = {
+          renderPolicy: {
+            replaceSuccess: true,
+          },
           render: {
             messages: [
               {
@@ -105,6 +108,8 @@ module.exports = {
             ].filter(Boolean),
           },
         };
+
+        return contribution;
       };
     },
   },
