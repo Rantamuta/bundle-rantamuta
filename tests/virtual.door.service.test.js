@@ -17,6 +17,46 @@ function createRoom(def) {
     getExits() {
       return exits;
     },
+    getDoor(fromRoom) {
+      if (!fromRoom || !fromRoom.entityReference) {
+        return null;
+      }
+
+      return this.doors.get(fromRoom.entityReference) || null;
+    },
+    openDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.closed = false;
+    },
+    closeDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.closed = true;
+    },
+    unlockDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.locked = false;
+    },
+    lockDoor(fromRoom) {
+      const door = this.getDoor(fromRoom);
+      if (!door) {
+        return;
+      }
+
+      door.closed = true;
+      door.locked = true;
+    },
   };
 }
 
@@ -397,6 +437,29 @@ describe('virtual-door-service mutateDoor', function () {
     assert.strictEqual(result.virtual, false);
     assert.strictEqual(roomB.doors.get('test:a').locked, true);
     assert.strictEqual(roomB.doors.get('test:a').closed, true);
+
+    disposeVirtualDoorService(state);
+  });
+
+  it('routes legacy room.openDoor writes through virtual authority for virtualized pairs', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    ensureVirtualDoorService(state);
+    roomB.openDoor(roomA);
+
+    assert.deepStrictEqual(roomA.doors.get('test:b'), { closed: false, locked: false });
+    assert.deepStrictEqual(roomB.doors.get('test:a'), { closed: false, locked: false });
 
     disposeVirtualDoorService(state);
   });
