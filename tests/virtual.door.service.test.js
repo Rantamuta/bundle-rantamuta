@@ -3,6 +3,7 @@ const { Logger } = require('ranvier');
 
 const {
   _scanVirtualDoorPairs,
+  _validateVirtualDoorConfig,
   ensureVirtualDoorService,
   disposeVirtualDoorService,
 } = require('../lib/doors/virtual-door-service');
@@ -557,5 +558,69 @@ describe('virtual-door-service mutateDoor', function () {
     assert.strictEqual(roomB.doors.get('test:a').locked, true);
 
     disposeVirtualDoorService(state);
+  });
+});
+
+describe('virtual-door-service validation', function () {
+  it('reports error when explicit virtualDoor facade item is missing', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b', virtualDoor: 'test:missingFacade' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+
+    const findings = _validateVirtualDoorConfig({
+      RoomManager: {
+        rooms: new Map([
+          ['test:a', roomA],
+          ['test:b', roomB],
+        ]),
+      },
+      ItemFactory: {
+        entities: new Map(),
+        getDefinition() {
+          return null;
+        },
+      },
+    });
+
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0].level, 'error');
+    assert.strictEqual(findings[0].code, 'VIRTUAL_DOOR_FACADE_ITEM_MISSING');
+  });
+
+  it('accepts explicit virtualDoor facade item when item definition exists', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b', virtualDoor: 'test:doorFacade' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+
+    const findings = _validateVirtualDoorConfig({
+      RoomManager: {
+        rooms: new Map([
+          ['test:a', roomA],
+          ['test:b', roomB],
+        ]),
+      },
+      ItemFactory: {
+        entities: new Map([['test:doorFacade', { id: 'test:doorFacade' }]]),
+        getDefinition(ref) {
+          return ref === 'test:doorFacade' ? { id: ref } : null;
+        },
+      },
+    });
+
+    assert.deepStrictEqual(findings, []);
   });
 });
