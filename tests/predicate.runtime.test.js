@@ -254,8 +254,10 @@ describe('bundle-rantamuta predicate runtime', function () {
             && q.actorHasEffect('blessed')
             && q.actorQuestActive('query:questA')
             && q.actorQuestCompleted('query:questB')
-            && q.outboundDoorOpen('north')
-            && q.inboundDoorOpen('south');
+            && !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('query:crypt', 'query:hall')
+            && !q.isDoorLockedBetween('query:crypt', 'query:hall');
         },
         nullActorChecks: ({ q }) => {
           return !q.actorHasItem('query:key')
@@ -363,6 +365,227 @@ describe('bundle-rantamuta predicate runtime', function () {
       world,
       source: 'room.fragment',
     }), true);
+  });
+
+  it('uses virtual-door effective state for virtualized room pairs', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'virtual',
+      `module.exports = {
+        virtualDoorChecks: ({ q }) => {
+          return q.isDoorClosed('north')
+            && q.isDoorLocked('north')
+            && q.isDoorClosedBetween('virtual:a', 'virtual:b')
+            && q.isDoorLockedBetween('virtual:a', 'virtual:b');
+        },
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'virtual',
+      metadata: { flags: {} },
+    };
+
+    const roomA = {
+      entityReference: 'virtual:a',
+      area,
+      exits: [{ direction: 'north', roomId: 'virtual:b' }],
+      doors: new Map([
+        ['virtual:b', { closed: true, locked: true }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const roomB = {
+      entityReference: 'virtual:b',
+      area,
+      exits: [{ direction: 'south', roomId: 'virtual:a' }],
+      doors: new Map([
+        // Deliberately "open" on this side so directional-only outbound reads would be false.
+        ['virtual:a', { closed: false, locked: false }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const world = {
+      RoomManager: {
+        rooms: new Map([
+          [roomA.entityReference, roomA],
+          [roomB.entityReference, roomB],
+        ]),
+        getRoom(roomRef) {
+          return this.rooms.get(roomRef) || null;
+        },
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'virtual' ? area : null,
+        getArea: name => name === 'virtual' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('virtualDoorChecks', {
+      actor: null,
+      room: roomA,
+      area,
+      world,
+      source: 'room.fragment',
+    }), true);
+  });
+
+  it('uses directional door state for non-virtual room pairs', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'nonvirtual',
+      `module.exports = {
+        directionalDoorChecks: ({ q }) => {
+          return !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('nonvirtual:a', 'nonvirtual:b')
+            && !q.isDoorLockedBetween('nonvirtual:a', 'nonvirtual:b')
+            && q.isDoorClosedBetween('nonvirtual:b', 'nonvirtual:a')
+            && q.isDoorLockedBetween('nonvirtual:b', 'nonvirtual:a');
+        },
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'nonvirtual',
+      metadata: { flags: {} },
+    };
+
+    const roomA = {
+      entityReference: 'nonvirtual:a',
+      area,
+      exits: [{ direction: 'north', roomId: 'nonvirtual:b', virtualDoor: false }],
+      doors: new Map([
+        ['nonvirtual:b', { closed: true, locked: true }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const roomB = {
+      entityReference: 'nonvirtual:b',
+      area,
+      exits: [{ direction: 'south', roomId: 'nonvirtual:a' }],
+      doors: new Map([
+        ['nonvirtual:a', { closed: false, locked: false }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const world = {
+      RoomManager: {
+        rooms: new Map([
+          [roomA.entityReference, roomA],
+          [roomB.entityReference, roomB],
+        ]),
+        getRoom(roomRef) {
+          return this.rooms.get(roomRef) || null;
+        },
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'nonvirtual' ? area : null,
+        getArea: name => name === 'nonvirtual' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('directionalDoorChecks', {
+      actor: null,
+      room: roomA,
+      area,
+      world,
+      source: 'room.fragment',
+    }), true);
+  });
+
+  it('returns false and warns once for unresolvable door query input', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'querywarn',
+      `module.exports = {
+        unresolvedDoorQueries: ({ q }) => {
+          return !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('', 'querywarn:hall')
+            && !q.isDoorLockedBetween('querywarn:crypt', '');
+        },
+      };`
+    );
+
+    const warnings = [];
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: message => warnings.push(String(message)),
+        error: () => {},
+      },
+    });
+
+    const context = makeRenderContext('querywarn', {
+      source: 'room.fragment',
+    });
+
+    assert.strictEqual(runtime.evaluate('unresolvedDoorQueries', context), true);
+    assert.strictEqual(runtime.evaluate('unresolvedDoorQueries', context), true);
+
+    const queryWarnings = warnings.filter(line => line.includes('Predicate query q.isDoor'));
+    assert.strictEqual(queryWarnings.length, 4);
   });
 
   it('ignores invalid registry exports and returns false', function () {

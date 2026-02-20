@@ -16,14 +16,34 @@ module.exports = {
   is_north_door_open: ({ q, context }) => {
     const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
     if (roomRef.endsWith(':doorroom')) {
-      return q.outboundDoorOpen('north');
+      return !q.isDoorClosed('north') && !q.isDoorLocked('north');
     }
 
     if (roomRef.endsWith(':northdoorroom')) {
-      return q.inboundDoorOpen('south');
+      return !q.isDoorClosedBetween('test:doorRoom', 'test:northDoorRoom')
+        && !q.isDoorLockedBetween('test:doorRoom', 'test:northDoorRoom');
     }
 
     return false;
+  },
+
+  is_virtual_north_door_open: ({ q, context }) => {
+    const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
+    if (!roomRef.endsWith(':virtualdoorsouthroom')) {
+      return false;
+    }
+
+    return !q.isDoorClosed('north') && !q.isDoorLocked('north');
+  },
+
+  is_virtual_south_door_open: ({ q, context }) => {
+    const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
+    if (!roomRef.endsWith(':virtualdoornorthroom')) {
+      return false;
+    }
+
+    return !q.isDoorClosedBetween('test:virtualDoorSouthRoom', 'test:virtualDoorNorthRoom')
+      && !q.isDoorLockedBetween('test:virtualDoorSouthRoom', 'test:virtualDoorNorthRoom');
   },
 
   bench_always_true: () => true,

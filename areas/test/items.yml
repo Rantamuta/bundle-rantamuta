@@ -46,7 +46,8 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: openDoor
+      type: doorMutation
+      mutation: open
       direction: north
     doorContext:
       fromRoomRef: test:doorRoom
@@ -68,7 +69,8 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: closeAndLockDoor
+      type: doorMutation
+      mutation: closeAndLock
       direction: north
     doorContext:
       fromRoomRef: test:doorRoom
@@ -79,3 +81,24 @@
     roomMessages:
       currentRoom: "The north door closes."
       otherRoom: "The south door closes."
+
+- id: bronzeDoorKey
+  name: "bronze door key"
+  roomDesc: "A bronze key catches the light here."
+  description: "A sturdy bronze key cut for a specific lock."
+  keywords: [ "bronze", "door", "key" ]
+  type: "OBJECT"
+
+- id: ironDoorKey
+  name: "iron door key"
+  roomDesc: "A dark iron key lies nearby."
+  description: "A plain iron key that does not fit every lock."
+  keywords: [ "iron", "door", "key" ]
+  type: "OBJECT"
+
+- id: virtualSouthDoorFacade
+  name: "arched bronze door"
+  roomDesc: "An arched bronze door marks the northern wall."
+  description: "A heavy arched bronze door with an old keyed lock."
+  keywords: [ "arched", "bronze", "door" ]
+  type: "OBJECT"

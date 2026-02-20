@@ -35,6 +35,45 @@
       closed: true
       locked: true
 
+- id: virtualDoorSouthRoom
+  title: "Virtual Door South Room"
+  description: "A controlled room for virtual-door behavioral tests."
+  metadata:
+    descriptionFragments:
+      - when: is_virtual_north_door_open
+        text: "The north door stands open."
+      - whenNot: is_virtual_north_door_open
+        text: "The north door is shut and locked."
+  exits:
+    - roomId: test:virtualDoorNorthRoom
+      direction: north
+      virtualDoor: test:virtualSouthDoorFacade
+  doors:
+    test:virtualDoorNorthRoom:
+      closed: true
+      locked: true
+      lockedBy: test:bronzeDoorKey
+  items:
+    - id: test:virtualSouthDoorFacade
+
+- id: virtualDoorNorthRoom
+  title: "Virtual Door North Room"
+  description: "The north side of the virtual-door test passage."
+  metadata:
+    descriptionFragments:
+      - when: is_virtual_south_door_open
+        text: "The south passage is visibly open."
+      - whenNot: is_virtual_south_door_open
+        text: "The south passage is closed from this side."
+  exits:
+    - roomId: test:virtualDoorSouthRoom
+      direction: south
+  doors:
+    test:virtualDoorSouthRoom:
+      closed: false
+      locked: false
+      lockedBy: test:bronzeDoorKey
+
 - id: lab
   title: "Test Lab"
   description: "A practice room for manually testing item pickup and placement."
