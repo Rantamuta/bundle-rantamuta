@@ -458,6 +458,98 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
+  it('uses directional door state for non-virtual room pairs', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'nonvirtual',
+      `module.exports = {
+        directionalDoorChecks: ({ q }) => {
+          return !q.isDoorClosed('north')
+            && !q.isDoorLocked('north')
+            && !q.isDoorClosedBetween('nonvirtual:a', 'nonvirtual:b')
+            && !q.isDoorLockedBetween('nonvirtual:a', 'nonvirtual:b')
+            && q.isDoorClosedBetween('nonvirtual:b', 'nonvirtual:a')
+            && q.isDoorLockedBetween('nonvirtual:b', 'nonvirtual:a');
+        },
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'nonvirtual',
+      metadata: { flags: {} },
+    };
+
+    const roomA = {
+      entityReference: 'nonvirtual:a',
+      area,
+      exits: [{ direction: 'north', roomId: 'nonvirtual:b', virtualDoor: false }],
+      doors: new Map([
+        ['nonvirtual:b', { closed: true, locked: true }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const roomB = {
+      entityReference: 'nonvirtual:b',
+      area,
+      exits: [{ direction: 'south', roomId: 'nonvirtual:a' }],
+      doors: new Map([
+        ['nonvirtual:a', { closed: false, locked: false }],
+      ]),
+      getExits() {
+        return this.exits;
+      },
+      getDoor(fromRoom) {
+        return this.doors.get(fromRoom && fromRoom.entityReference) || null;
+      },
+    };
+
+    const world = {
+      RoomManager: {
+        rooms: new Map([
+          [roomA.entityReference, roomA],
+          [roomB.entityReference, roomB],
+        ]),
+        getRoom(roomRef) {
+          return this.rooms.get(roomRef) || null;
+        },
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'nonvirtual' ? area : null,
+        getArea: name => name === 'nonvirtual' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('directionalDoorChecks', {
+      actor: null,
+      room: roomA,
+      area,
+      world,
+      source: 'room.fragment',
+    }), true);
+  });
+
   it('ignores invalid registry exports and returns false', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
