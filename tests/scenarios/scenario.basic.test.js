@@ -200,6 +200,23 @@ test('scenario runner door-lock scenario validates open travel and re-locked blo
   assert.ok((result.stdout.match(/The way is locked\./g) || []).length >= 2);
 });
 
+test('scenario runner virtual-door scenario validates wrong-key failure and virtualized movement flow', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/virtual-door.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Virtual Door South Room/);
+  assert.match(result.stdout, /The north door is shut and locked\./);
+  assert.match(result.stdout, /unlock north with iron key/);
+  assert.match(result.stdout, /does not fit the lock/i);
+  assert.match(result.stdout, /You open the north door with the bronze door key\./);
+  assert.match(result.stdout, /You lock the north door with the bronze door key\./);
+  assert.match(result.stdout, /go north/);
+  assert.match(result.stdout, /Virtual Door North Room/);
+  assert.match(result.stdout, /The south passage is visibly open\./);
+});
+
 test('scenario runner shows asymmetry note in north room when south->north door is closed', () => {
   const result = runScenario([
     '--room', 'test:northDoorRoom',

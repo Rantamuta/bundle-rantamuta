@@ -104,6 +104,26 @@ describe('virtual-door-service pairing scan', function () {
     assert.strictEqual(pair.lockedBy, null);
   });
 
+  it('captures side-local virtualDoor config for facade binding and omitted-side fallback', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b', virtualDoor: 'test:bronzeDoorFacade' }],
+      doors: { 'test:b': { closed: true, locked: true } },
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: true, locked: true } },
+    });
+
+    const result = _scanVirtualDoorPairs(createState([roomA, roomB]));
+    const pair = result.pairByEdgeKey.get('test:a->test:b');
+
+    assert.ok(pair);
+    assert.strictEqual(pair.sideConfig['test:a'], 'test:bronzeDoorFacade');
+    assert.strictEqual(pair.sideConfig['test:b'], undefined);
+  });
+
   it('skips pairing when reciprocal exit is missing', function () {
     const roomA = createRoom({
       entityReference: 'test:a',

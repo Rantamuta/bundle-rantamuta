@@ -27,6 +27,25 @@ module.exports = {
     return false;
   },
 
+  is_virtual_north_door_open: ({ q, context }) => {
+    const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
+    if (!roomRef.endsWith(':virtualdoorsouthroom')) {
+      return false;
+    }
+
+    return !q.isDoorClosed('north') && !q.isDoorLocked('north');
+  },
+
+  is_virtual_south_door_open: ({ q, context }) => {
+    const roomRef = String(context && context.roomRef ? context.roomRef : '').toLowerCase();
+    if (!roomRef.endsWith(':virtualdoornorthroom')) {
+      return false;
+    }
+
+    return !q.isDoorClosedBetween('test:virtualDoorSouthRoom', 'test:virtualDoorNorthRoom')
+      && !q.isDoorLockedBetween('test:virtualDoorSouthRoom', 'test:virtualDoorNorthRoom');
+  },
+
   bench_always_true: () => true,
   bench_always_false: () => false,
 

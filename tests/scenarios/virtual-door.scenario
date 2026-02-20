@@ -1,0 +1,15 @@
+# Virtual-door scenario coverage:
+# - explicit wrong-key failure should not fall back to carried matching key
+# - explicit compatible key can open and lock the virtualized pair
+# - go auto-unlocks and opens when actor carries matching key
+room: test:virtualDoorSouthRoom
+seedInventory: test:ironDoorKey
+seedInventory: test:bronzeDoorKey
+command: look
+command: unlock north with iron key
+command: open north with bronze key
+command: close north
+command: lock north with bronze key
+command: go north
+command: look
+command: go south
