@@ -371,4 +371,33 @@ describe('virtual-door-service mutateDoor', function () {
 
     disposeVirtualDoorService(state);
   });
+
+  it('enforces locked implies closed when mutation preserves lock state', function () {
+    const roomA = createRoom({
+      entityReference: 'test:a',
+      exits: [{ direction: 'north', roomId: 'test:b', virtualDoor: false }],
+      doors: {},
+    });
+    const roomB = createRoom({
+      entityReference: 'test:b',
+      exits: [{ direction: 'south', roomId: 'test:a' }],
+      doors: { 'test:a': { closed: false, locked: true } },
+    });
+    const state = createState([roomA, roomB]);
+    state.RoomManager.getRoom = roomRef => state.RoomManager.rooms.get(roomRef) || null;
+
+    const service = ensureVirtualDoorService(state);
+    const result = service.mutateDoor({
+      actor: { room: roomA },
+      roomRef: 'test:b',
+      mutation: 'close',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.virtual, false);
+    assert.strictEqual(roomB.doors.get('test:a').locked, true);
+    assert.strictEqual(roomB.doors.get('test:a').closed, true);
+
+    disposeVirtualDoorService(state);
+  });
 });
