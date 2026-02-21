@@ -4709,6 +4709,106 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('auto-unlocks and opens locked exit on go when actor carries matching key', async function () {
+    const goDef = require('../commands/go');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let committedPlan = null;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = (stateArg, planArg) => {
+      committedPlan = planArg;
+    };
+
+    try {
+      const currentRoom = { entityReference: 'test:lab' };
+      const destination = {
+        entityReference: 'test:lockedEast',
+        title: 'Locked East',
+        description: 'An ironbound threshold to the east.',
+        items: new Set(),
+        doors: new Map([[
+          currentRoom.entityReference,
+          { locked: true, closed: true, lockedBy: 'test:bronze_key' },
+        ]]),
+        getDoor: (fromRoom) => fromRoom && fromRoom.entityReference === currentRoom.entityReference
+          ? { locked: true, closed: true, lockedBy: 'test:bronze_key' }
+          : null,
+      };
+
+      const playerRoom = {
+        ...currentRoom,
+        getExits: () => [{ direction: 'east', roomId: destination.entityReference }],
+      };
+
+      const player = asPlayer({
+        name: 'Tester',
+        room: playerRoom,
+        inventory: new Map([
+          ['k1', { entityReference: 'test:bronze_key' }],
+        ]),
+        moveTo: () => { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: goDef.metadata,
+        execute: wrapLegacyRenderCommand(goDef.command({
+          RoomManager: {
+            getRoom: (roomId) => {
+              if (roomId === playerRoom.entityReference) {
+                return playerRoom;
+              }
+              if (roomId === destination.entityReference) {
+                return destination;
+              }
+              return null;
+            },
+          },
+        })),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'go' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'go east');
+
+      assert.deepStrictEqual(committedPlan, {
+        operations: [
+          {
+            type: 'doorMutation',
+            mutation: 'unlockAndOpen',
+            actor: player,
+            direction: 'east',
+          },
+          {
+            type: 'movePlayer',
+            player,
+            toRoom: destination,
+            direction: 'east',
+            suppressRoomBroadcast: true,
+          },
+        ],
+      });
+      assert.ok(messages.includes('<bold>Locked East</bold>'));
+      assert.ok(messages.includes('An ironbound threshold to the east.'));
+      assert.ok(!messages.includes('The way is locked.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('invokes authored exit planDirect during go and still performs movement fallback', async function () {
     const goDef = require('../commands/go');
     const ranvierPath = require.resolve('ranvier');

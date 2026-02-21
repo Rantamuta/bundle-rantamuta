@@ -92,33 +92,7 @@ describe('bundle-rantamuta go command', function () {
     });
   });
 
-  it('returns GO_EXIT_LOCKED when destination door is locked', function () {
-    const currentRoom = createRoom({ entityReference: 'test:current' });
-    const destination = createRoom({
-      entityReference: 'test:destination',
-      doors: new Map([[currentRoom.entityReference, { locked: true, closed: true }]]),
-    });
-    const execute = goCommand.command({
-      RoomManager: {
-        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
-      },
-    });
-    const player = createPlayer({ room: currentRoom });
-
-    const result = execute('', player, null, {
-      entityResolution: {
-        ruleKey: 'direct',
-        directTarget: { direction: 'east', roomId: destination.entityReference },
-      },
-    });
-
-    assert.deepStrictEqual(result, {
-      ok: false,
-      error: { code: 'GO_EXIT_LOCKED', details: undefined },
-    });
-  });
-
-  it('auto-opens closed unlocked doors and returns doorMutation+move plan', function () {
+  it('returns empty base plan/render and delegates movement/door behavior to exit hooks', function () {
     const currentRoom = createRoom({ entityReference: 'test:current' });
     const destination = createRoom({
       entityReference: 'test:destination',
@@ -138,101 +112,10 @@ describe('bundle-rantamuta go command', function () {
       },
     });
 
-    assert.deepStrictEqual(result.plan.operations, [
-      {
-        type: 'doorMutation',
-        mutation: 'open',
-        actor: player,
-        direction: 'east',
-      },
-      {
-        type: 'movePlayer',
-        player,
-        toRoom: destination,
-        direction: 'east',
-        suppressRoomBroadcast: true,
-      },
-    ]);
-  });
-
-  it('auto-unlocks and opens locked doors when actor carries matching key', function () {
-    const currentRoom = createRoom({ entityReference: 'test:current' });
-    const destination = createRoom({
-      entityReference: 'test:destination',
-      doors: new Map([[currentRoom.entityReference, { locked: true, closed: true, lockedBy: 'test:bronze_key' }]]),
-    });
-    const execute = goCommand.command({
-      RoomManager: {
-        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
-      },
-    });
-    const player = createPlayer({
-      room: currentRoom,
-      inventory: new Map([
-        ['k1', { entityReference: 'test:bronze_key' }],
-      ]),
-    });
-
-    const result = execute('', player, null, {
-      entityResolution: {
-        ruleKey: 'direct',
-        directTarget: { direction: 'east', roomId: destination.entityReference },
-      },
-    });
-
-    assert.deepStrictEqual(result.plan.operations, [
-      {
-        type: 'doorMutation',
-        mutation: 'unlockAndOpen',
-        actor: player,
-        direction: 'east',
-      },
-      {
-        type: 'movePlayer',
-        player,
-        toRoom: destination,
-        direction: 'east',
-        suppressRoomBroadcast: true,
-      },
-    ]);
-  });
-
-  it('returns movePlayer plan and destination room render lines on success', function () {
-    const currentRoom = createRoom({ entityReference: 'test:current' });
-    const destination = createRoom({
-      entityReference: 'test:destination',
-      title: 'Destination',
-      description: 'You have arrived.',
-    });
-    const execute = goCommand.command({
-      RoomManager: {
-        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
-      },
-    });
-    const player = createPlayer({ room: currentRoom });
-
-    const result = execute('', player, null, {
-      entityResolution: {
-        ruleKey: 'direct',
-        directTarget: { direction: 'east', roomId: destination.entityReference },
-      },
-    });
-
     assert.deepStrictEqual(result, {
       ok: true,
-      plan: {
-        operations: [
-          {
-            type: 'movePlayer',
-            player,
-            toRoom: destination,
-            direction: 'east',
-          },
-        ],
-      },
-      render: {
-        messages: ['<bold>Destination</bold>', 'You have arrived.'],
-      },
+      plan: { operations: [] },
+      render: { messages: [] },
     });
   });
 
@@ -284,14 +167,33 @@ describe('bundle-rantamuta go command', function () {
       },
     });
 
-    assert.deepStrictEqual(result.plan.operations, [
-      {
-        type: 'movePlayer',
-        player,
-        toRoom: destination,
-        direction: 'east',
+    assert.deepStrictEqual(result.plan.operations, []);
+  });
+
+  it('stores destination and world on direct exit target for hook-based fallback planning', function () {
+    const currentRoom = createRoom({ entityReference: 'test:current' });
+    const destination = createRoom({
+      entityReference: 'test:destination',
+    });
+    const state = {
+      RoomManager: {
+        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
       },
-    ]);
+    };
+    const execute = goCommand.command(state);
+    const player = createPlayer({ room: currentRoom });
+    const directTarget = { direction: 'east', roomId: destination.entityReference };
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'direct',
+        directTarget,
+      },
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(directTarget.__goDestination, destination);
+    assert.strictEqual(directTarget.__goWorld, state);
   });
 
   it('entity-resolution rejects intransitive go form for direct-only declaration', function () {
