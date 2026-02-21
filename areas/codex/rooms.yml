@@ -1,0 +1,224 @@
+- id: start
+  title: "Rantamuta"
+  description: "A legacy launch point that now leads to the square."
+  exits:
+    - roomId: codex:square
+      direction: north
+
+- id: square
+  title: "Rantamuta Square"
+  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, a mirror-lined gallery opens to the east, and a narrow alley runs west toward an old observatory."
+  exits:
+    - roomId: codex:start
+      direction: south
+    - roomId: codex:bell_courtyard
+      direction: north
+    - roomId: codex:perception_gallery
+      direction: east
+    - roomId: codex:observatory_alley
+      direction: west
+
+- id: observatory_alley
+  title: "Observatory Alley"
+  description: "A tight stone alley bends beneath leaning walls and copper drainpipes. A weathered arch to the west opens into an observatory foyer."
+  exits:
+    - roomId: codex:square
+      direction: east
+    - roomId: codex:observatory_foyer
+      direction: west
+  items:
+    - id: codex:astralSignet
+
+- id: observatory_foyer
+  title: "Observatory Foyer"
+  description: "A circular foyer lined with dormant brass mechanisms and faded star charts. A brass iris gate is set into the northern arch."
+  exits:
+    - roomId: codex:observatory_alley
+      direction: east
+    - roomId: codex:observatory_inner
+      direction: north
+      virtualDoor: codex:brassIrisFacade
+  doors:
+    codex:observatory_inner:
+      closed: true
+      locked: true
+      lockedBy: codex:astralSignet
+  items:
+    - id: codex:brassIrisFacade
+
+- id: observatory_inner
+  title: "Inner Observatory"
+  description: "The old observatory dome rises overhead, its glass ribs scarred by weather and soot. A star-chart shutter marks the southern way back."
+  exits:
+    - roomId: codex:observatory_foyer
+      direction: south
+      virtualDoor: codex:starChartShutter
+  doors:
+    codex:observatory_foyer:
+      closed: false
+      locked: false
+      lockedBy: codex:astralSignet
+  items:
+    - id: codex:starChartShutter
+
+- id: perception_gallery
+  title: "Perception Gallery"
+  description: "An arc of polished stone mirrors catches every footfall."
+  metadata:
+    flags:
+      mirrorsAwake: true
+    descriptionVariants:
+      - when: is_gallery_harmonic
+        text: "The mirrors resonate in clear tones, reflecting your movement a heartbeat before you make it."
+      - whenNot: is_gallery_harmonic
+        text: "The mirrors stand dim and uncertain, as if waiting for the tower's song to settle."
+    descriptionFragments:
+      - when: is_gallery_feature_enabled
+        text: "A brass plaque reads: \"Truth is a pattern seen from many angles.\""
+      - when: is_gallery_mirrors_awake
+        text: "Hairline sigils glow faintly at the edges of each mirror."
+      - when: does_viewer_hold_resonant_shard
+        text: "The shard in your possession makes the mirror-light bend toward your hands."
+      - whenNot: does_viewer_hold_resonant_shard
+        text: "An empty socket in the central plinth seems shaped for a small crystal shard."
+      - when: is_resonant_shard_in_gallery
+        text: "A resonant shard lies on the plinth, humming softly."
+      - whenNot: is_resonant_shard_in_gallery
+        text: "The plinth is bare, but a ghostly hum lingers in the stone."
+      - when: is_wax_seal_in_reliquary
+        text: "Somewhere in the tower, the reliquary's seal answers with a distant warmth."
+      - whenNot: is_wax_seal_in_reliquary
+        text: "The mirrors show a reliquary-shaped shadow that never quite seals shut."
+      - when: is_bronze_clapper_in_bell
+        text: "In every reflection, a bell swings with a clapper of bronze."
+      - whenNot: is_bronze_clapper_in_bell
+        text: "In every reflection, the bell hangs silent, its heart missing."
+  exits:
+    - roomId: codex:square
+      direction: west
+    - roomId: codex:question_apse
+      direction: east
+
+- id: question_apse
+  title: "Question Apse"
+  description: "Three stone arches hold carved questions instead of saints."
+  metadata:
+    descriptionFragments:
+      - when: is_slab_open
+        text: "One arch reads: \"What opens when all offerings are in place?\""
+      - whenNot: is_slab_open
+        text: "One arch reads: \"What remains sealed until all offerings are in place?\""
+      - when: does_viewer_hold_resonant_shard
+        text: "The shard vibrates in answer, and the letters briefly shine."
+      - whenNot: does_viewer_hold_resonant_shard
+        text: "The carved letters look inert, waiting for a matching tone."
+  exits:
+    - roomId: codex:perception_gallery
+      direction: west
+
+- id: bell_courtyard
+  title: "Bell Courtyard"
+  description: "Broken flagstones litter the ground. A bell tower looms to the north, its entrance set into ruined walls. Cold air drifts from deeper ruins."
+  metadata:
+    details:
+      - name: "flagstones"
+        keywords: [ "flagstone", "flagstones", "stone" ]
+        description: "The flagstones are cracked and uneven, worn smooth by years of weather."
+      - name: "bell tower"
+        keywords: [ "tower", "bell tower", "belltower" ]
+        description: "The tower looms over the courtyard, its upper stonework dark against the sky."
+      - name: "ruined walls"
+        keywords: [ "wall", "walls", "ruined wall", "ruined walls", "gaps" ]
+        description: "Broken wall sections ring the courtyard, with gaps where whole courses collapsed."
+      - name: "cold air"
+        keywords: [ "air", "cold air", "draft" ]
+        description: "The air is damp and chill, carrying a faint mineral smell from below."
+      - name: "ruins"
+        keywords: [ "ruin", "ruins", "deeper ruins" ]
+        description: "The deeper ruins beyond the courtyard look undisturbed and old."
+  exits:
+    - roomId: codex:square
+      direction: south
+    - roomId: codex:bell_nave
+      direction: north
+  items:
+    - id: codex:waxSeal
+
+- id: bell_nave
+  title: "Bell Nave"
+  description: "Dusty pews face a shattered alcove where a reliquary still waits."
+  exits:
+    - roomId: codex:bell_courtyard
+      direction: south
+    - roomId: codex:bell_stair
+      direction: up
+    - roomId: codex:bell_crypt
+      direction: down
+  items:
+    - id: codex:prayerStone
+    - id: codex:reliquary
+    - id: codex:bellRope
+
+- id: bell_stair
+  title: "Bell Stair"
+  description: "A narrow spiral stair wraps around ancient masonry toward the belfry."
+  exits:
+    - roomId: codex:bell_nave
+      direction: down
+    - roomId: codex:bell_belfry
+      direction: up
+
+- id: bell_belfry
+  title: "Bell Belfry"
+  description: "Ragged ropes sway around a cracked bell suspended over the town below."
+  exits:
+    - roomId: codex:bell_stair
+      direction: down
+  items:
+    - id: codex:crackedBell
+
+- id: bell_crypt
+  title: "Bell Crypt"
+  description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
+  script: bellCryptGate
+  metadata:
+    details:
+      - name: "runes"
+        keywords: [ "rune", "runes", "glyph", "glyphs", "etching", "etchings" ]
+        description: "Ancient runes curl around the basin lip, each line cut with unnerving precision."
+    descriptionFragments:
+      - whenNot: is_slab_open
+        text: "A dull stone slab blocks the descent."
+      - when: is_slab_open
+        text: "A heavy slab has been forced aside, revealing stone stairs descending into darkness."
+      - whenNot: is_basin_runes_glowing
+        text: "The basin runes lie cold and silent, as if waiting for a final word."
+      - when: is_basin_runes_glowing
+        text: "A faint, mystic glow pulses through the basin runes, bathing the crypt in gentle light."
+  exits:
+    - roomId: codex:bell_nave
+      direction: up
+    - roomId: codex:resonance_chamber
+      direction: down
+      metadata:
+        gate:
+          denyMessage: "A dull stone slab blocks the descent."
+          requiredPlacements:
+            - containerRef: codex:crackedBell
+              itemRef: codex:bronzeClapper
+            - containerRef: codex:reliquary
+              itemRef: codex:waxSeal
+            - containerRef: codex:stoneBasin
+              itemRef: codex:prayerStone
+  items:
+    - id: codex:bronzeClapper
+    - id: codex:stoneBasin
+
+- id: resonance_chamber
+  title: "Resonance Chamber"
+  description: "A hidden chamber thrums with harmonic tone. The ritual has awakened the old tower."
+  exits:
+    - roomId: codex:bell_crypt
+      direction: up
+  items:
+    - id: codex:resonantShard

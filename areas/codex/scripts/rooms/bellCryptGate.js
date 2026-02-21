@@ -79,12 +79,12 @@ function containerHasItemRef(container, entityRef) {
  * @returns {boolean}
  */
 function basinHasPrayerStone(room) {
-  const basin = findRoomItemByRef(room, 'rantamuta:stoneBasin');
+  const basin = findRoomItemByRef(room, 'codex:stoneBasin');
   if (!basin) {
     return false;
   }
 
-  return containerHasItemRef(basin, 'rantamuta:prayerStone');
+  return containerHasItemRef(basin, 'codex:prayerStone');
 }
 
 /**
@@ -137,7 +137,7 @@ function syncRunesDetailDescription(room) {
  * @param {*} room
  */
 function attachBasinRunesSync(room) {
-  const basin = findRoomItemByRef(room, 'rantamuta:stoneBasin');
+  const basin = findRoomItemByRef(room, 'codex:stoneBasin');
   if (!basin || typeof basin !== 'object') {
     return;
   }

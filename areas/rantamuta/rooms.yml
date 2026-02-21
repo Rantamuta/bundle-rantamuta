@@ -1,224 +1,33 @@
 - id: start
-  title: "Rantamuta"
-  description: "A legacy launch point that now leads to the square."
-  exits:
-    - roomId: rantamuta:square
-      direction: north
-
-- id: square
-  title: "Rantamuta Square"
-  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, a mirror-lined gallery opens to the east, and a narrow alley runs west toward an old observatory."
-  exits:
-    - roomId: rantamuta:start
-      direction: south
-    - roomId: rantamuta:bell_courtyard
-      direction: north
-    - roomId: rantamuta:perception_gallery
-      direction: east
-    - roomId: rantamuta:observatory_alley
-      direction: west
-
-- id: observatory_alley
-  title: "Observatory Alley"
-  description: "A tight stone alley bends beneath leaning walls and copper drainpipes. A weathered arch to the west opens into an observatory foyer."
-  exits:
-    - roomId: rantamuta:square
-      direction: east
-    - roomId: rantamuta:observatory_foyer
-      direction: west
-  items:
-    - id: rantamuta:astralSignet
-
-- id: observatory_foyer
-  title: "Observatory Foyer"
-  description: "A circular foyer lined with dormant brass mechanisms and faded star charts. A brass iris gate is set into the northern arch."
-  exits:
-    - roomId: rantamuta:observatory_alley
-      direction: east
-    - roomId: rantamuta:observatory_inner
-      direction: north
-      virtualDoor: rantamuta:brassIrisFacade
-  doors:
-    rantamuta:observatory_inner:
-      closed: true
-      locked: true
-      lockedBy: rantamuta:astralSignet
-  items:
-    - id: rantamuta:brassIrisFacade
-
-- id: observatory_inner
-  title: "Inner Observatory"
-  description: "The old observatory dome rises overhead, its glass ribs scarred by weather and soot. A star-chart shutter marks the southern way back."
-  exits:
-    - roomId: rantamuta:observatory_foyer
-      direction: south
-      virtualDoor: rantamuta:starChartShutter
-  doors:
-    rantamuta:observatory_foyer:
-      closed: false
-      locked: false
-      lockedBy: rantamuta:astralSignet
-  items:
-    - id: rantamuta:starChartShutter
-
-- id: perception_gallery
-  title: "Perception Gallery"
-  description: "An arc of polished stone mirrors catches every footfall."
-  metadata:
-    flags:
-      mirrorsAwake: true
-    descriptionVariants:
-      - when: is_gallery_harmonic
-        text: "The mirrors resonate in clear tones, reflecting your movement a heartbeat before you make it."
-      - whenNot: is_gallery_harmonic
-        text: "The mirrors stand dim and uncertain, as if waiting for the tower's song to settle."
-    descriptionFragments:
-      - when: is_gallery_feature_enabled
-        text: "A brass plaque reads: \"Truth is a pattern seen from many angles.\""
-      - when: is_gallery_mirrors_awake
-        text: "Hairline sigils glow faintly at the edges of each mirror."
-      - when: does_viewer_hold_resonant_shard
-        text: "The shard in your possession makes the mirror-light bend toward your hands."
-      - whenNot: does_viewer_hold_resonant_shard
-        text: "An empty socket in the central plinth seems shaped for a small crystal shard."
-      - when: is_resonant_shard_in_gallery
-        text: "A resonant shard lies on the plinth, humming softly."
-      - whenNot: is_resonant_shard_in_gallery
-        text: "The plinth is bare, but a ghostly hum lingers in the stone."
-      - when: is_wax_seal_in_reliquary
-        text: "Somewhere in the tower, the reliquary's seal answers with a distant warmth."
-      - whenNot: is_wax_seal_in_reliquary
-        text: "The mirrors show a reliquary-shaped shadow that never quite seals shut."
-      - when: is_bronze_clapper_in_bell
-        text: "In every reflection, a bell swings with a clapper of bronze."
-      - whenNot: is_bronze_clapper_in_bell
-        text: "In every reflection, the bell hangs silent, its heart missing."
-  exits:
-    - roomId: rantamuta:square
-      direction: west
-    - roomId: rantamuta:question_apse
-      direction: east
-
-- id: question_apse
-  title: "Question Apse"
-  description: "Three stone arches hold carved questions instead of saints."
-  metadata:
-    descriptionFragments:
-      - when: is_slab_open
-        text: "One arch reads: \"What opens when all offerings are in place?\""
-      - whenNot: is_slab_open
-        text: "One arch reads: \"What remains sealed until all offerings are in place?\""
-      - when: does_viewer_hold_resonant_shard
-        text: "The shard vibrates in answer, and the letters briefly shine."
-      - whenNot: does_viewer_hold_resonant_shard
-        text: "The carved letters look inert, waiting for a matching tone."
-  exits:
-    - roomId: rantamuta:perception_gallery
-      direction: west
-
-- id: bell_courtyard
-  title: "Bell Courtyard"
-  description: "Broken flagstones litter the ground. A bell tower looms to the north, its entrance set into ruined walls. Cold air drifts from deeper ruins."
+  title: "Ristitie"
+  description: "Here four roads meet in a flat, circular clearing at the center of a small village of stone and timber houses. Just off the western side of the clearing stands a slender stone temple. To the north squats a tavern, broad and smoke-darkened. Next to the tavern is an open square, empty for now.\n\nFrom the clearing, a packed dirt road runs west beneath thicker trees and east along the square. A narrow track slips northwest between the temple and the tavern, climbing into the forest. The southern road wanders off towards other settlements, far away. At the exact center of the village circle, set flush with the ground, is a dark stone disc."
   metadata:
     details:
-      - name: "flagstones"
-        keywords: [ "flagstone", "flagstones", "stone" ]
-        description: "The flagstones are cracked and uneven, worn smooth by years of weather."
-      - name: "bell tower"
-        keywords: [ "tower", "bell tower", "belltower" ]
-        description: "The tower looms over the courtyard, its upper stonework dark against the sky."
-      - name: "ruined walls"
-        keywords: [ "wall", "walls", "ruined wall", "ruined walls", "gaps" ]
-        description: "Broken wall sections ring the courtyard, with gaps where whole courses collapsed."
-      - name: "cold air"
-        keywords: [ "air", "cold air", "draft" ]
-        description: "The air is damp and chill, carrying a faint mineral smell from below."
-      - name: "ruins"
-        keywords: [ "ruin", "ruins", "deeper ruins" ]
-        description: "The deeper ruins beyond the courtyard look undisturbed and old."
-  exits:
-    - roomId: rantamuta:square
-      direction: south
-    - roomId: rantamuta:bell_nave
-      direction: north
-  items:
-    - id: rantamuta:waxSeal
+      - name: "village"
+        keywords: [ "small", "village", "circle", "circular", "clearing" ]
+        description: "The village is arranged around a broad widening of the road. Its houses stand within the remains of older granite structures. Dark stone walls, some shoulder-high and some nearly intact, form the lower courses of dwellings that have been rebuilt with timber.\n\nThe roads converge here from four directions. The tavern and the stone temple anchor the circle, while the market square to the northeast leaves space for gatherings.\n\nBeyond these few structures, forest presses close."
+      - name: "houses"
+        keywords: [ "stone", "timber", "house", "houses", "building", "buildings" ]
+        description: "The village houses are built inside the remnants of older stone buildings. Timber frames top foundations built long ago, and rise from granite walls that once stood high. Time has softened the join between ruin and living dwelling."
+      - name: "trees"
+        keywords: [ "forest", "tree", "trees", "pine", "spruce", "birch", "rowan" ]
+        description: "Pine and spruce dominate the higher ground, their trunks straight and close. Birch stands lighter among them, and rowan trees grow nearer the road. The forest presses close on all sides except for the wide open field."
+      - name: "road"
+        keywords: [ "packed", "dirt", "road", "roads", "track", "crossroads", "path", "crossroad" ]
+        description: "The road south leads to Kaupunki, far away. The road west winds into the forest, while the one east runs along the square and out of sight. The track northwest climbs into the trees, narrow and less traveled."
+      - name: "temple"
+        keywords: [ "slender", "stone", "temple" ]
+        description: "The temple is narrow, square and topped with a dome. A small bronze bell hangs above the doorway. Carved into the lintel is a circle overlaid by a thin crescent line."
+      - name: "circle"
+        keywords: [  "lintel", "thin", "crescent", "line", "symbol", "circle" ]
+        description: "The symbol is a simple circle with a thin crescent line overlaid across its upper half. It is deeply incised, while the crescent is more shallow and worn."
+      - name: "tavern"
+        keywords: [ "broad", "smoke-darkened", "smoke", "darkened", "tavern" ]
+        description: "The tavern is broad and solidly built, its beams darkened by years of smoke. The doorway is wider than most in the village and stands propped open, allowing voices and the scent of ale to drift into the road. The yard beside it is packed firm by wagon wheels, and a simple rail stands ready for tethering horses."
+      - name: "square"
+        keywords: [ "open", "market", "square" ]
+        description: "The open square is flat and compacted, marked by old post holes and faint outlines where stalls are raised during market days. The space feels temporarily empty rather than unused."
+      - name: "disc"
+        keywords: [ "small", "circular","depression", "shallow", "lines", "granite", "block", "dark", "stone", "disc" ]
+        description: "The disc in the center of the village circle is formed of tightly fitted granite blocks, darker and smoother than the surrounding earth. It is level despite the shifting ground around it.  Shallow lines radiate inward from the outer rim at regular intervals. Some are clear; others are nearly worn away. Near the center lies a small circular depression, no wider than a coin. Within it, faint and nearly erased, is a circle intersected by a thin crescent.  Along the inner edge of the rim runs a narrow band of repeating marks: short line, gap, long line, paired notch. The pattern resembles notation more than ornament."
 
-- id: bell_nave
-  title: "Bell Nave"
-  description: "Dusty pews face a shattered alcove where a reliquary still waits."
-  exits:
-    - roomId: rantamuta:bell_courtyard
-      direction: south
-    - roomId: rantamuta:bell_stair
-      direction: up
-    - roomId: rantamuta:bell_crypt
-      direction: down
-  items:
-    - id: rantamuta:prayerStone
-    - id: rantamuta:reliquary
-    - id: rantamuta:bellRope
-
-- id: bell_stair
-  title: "Bell Stair"
-  description: "A narrow spiral stair wraps around ancient masonry toward the belfry."
-  exits:
-    - roomId: rantamuta:bell_nave
-      direction: down
-    - roomId: rantamuta:bell_belfry
-      direction: up
-
-- id: bell_belfry
-  title: "Bell Belfry"
-  description: "Ragged ropes sway around a cracked bell suspended over the town below."
-  exits:
-    - roomId: rantamuta:bell_stair
-      direction: down
-  items:
-    - id: rantamuta:crackedBell
-
-- id: bell_crypt
-  title: "Bell Crypt"
-  description: "A low crypt of damp stone holds offerings and a basin etched with old runes."
-  script: bellCryptGate
-  metadata:
-    details:
-      - name: "runes"
-        keywords: [ "rune", "runes", "glyph", "glyphs", "etching", "etchings" ]
-        description: "Ancient runes curl around the basin lip, each line cut with unnerving precision."
-    descriptionFragments:
-      - whenNot: is_slab_open
-        text: "A dull stone slab blocks the descent."
-      - when: is_slab_open
-        text: "A heavy slab has been forced aside, revealing stone stairs descending into darkness."
-      - whenNot: is_basin_runes_glowing
-        text: "The basin runes lie cold and silent, as if waiting for a final word."
-      - when: is_basin_runes_glowing
-        text: "A faint, mystic glow pulses through the basin runes, bathing the crypt in gentle light."
-  exits:
-    - roomId: rantamuta:bell_nave
-      direction: up
-    - roomId: rantamuta:resonance_chamber
-      direction: down
-      metadata:
-        gate:
-          denyMessage: "A dull stone slab blocks the descent."
-          requiredPlacements:
-            - containerRef: rantamuta:crackedBell
-              itemRef: rantamuta:bronzeClapper
-            - containerRef: rantamuta:reliquary
-              itemRef: rantamuta:waxSeal
-            - containerRef: rantamuta:stoneBasin
-              itemRef: rantamuta:prayerStone
-  items:
-    - id: rantamuta:bronzeClapper
-    - id: rantamuta:stoneBasin
-
-- id: resonance_chamber
-  title: "Resonance Chamber"
-  description: "A hidden chamber thrums with harmonic tone. The ritual has awakened the old tower."
-  exits:
-    - roomId: rantamuta:bell_crypt
-      direction: up
-  items:
-    - id: rantamuta:resonantShard

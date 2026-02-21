@@ -1,5 +1,5 @@
 # Bell Tower full puzzle completion path
-room: rantamuta:square
+room: codex:square
 command: look
 command: n
 command: look at seal

@@ -1,8 +1,8 @@
 // @ts-check
 'use strict';
 
-const CRACKED_BELL_REF = 'rantamuta:crackedBell';
-const BRONZE_CLAPPER_REF = 'rantamuta:bronzeClapper';
+const CRACKED_BELL_REF = 'codex:crackedBell';
+const BRONZE_CLAPPER_REF = 'codex:bronzeClapper';
 const BELL_TOLL_AREA_MESSAGE = 'A resonant chime rolls out from the bell tower.';
 
 /**

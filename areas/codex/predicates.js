@@ -14,9 +14,9 @@
  * @type {Array<[string, string, string]>}
  */
 const DESCENT_REQUIREMENTS = [
-  ['rantamuta:bell_belfry', 'rantamuta:crackedBell', 'rantamuta:bronzeClapper'],
-  ['rantamuta:bell_nave', 'rantamuta:reliquary', 'rantamuta:waxSeal'],
-  ['rantamuta:bell_crypt', 'rantamuta:stoneBasin', 'rantamuta:prayerStone'],
+  ['codex:bell_belfry', 'codex:crackedBell', 'codex:bronzeClapper'],
+  ['codex:bell_nave', 'codex:reliquary', 'codex:waxSeal'],
+  ['codex:bell_crypt', 'codex:stoneBasin', 'codex:prayerStone'],
 ];
 
 /**
@@ -43,9 +43,9 @@ function basinRunesGlowing(q) {
   }
 
   return q.roomContainerHasItem(
-    'rantamuta:bell_crypt',
-    'rantamuta:stoneBasin',
-    'rantamuta:prayerStone'
+    'codex:bell_crypt',
+    'codex:stoneBasin',
+    'codex:prayerStone'
   );
 }
 
@@ -59,9 +59,9 @@ function hasBronzeClapperInBell(q) {
   }
 
   return q.roomContainerHasItem(
-    'rantamuta:bell_belfry',
-    'rantamuta:crackedBell',
-    'rantamuta:bronzeClapper'
+    'codex:bell_belfry',
+    'codex:crackedBell',
+    'codex:bronzeClapper'
   );
 }
 
@@ -75,9 +75,9 @@ function hasWaxSealInReliquary(q) {
   }
 
   return q.roomContainerHasItem(
-    'rantamuta:bell_nave',
-    'rantamuta:reliquary',
-    'rantamuta:waxSeal'
+    'codex:bell_nave',
+    'codex:reliquary',
+    'codex:waxSeal'
   );
 }
 
@@ -90,7 +90,7 @@ function hasResonantShardInGallery(q) {
     return false;
   }
 
-  return q.roomHasItem('rantamuta:perception_gallery', 'rantamuta:resonantShard');
+  return q.roomHasItem('codex:perception_gallery', 'codex:resonantShard');
 }
 
 module.exports = {
@@ -99,10 +99,10 @@ module.exports = {
   is_gallery_feature_enabled: ({ q }) =>
     !!(q && typeof q.areaFlag === 'function' && q.areaFlag('rantamuta', 'galleryFeatureEnabled')),
   is_gallery_mirrors_awake: ({ q }) =>
-    !!(q && typeof q.roomFlag === 'function' && q.roomFlag('rantamuta:perception_gallery', 'mirrorsAwake')),
+    !!(q && typeof q.roomFlag === 'function' && q.roomFlag('codex:perception_gallery', 'mirrorsAwake')),
   is_resonant_shard_in_gallery: ({ q }) => hasResonantShardInGallery(q),
   does_viewer_hold_resonant_shard: ({ q }) =>
-    !!(q && typeof q.actorHasItem === 'function' && q.actorHasItem('rantamuta:resonantShard')),
+    !!(q && typeof q.actorHasItem === 'function' && q.actorHasItem('codex:resonantShard')),
   is_wax_seal_in_reliquary: ({ q }) => hasWaxSealInReliquary(q),
   is_bronze_clapper_in_bell: ({ q }) => hasBronzeClapperInBell(q),
   is_gallery_harmonic: ({ q }) =>

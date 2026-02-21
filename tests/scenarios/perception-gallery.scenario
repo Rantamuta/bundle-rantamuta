@@ -1,8 +1,8 @@
 # Perception Gallery showcase path
 # Demonstrates `when` + `whenNot` transitions in rantamuta gallery rooms.
 
-room: rantamuta:square
-seedInventory: rantamuta:resonantShard
+room: codex:square
+seedInventory: codex:resonantShard
 
 # Initial gallery state: no shard in hand, shard on plinth, ritual incomplete.
 command: look

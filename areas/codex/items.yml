@@ -36,7 +36,7 @@
         take: "The bell is fixed to the ancient frame."
     puzzle:
       putPolicy:
-        acceptedItemRef: "rantamuta:bronzeClapper"
+        acceptedItemRef: "codex:bronzeClapper"
         descriptionEmpty: "The old bell is split along one side, and its clapper is missing."
         descriptionFilled: "The old bell is split along one side, but a bronze clapper now hangs within it."
         rejectMessage: "That does not belong in the bell."
@@ -71,7 +71,7 @@
         take: "The reliquary is set into the stonework."
     puzzle:
       putPolicy:
-        acceptedItemRef: "rantamuta:waxSeal"
+        acceptedItemRef: "codex:waxSeal"
         descriptionEmpty: "An ornate reliquary with a shallow circular recess awaiting its seal."
         descriptionFilled: "An ornate reliquary with a red wax seal set firmly into its shallow recess."
         roomDescEmpty: "A reliquary sits in a fractured alcove."
@@ -93,7 +93,7 @@
         take: "The basin is far too heavy to move."
     puzzle:
       putPolicy:
-        acceptedItemRef: "rantamuta:prayerStone"
+        acceptedItemRef: "codex:prayerStone"
         rejectMessage: "The basin's runes remain dark."
         successRender: "Ripples of light shimmer across the basin."
 
@@ -123,9 +123,9 @@
       verbs:
         take: "The gate is bolted into the stone ring."
     facadeDoor:
-      roomId: rantamuta:observatory_inner
+      roomId: codex:observatory_inner
       direction: north
-      requiredKeyRef: rantamuta:astralSignet
+      requiredKeyRef: codex:astralSignet
       denied:
         open: "The iris does not respond. A star-signet is required."
         lock: "You cannot find the sigil notch to set the lock."
@@ -153,9 +153,9 @@
       verbs:
         take: "The shutter is anchored to a ring of counterweights."
     facadeDoor:
-      roomId: rantamuta:observatory_foyer
+      roomId: codex:observatory_foyer
       direction: south
-      requiredKeyRef: rantamuta:astralSignet
+      requiredKeyRef: codex:astralSignet
       denied:
         open: "The shutter stays sealed. A matching signet seems required."
         lock: "The lock channels do not align without the signet."

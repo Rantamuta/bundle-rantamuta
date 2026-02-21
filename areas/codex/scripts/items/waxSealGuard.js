@@ -25,7 +25,7 @@ function createCanDirect(waxSeal) {
       ? carriedBy.entityReference
       : '';
 
-    if (carrierRef !== 'rantamuta:reliquary') {
+    if (carrierRef !== 'codex:reliquary') {
       return undefined;
     }
 

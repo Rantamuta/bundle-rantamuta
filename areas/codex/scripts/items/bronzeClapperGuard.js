@@ -2,10 +2,10 @@
 'use strict';
 
 /**
- * Prevent removing the prayer stone after it has been placed in the stone
- * basin as part of the Bell Tower ritual.
+ * Prevent removing the bronze clapper after it has been placed in the cracked
+ * bell as part of the Bell Tower ritual.
  */
-function createCanDirect(prayerStone) {
+function createCanDirect(clapper) {
   return (actor, verbId, context) => {
     void actor;
 
@@ -16,20 +16,20 @@ function createCanDirect(prayerStone) {
     const resolution = context && context.entityResolution && typeof context.entityResolution === 'object'
       ? context.entityResolution
       : null;
-    if (!resolution || resolution.ruleKey !== 'direct' || resolution.directTarget !== prayerStone) {
+    if (!resolution || resolution.ruleKey !== 'direct' || resolution.directTarget !== clapper) {
       return undefined;
     }
 
-    const carriedBy = prayerStone.carriedBy && typeof prayerStone.carriedBy === 'object' ? prayerStone.carriedBy : null;
+    const carriedBy = clapper.carriedBy && typeof clapper.carriedBy === 'object' ? clapper.carriedBy : null;
     const carrierRef = carriedBy && typeof carriedBy.entityReference === 'string'
       ? carriedBy.entityReference
       : '';
 
-    if (carrierRef !== 'rantamuta:stoneBasin') {
+    if (carrierRef !== 'codex:crackedBell') {
       return undefined;
     }
 
-    return 'The basin holds the stone as if in quiet guardianship. You cannot remove it.';
+    return 'The clapper is locked into position. Removing it would undo the balance.';
   };
 }
 

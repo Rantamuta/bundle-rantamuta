@@ -28,7 +28,7 @@ const {
 } = require('../helpers/putPolicy');
 const { evaluateExitGate } = require('../helpers/exitGate');
 
-const CRYPT_ROOM_REFERENCE = 'rantamuta:bell_crypt';
+const CRYPT_ROOM_REFERENCE = 'codex:bell_crypt';
 const RITUAL_HUM_MESSAGE = 'A low, resonant hum fills the tower, wavering at its edges before steadying.';
 const RITUAL_AREA_GRIND_MESSAGE = 'There is a low grinding sound from the base of the bell tower.';
 const RITUAL_CRYPT_GRIND_MESSAGE = 'A stone slab on the floor moves aside with a low grinding sound, revealing a staircase descending into darkness.';
@@ -239,7 +239,7 @@ function willOpenDescentAfterCurrentPut(state, context) {
  * Check whether this container currently holds the puzzle's accepted item.
  *
  * Example:
- * - cracked bell policy expects `rantamuta:bronzeClapper`
+ * - cracked bell policy expects `codex:bronzeClapper`
  * - if the bell inventory contains an item with that entityReference,
  *   this returns true.
  *
@@ -278,7 +278,7 @@ function hasAcceptedItem(entity, policy) {
  * metadata:
  *   puzzle:
  *     putPolicy:
- *       acceptedItemRef: "rantamuta:bronzeClapper"
+ *       acceptedItemRef: "codex:bronzeClapper"
  *       descriptionEmpty: "The old bell ... clapper is missing."
  *       descriptionFilled: "The old bell ... clapper now hangs within it."
  *
