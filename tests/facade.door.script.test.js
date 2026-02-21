@@ -2,7 +2,7 @@
 'use strict';
 
 const assert = require('assert');
-const facadeDoorScript = require('../areas/rantamuta/scripts/items/facadeDoor');
+const facadeDoorScript = require('../areas/codex/scripts/items/facadeDoor');
 
 describe('bundle-rantamuta facadeDoor item script', function () {
   it('attaches canDirect and planDirect hooks to the matching exit on spawn', function () {
