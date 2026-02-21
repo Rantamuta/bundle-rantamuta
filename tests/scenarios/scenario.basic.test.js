@@ -224,7 +224,7 @@ test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => 
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Three offerings wake this tower/i);
-  assert.match(result.stdout, /You still need to|Only one offering remains/i);
+  assert.match(result.stdout, /You still need to|Only one offering remains|Start with the reliquary/i);
   assert.match(result.stdout, /descent is open/i);
   assert.match(result.stdout, /Perception Gallery/i);
 

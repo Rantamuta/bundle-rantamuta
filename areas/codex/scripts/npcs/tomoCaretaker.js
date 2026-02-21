@@ -122,6 +122,9 @@ function ensurePlayerTomoMemory(player) {
   if (!Number.isFinite(tomoMemory.lastHintAt)) {
     tomoMemory.lastHintAt = 0;
   }
+  if (!Number.isFinite(tomoMemory.lastProgressCount)) {
+    tomoMemory.lastProgressCount = -1;
+  }
 
   return tomoMemory;
 }
@@ -223,20 +226,25 @@ function maybeGuidePlayer(state, npc, player) {
   if (!memory.introShown) {
     sayToPlayer(player, introLine());
     memory.introShown = true;
-    memory.lastHintAt = now;
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
     sayToPlayer(player, completionLine());
     memory.completionShown = true;
-    memory.lastHintAt = now;
+    memory.lastProgressCount = 3;
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
     sayToPlayer(player, galleryRedirectLine());
     memory.galleryRedirectShown = true;
+    return;
+  }
+
+  if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
+    sayToPlayer(player, progressLine(ritual.missingSteps));
+    memory.lastProgressCount = ritual.completedCount;
     memory.lastHintAt = now;
     return;
   }
@@ -248,6 +256,7 @@ function maybeGuidePlayer(state, npc, player) {
 
   if (!ritual.isComplete) {
     sayToPlayer(player, progressLine(ritual.missingSteps));
+    memory.lastProgressCount = ritual.completedCount;
     memory.lastHintAt = now;
   }
 }

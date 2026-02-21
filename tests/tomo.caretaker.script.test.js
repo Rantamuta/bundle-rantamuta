@@ -74,8 +74,11 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     withNow(1000, () => onPlayerEnter.call(npc, player, null));
     withNow(2000, () => onPlayerEnter.call(npc, player, null));
 
-    assert.strictEqual(lines.length, 1);
-    assert.match(lines[0].line, /three offerings/i);
+    const introLines = lines
+      .map(entry => entry.line)
+      .filter(line => /three offerings/i.test(line));
+
+    assert.strictEqual(introLines.length, 1);
   });
 
   it('emits progress hint with remaining ritual placements', function () {
