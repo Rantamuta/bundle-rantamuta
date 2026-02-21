@@ -236,6 +236,64 @@ describe('bundle-rantamuta go command', function () {
     });
   });
 
+  it('does not consult destination door state in go command layer', function () {
+    const currentRoom = createRoom({ entityReference: 'test:current' });
+    const destination = createRoom({
+      entityReference: 'test:destination',
+      title: 'Destination',
+      description: 'You have arrived.',
+    });
+    destination.getDoor = () => {
+      throw new Error('go command should not read destination door state');
+    };
+
+    const execute = goCommand.command({
+      RoomManager: {
+        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+      },
+    });
+    const player = createPlayer({ room: currentRoom });
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'direct',
+        directTarget: { direction: 'east', roomId: destination.entityReference },
+      },
+    });
+
+    assert.strictEqual(result.ok, true);
+  });
+
+  it('does not enqueue doorMutation in go command layer', function () {
+    const currentRoom = createRoom({ entityReference: 'test:current' });
+    const destination = createRoom({
+      entityReference: 'test:destination',
+      doors: new Map([[currentRoom.entityReference, { locked: false, closed: true }]]),
+    });
+    const execute = goCommand.command({
+      RoomManager: {
+        getRoom: (roomId) => roomId === destination.entityReference ? destination : null,
+      },
+    });
+    const player = createPlayer({ room: currentRoom });
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'direct',
+        directTarget: { direction: 'east', roomId: destination.entityReference },
+      },
+    });
+
+    assert.deepStrictEqual(result.plan.operations, [
+      {
+        type: 'movePlayer',
+        player,
+        toRoom: destination,
+        direction: 'east',
+      },
+    ]);
+  });
+
   it('entity-resolution rejects intransitive go form for direct-only declaration', function () {
     const player = createPlayer({ room: createRoom() });
     const result = EntityResolution.resolveEntityContext({}, goCommand, player, parseInput('go'));
