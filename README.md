@@ -12,14 +12,19 @@ This checklist tracks feature areas required for a 1.0 reference-bundle release.
   - [ ] Production world content is implemented in `areas/rantamuta`.
   - [ ] Exit and door authoring patterns are documented for designers.
   - [ ] Coverage exists for core room/item/exit traversal behavior.
-- [ ] Commands and Input Events
-  - [ ] Core player command surface is implemented for production play.
-  - [ ] Input event pipeline is wired and covered by tests/scenarios.
-  - [ ] Designer-facing command usage and behavior expectations are documented.
-- [ ] Doors and Movement
-  - [ ] Door and movement behavior is implemented and validated.
-  - [ ] Virtual door and facade patterns are implemented for production content.
-  - [ ] Coverage exists for door-state and movement-state interaction paths.
+- [x] Commands and Input Events
+  - [x] Core player command surface is implemented for production play.
+  - [x] Input event pipeline is wired and covered by tests/scenarios.
+  - [x] Designer-facing command usage and behavior expectations are documented.
+- [x] Doors and Movement
+  - [x] Door and movement behavior is implemented and validated.
+  - [x] Virtual door and facade patterns are implemented for production content.
+  - [x] Coverage exists for door-state and movement-state interaction paths.
+- [x] Render Predicates
+  - [x] Area-local render predicate runtime is implemented.
+  - [x] Predicate-driven room state rendering is integrated in production content.
+  - [x] Designer-facing predicate authoring guidance is documented.
+  - [x] Predicate runtime and stateful room-render coverage is in place.
 - [ ] Scripts
   - [ ] Area, room, item, and NPC script usage is implemented in production content.
   - [ ] Script authoring guidance is documented for designers.
@@ -28,10 +33,10 @@ This checklist tracks feature areas required for a 1.0 reference-bundle release.
   - [ ] Reusable behavior modules are implemented for production use.
   - [ ] Behavior-vs-script guidance is documented for designers.
   - [ ] Coverage exists for behavior-driven content logic.
-- [ ] Server Events
-  - [ ] Server lifecycle hooks are implemented (`startup`/`shutdown`).
-  - [ ] Server-event behavior is covered by tests or smoke validation.
-  - [ ] Operational guidance for lifecycle responsibilities is documented.
+- [x] Server Events
+  - [x] Server lifecycle hooks are implemented (`startup`/`shutdown`).
+  - [x] Server-event behavior is covered by tests or smoke validation.
+  - [x] Operational guidance for lifecycle responsibilities is documented.
 - [ ] Namespacing and Reference Integrity
   - [ ] Content references use consistent `area:id` namespacing.
   - [ ] Bundle validation gates reference integrity in CI/local workflows.
