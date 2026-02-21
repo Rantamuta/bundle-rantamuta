@@ -102,9 +102,35 @@ module.exports = {
 
           const facadeExitPlanDirect = (actor, verbId, context) => {
             void actor;
-            void verbId;
-            void context;
-            return null;
+            const verb = String(verbId || '').trim().toLowerCase();
+            if (verb !== 'go') {
+              return null;
+            }
+
+            const resolution = context && context.entityResolution && typeof context.entityResolution === 'object'
+              ? context.entityResolution
+              : null;
+            if (!resolution || resolution.directTarget !== exit) {
+              return null;
+            }
+
+            return {
+              render: {
+                messages: [
+                  {
+                    type: 'semanticEvent',
+                    template: verbFlavor(flavor, verb),
+                    audiencePolicy: 'self_and_others',
+                    participants: {
+                      actor: { selector: 'currentPlayer' },
+                    },
+                    objectText: {
+                      direct: 'brass iris gate',
+                    },
+                  },
+                ],
+              },
+            };
           };
 
           exit.canDirect = (actor, verbId, context) => firstDefined(
