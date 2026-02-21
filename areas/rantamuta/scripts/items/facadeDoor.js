@@ -41,6 +41,16 @@ function verbFlavor(flavor, verbId) {
   return `{actor.You} {verb:${base}} the brass iris gate.`;
 }
 
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
 module.exports = {
   listeners: {
     spawn: state => function onSpawn() {
@@ -66,6 +76,45 @@ module.exports = {
         const exitDirection = normalizeDirection(exit && exit.direction);
         if (exitRoomRef === targetRoomRef && exitDirection === targetDirection) {
           exit.suppressComposedDoorMovementMessages = true;
+          const priorCanDirect = typeof exit.canDirect === 'function'
+            ? exit.canDirect.bind(exit)
+            : null;
+          const priorPlanDirect = typeof exit.planDirect === 'function'
+            ? exit.planDirect.bind(exit)
+            : null;
+
+          const facadeExitCanDirect = (actor, verbId, context) => {
+            void context;
+            const verb = String(verbId || '').trim().toLowerCase();
+            if (verb !== 'go') {
+              return null;
+            }
+
+            if (!actorHasKey(actor, cfg.requiredKeyRef)) {
+              const deniedMessage = typeof denied[verb] === 'string' ? denied[verb] : null;
+              if (deniedMessage) {
+                return deniedMessage;
+              }
+            }
+
+            return null;
+          };
+
+          const facadeExitPlanDirect = (actor, verbId, context) => {
+            void actor;
+            void verbId;
+            void context;
+            return null;
+          };
+
+          exit.canDirect = (actor, verbId, context) => firstDefined(
+            facadeExitCanDirect(actor, verbId, context),
+            priorCanDirect ? priorCanDirect(actor, verbId, context) : null
+          );
+          exit.planDirect = (actor, verbId, context) => firstDefined(
+            facadeExitPlanDirect(actor, verbId, context),
+            priorPlanDirect ? priorPlanDirect(actor, verbId, context) : null
+          );
           break;
         }
       }
