@@ -141,6 +141,8 @@
       direction: south
     - roomId: codex:bell_nave
       direction: north
+  npcs:
+    - codex:tomo
   items:
     - id: codex:waxSeal
 

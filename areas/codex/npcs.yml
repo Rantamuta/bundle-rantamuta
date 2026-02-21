@@ -1,0 +1,14 @@
+- id: tomo
+  name: "Bell Keeper Tomo"
+  keywords: [ "tomo", "keeper", "bell", "caretaker" ]
+  description: "A weathered caretaker with chalk on his sleeves and a calm, listening gaze."
+  script: tomoCaretaker
+  metadata:
+    tomo:
+      patrolRoute:
+        - codex:bell_courtyard
+        - codex:bell_nave
+        - codex:bell_stair
+        - codex:bell_nave
+      patrolIntervalMs: 30000
+      hintCooldownMs: 90000
