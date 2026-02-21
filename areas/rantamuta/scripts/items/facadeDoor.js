@@ -115,6 +115,9 @@ module.exports = {
             }
 
             return {
+              renderPolicy: {
+                replaceSuccess: true,
+              },
               render: {
                 messages: [
                   {
