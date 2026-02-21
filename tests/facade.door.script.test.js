@@ -60,6 +60,9 @@ describe('bundle-rantamuta facadeDoor item script', function () {
     );
 
     assert.ok(contribution && typeof contribution === 'object');
+    assert.deepStrictEqual(contribution.renderPolicy, {
+      replaceSuccess: true,
+    });
     assert.ok(contribution.render && Array.isArray(contribution.render.messages));
     assert.deepStrictEqual(contribution.render.messages[0], {
       type: 'semanticEvent',
