@@ -55,21 +55,6 @@ function extractRawSpeechFromParsedInput(parsedInput) {
   return normalizedInput.slice(firstSpaceIndex + 1);
 }
 
-/**
- * @param {*} parsedInput
- * @returns {{ ok: true, text: string } | { ok: false, code: 'SAY_EMPTY' | 'SAY_TOO_LONG' }}
- */
-function validateSpeechFromParsedInput(parsedInput) {
-  const text = sanitizeSpeech(extractRawSpeechFromParsedInput(parsedInput));
-  if (!text) {
-    return { ok: false, code: 'SAY_EMPTY' };
-  }
-  if (text.length > MAX_SAY_LENGTH) {
-    return { ok: false, code: 'SAY_TOO_LONG' };
-  }
-  return { ok: true, text };
-}
-
 module.exports = {
   aliases: [],
   metadata: {
