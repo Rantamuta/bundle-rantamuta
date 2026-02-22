@@ -567,6 +567,39 @@ describe('bundle-rantamuta entity-resolution', function () {
     assert.strictEqual(result.value.directTarget.uuid, 'exit:east:test:labNorth:0');
   });
 
+  it('resolves direct target from room.npcs scope', function () {
+    const tomo = {
+      uuid: 'npc-tomo',
+      name: 'Bell Keeper Tomo',
+      keywords: ['tomo', 'keeper', 'bell', 'caretaker'],
+      isNpc: true,
+    };
+    const command = makeCommand({
+      rules: {
+        direct: {
+          scopeProfile: {
+            direct: ['room.npcs'],
+          },
+        },
+      },
+    });
+    const player = createPlayer({
+      room: {
+        items: new Set(),
+        npcs: new Set([tomo]),
+      },
+    });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look tomo'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.directTarget, tomo);
+  });
+
   it('uses exact direction matching for room.exits scope', function () {
     const command = makeCommand({
       rules: {
