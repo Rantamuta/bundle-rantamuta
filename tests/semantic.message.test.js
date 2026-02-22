@@ -53,6 +53,49 @@ describe('bundle-rantamuta semantic-message', function () {
     });
   });
 
+  it('supports currentActor selector for actor participant resolution', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:wave}.',
+      audiencePolicy: 'self_and_others',
+      participants: {
+        actor: { selector: 'currentActor' },
+      },
+    };
+    const context = {
+      currentActor: { name: 'Foo', isNpc: false },
+    };
+
+    const selfResult = renderSemanticEvent(instruction, context, 'self');
+    const otherResult = renderSemanticEvent(instruction, context, 'other');
+
+    assert.deepStrictEqual(selfResult, {
+      ok: true,
+      included: true,
+      text: 'You wave.',
+    });
+    assert.deepStrictEqual(otherResult, {
+      ok: true,
+      included: true,
+      text: 'Foo waves.',
+    });
+  });
+
+  it('returns SEMANTIC_ACTOR_UNRESOLVED when currentActor cannot be resolved', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:wave}.',
+      audiencePolicy: 'self',
+      participants: {
+        actor: { selector: 'currentActor' },
+      },
+    };
+
+    const result = renderSemanticEvent(instruction, {}, 'self');
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'SEMANTIC_ACTOR_UNRESOLVED');
+  });
+
   it('returns empty text when pov is outside audience policy', function () {
     const instruction = {
       type: 'semanticEvent',
