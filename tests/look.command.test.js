@@ -212,6 +212,10 @@ describe('bundle-rantamuta look command', function () {
           { roomDesc: 'A brass key glints here.' },
           { name: 'plain box' },
         ]),
+        npcs: new Set([
+          { roomDesc: 'Tomo stands by the broken flagstones.' },
+          { name: 'Bell Keeper Tomo' },
+        ]),
       },
     });
 
@@ -230,6 +234,8 @@ describe('bundle-rantamuta look command', function () {
           'Room with items.',
           'A brass key glints here.',
           'You see plain box here.',
+          'Tomo stands by the broken flagstones.',
+          'You see Bell Keeper Tomo here.',
           'Exits: north, east',
         ],
       },
