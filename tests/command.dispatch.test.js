@@ -3342,6 +3342,148 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('executes semanticEvent with currentActor selector for player actor context', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const observer = { name: 'Observer', isNpc: true };
+      const player = asPlayer({
+        name: 'Tester',
+        isNpc: false,
+        room: {
+          title: 'Semantic Room',
+          description: 'Semantic description',
+          area: {},
+          getBroadcastTargets: () => [player, observer],
+        },
+        socket: { writable: false },
+      });
+      player.room.getBroadcastTargets = () => [player, observer];
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: {
+            messages: [
+              {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:wave}.',
+                audiencePolicy: 'self_and_others',
+                participants: {
+                  actor: { selector: 'currentActor' },
+                },
+              },
+            ],
+          },
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'look');
+
+      assert.deepStrictEqual(messages, [
+        'You wave.',
+        'Tester waves.',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('executes semanticEvent with currentActor selector for NPC actor context', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      messages.push(String(message));
+    };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const bystander = { name: 'Watcher', isNpc: false };
+      const npc = asPlayer({
+        name: 'Tomo',
+        isNpc: true,
+        room: {
+          title: 'Semantic Room',
+          description: 'Semantic description',
+          area: {},
+          getBroadcastTargets: () => [npc, bystander],
+        },
+        socket: { writable: false },
+      });
+      npc.room.getBroadcastTargets = () => [npc, bystander];
+
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: {
+            messages: [
+              {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:wave}.',
+                audiencePolicy: 'self_and_others',
+                participants: {
+                  actor: { selector: 'currentActor' },
+                },
+              },
+            ],
+          },
+        }),
+      };
+
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'look' }) },
+      }, npc);
+
+      await handleCommand(state, { player: npc }, 'look');
+
+      assert.deepStrictEqual(messages, [
+        'You wave.',
+        'Tomo waves.',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('rejects invalid semanticEvent render instructions and continues remaining instructions', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
