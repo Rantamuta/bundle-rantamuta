@@ -11,12 +11,12 @@ function createPlayer(def = {}) {
 }
 
 describe('bundle-rantamuta say command', function () {
-  it('declares intransitive entity-resolution rule metadata', function () {
+  it('uses legacy entity-resolution path (no explicit declaration)', function () {
     assert.ok(sayCommand.metadata);
-    assert.ok(sayCommand.metadata.entityResolution);
-    assert.deepStrictEqual(sayCommand.metadata.entityResolution.rules, {
-      intransitive: {},
-    });
+    assert.strictEqual(
+      Object.prototype.hasOwnProperty.call(sayCommand.metadata, 'entityResolution'),
+      false
+    );
   });
 
   it('returns SAY_EMPTY veto for empty normalized speech', function () {
@@ -58,7 +58,7 @@ describe('bundle-rantamuta say command', function () {
     });
 
     const result = execute('   hello\n\n   there\tfriend   ', player, null, {
-      entityResolution: { ruleKey: 'intransitive' },
+      entityResolution: { ruleKey: 'legacy' },
     });
 
     assert.deepStrictEqual(result, {
