@@ -81,6 +81,47 @@ describe('bundle-rantamuta semantic-message', function () {
     });
   });
 
+  it('fails with SEMANTIC_ACTOR_ALIAS_MISMATCH when currentActor and currentPlayer differ', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:wave}.',
+      audiencePolicy: 'self',
+      participants: {
+        actor: { selector: 'currentActor' },
+      },
+    };
+    const context = {
+      currentActor: { uuid: 'actor-1', name: 'Foo', isNpc: false },
+      currentPlayer: { uuid: 'actor-2', name: 'Bar', isNpc: false },
+    };
+
+    const result = renderSemanticEvent(instruction, context, 'self');
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'SEMANTIC_ACTOR_ALIAS_MISMATCH');
+  });
+
+  it('accepts currentActor/currentPlayer alias when identities match', function () {
+    const instruction = {
+      type: 'semanticEvent',
+      template: '{actor.you} {verb:wave}.',
+      audiencePolicy: 'self',
+      participants: {
+        actor: { selector: 'currentActor' },
+      },
+    };
+    const context = {
+      currentActor: { uuid: 'actor-1', name: 'Foo', isNpc: false },
+      currentPlayer: { uuid: 'actor-1', name: 'Foo', isNpc: false },
+    };
+
+    const result = renderSemanticEvent(instruction, context, 'self');
+    assert.deepStrictEqual(result, {
+      ok: true,
+      included: true,
+      text: 'You wave.',
+    });
+  });
+
   it('returns SEMANTIC_ACTOR_UNRESOLVED when currentActor cannot be resolved', function () {
     const instruction = {
       type: 'semanticEvent',
