@@ -75,11 +75,17 @@ module.exports = {
   metadata: {
     captureChecks: [
       context => {
-        const verdict = validateSpeechFromParsedInput(context && context.parsedInput);
-        if (!verdict.ok) {
+        const text = sanitizeSpeech(extractRawSpeechFromParsedInput(context && context.parsedInput));
+        if (!text) {
           return {
             ok: false,
-            code: verdict.code,
+            code: 'SAY_EMPTY',
+          };
+        }
+        if (text.length > MAX_SAY_LENGTH) {
+          return {
+            ok: false,
+            code: 'SAY_TOO_LONG',
           };
         }
         return null;
