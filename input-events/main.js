@@ -26,9 +26,13 @@ module.exports = {
           return;
 
         case 'inGame':
-          if (input.toLowerCase() === 'quit' || input.toLowerCase() === 'exit') {
-            await quitGame(state, session);
-            return;
+          const nInput = input.toLowerCase();
+          switch (nInput) {
+            case 'quit':
+            case 'exit':
+              await quitGame(state, session);
+              return;
+            case 'teleport': // add teleport command for testing
           }
           return await handleCommand(state, session, input);
 
