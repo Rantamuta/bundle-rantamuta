@@ -3,6 +3,7 @@
 
 const { getRitualState, normalizeRef } = require('../helpers/ritualState');
 const CommandDispatch = require('../../../../lib/session/command-dispatch');
+const { getPlayerMetadata } = require('../../../../lib/session/player-metadata');
 
 const DEFAULT_ROUTE = Object.freeze([
   'codex:bell_courtyard',
@@ -147,6 +148,43 @@ function ensurePlayerTomoMemory(npc, player) {
 
 /**
  * @param {*} player
+ * @param {Record<string, *>} runtimeMemory
+ * @returns {{
+ *   introShown: boolean,
+ *   completionShown: boolean,
+ *   galleryRedirectShown: boolean,
+ *   lastHintAt: number,
+ *   lastProgressCount: number,
+ * }}
+ */
+function readPlayerTomoMemory(player, runtimeMemory) {
+  const persistedIntroShown = getPlayerMetadata(player, 'tomo.introShown', undefined);
+  const persistedCompletionShown = getPlayerMetadata(player, 'tomo.completionShown', undefined);
+  const persistedGalleryRedirectShown = getPlayerMetadata(player, 'tomo.galleryRedirectShown', undefined);
+  const persistedLastHintAt = getPlayerMetadata(player, 'tomo.lastHintAt', undefined);
+  const persistedLastProgressCount = getPlayerMetadata(player, 'tomo.lastProgressCount', undefined);
+
+  return {
+    introShown: typeof persistedIntroShown === 'boolean'
+      ? persistedIntroShown
+      : runtimeMemory.introShown === true,
+    completionShown: typeof persistedCompletionShown === 'boolean'
+      ? persistedCompletionShown
+      : runtimeMemory.completionShown === true,
+    galleryRedirectShown: typeof persistedGalleryRedirectShown === 'boolean'
+      ? persistedGalleryRedirectShown
+      : runtimeMemory.galleryRedirectShown === true,
+    lastHintAt: Number.isFinite(persistedLastHintAt)
+      ? Number(persistedLastHintAt)
+      : Number(runtimeMemory.lastHintAt || 0),
+    lastProgressCount: Number.isFinite(persistedLastProgressCount)
+      ? Number(persistedLastProgressCount)
+      : Number(runtimeMemory.lastProgressCount || -1),
+  };
+}
+
+/**
+ * @param {*} player
  * @param {string} itemRef
  * @returns {boolean}
  */
@@ -237,34 +275,35 @@ async function maybeGuidePlayer(state, npc, player) {
     return;
   }
 
-  const memory = ensurePlayerTomoMemory(npc, player);
+  const runtimeMemory = ensurePlayerTomoMemory(npc, player);
+  const memory = readPlayerTomoMemory(player, runtimeMemory);
   const now = Date.now();
   const config = npc && npc.__tomoConfig ? npc.__tomoConfig : readConfig(npc);
   const ritual = getRitualState(state);
 
   if (!memory.introShown) {
     await speakViaCommandDispatch(state, npc, introLine());
-    memory.introShown = true;
+    runtimeMemory.introShown = true;
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
     await speakViaCommandDispatch(state, npc, completionLine());
-    memory.completionShown = true;
-    memory.lastProgressCount = 3;
+    runtimeMemory.completionShown = true;
+    runtimeMemory.lastProgressCount = 3;
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
     await speakViaCommandDispatch(state, npc, galleryRedirectLine());
-    memory.galleryRedirectShown = true;
+    runtimeMemory.galleryRedirectShown = true;
     return;
   }
 
   if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    memory.lastProgressCount = ritual.completedCount;
-    memory.lastHintAt = now;
+    runtimeMemory.lastProgressCount = ritual.completedCount;
+    runtimeMemory.lastHintAt = now;
     return;
   }
 
@@ -275,8 +314,8 @@ async function maybeGuidePlayer(state, npc, player) {
 
   if (!ritual.isComplete) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    memory.lastProgressCount = ritual.completedCount;
-    memory.lastHintAt = now;
+    runtimeMemory.lastProgressCount = ritual.completedCount;
+    runtimeMemory.lastHintAt = now;
   }
 }
 
