@@ -231,9 +231,17 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
   });
 
   it('patrols to next route room on updateTick when room is empty', async function () {
-    const movedTo = [];
+    const dispatchCalls = [];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      dispatchCalls.push(intent);
+      return { ok: true };
+    };
     const rooms = {
-      'codex:bell_courtyard': { entityReference: 'codex:bell_courtyard', players: new Set() },
+      'codex:bell_courtyard': {
+        entityReference: 'codex:bell_courtyard',
+        players: new Set(),
+        exits: [{ direction: 'north', roomId: 'codex:bell_nave' }],
+      },
       'codex:bell_nave': { entityReference: 'codex:bell_nave', players: new Set() },
       'codex:bell_stair': { entityReference: 'codex:bell_stair', players: new Set() },
     };
@@ -253,15 +261,17 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       },
       room: rooms['codex:bell_courtyard'],
       moveTo(room) {
-        movedTo.push(room.entityReference);
         this.room = room;
       },
     };
 
     tomoScript.listeners.spawn(state).call(npc);
+    const startRouteIndex = npc.__tomoRuntime.routeIndex;
     await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
 
-    assert.deepStrictEqual(movedTo, ['codex:bell_nave']);
+    assert.strictEqual(dispatchCalls.length, 1);
+    assert.strictEqual(dispatchCalls[0].verb, 'go');
+    assert.strictEqual(npc.__tomoRuntime.routeIndex, (startRouteIndex + 1) % 4);
   });
 
   it('patrol uses NPC command dispatch and does not call moveTo directly', async function () {

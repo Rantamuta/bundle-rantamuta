@@ -273,10 +273,54 @@ function roomHasPlayers(room) {
 }
 
 /**
+ * @param {*} room
+ * @returns {Array<*>}
+ */
+function roomExits(room) {
+  if (!room || typeof room !== 'object') {
+    return [];
+  }
+
+  if (typeof room.getExits === 'function') {
+    return toArray(room.getExits());
+  }
+
+  return Array.isArray(room.exits) ? room.exits : [];
+}
+
+/**
+ * @param {*} room
+ * @param {string} destinationRoomRef
+ * @returns {string}
+ */
+function resolveDirectionToRoom(room, destinationRoomRef) {
+  const destinationRef = normalizeRef(destinationRoomRef);
+  if (!destinationRef) {
+    return '';
+  }
+
+  for (const exit of roomExits(room)) {
+    if (!exit || typeof exit !== 'object') {
+      continue;
+    }
+    if (normalizeRef(exit.roomId) !== destinationRef) {
+      continue;
+    }
+
+    const direction = String(exit.direction || '').trim().toLowerCase();
+    if (direction) {
+      return direction;
+    }
+  }
+
+  return '';
+}
+
+/**
  * @param {*} state
  * @param {*} npc
  */
-function maybePatrol(state, npc) {
+async function maybePatrol(state, npc) {
   const runtime = npc && npc.__tomoRuntime && typeof npc.__tomoRuntime === 'object'
     ? npc.__tomoRuntime
     : null;
@@ -304,13 +348,42 @@ function maybePatrol(state, npc) {
   }
 
   const nextRoom = roomManager.getRoom(nextRoomRef);
-  if (!nextRoom || typeof npc.moveTo !== 'function') {
+  if (!nextRoom) {
     return;
   }
 
-  npc.moveTo(nextRoom);
+  const direction = resolveDirectionToRoom(npc && npc.room, nextRoomRef);
+  if (!direction) {
+    runtime.lastPatrolError = {
+      code: 'UNSUPPORTED_MUTATION_OP',
+      details: {
+        operation: 'tomo.patrol.go',
+        reason: 'NO_DIRECTION_TO_NEXT_ROOM',
+        nextRoomRef,
+      },
+    };
+    return runtime.lastPatrolError;
+  }
+
+  const result = await CommandDispatch.dispatchNpcIntent(state, npc, {
+    kind: 'structured',
+    verb: 'go',
+    direct: [direction],
+    relationToken: null,
+    indirect: [],
+  });
+
+  if (!result || result.ok !== true) {
+    runtime.lastPatrolError = result && typeof result === 'object' && result.error
+      ? result.error
+      : { code: 'UNSUPPORTED_MUTATION_OP' };
+    return result;
+  }
+
   runtime.routeIndex = nextIndex;
   runtime.lastMoveAt = now;
+  runtime.lastPatrolError = null;
+  return result;
 }
 
 /**
@@ -345,8 +418,8 @@ function createPlayerEnterListener(state) {
  * @returns {function(): void}
  */
 function createUpdateTickListener(state) {
-  return function onUpdateTick() {
-    maybePatrol(state, this);
+  return async function onUpdateTick() {
+    await maybePatrol(state, this);
   };
 }
 
