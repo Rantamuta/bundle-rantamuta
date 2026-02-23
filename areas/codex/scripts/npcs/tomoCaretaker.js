@@ -90,26 +90,42 @@ function initialRouteIndex(npc, config) {
 
 /**
  * @param {*} player
+ * @returns {string}
+ */
+function playerMemoryKey(player) {
+  return normalizeRef(player && (player.uuid || player.entityReference || player.name));
+}
+
+/**
+ * @param {*} npc
+ * @param {*} player
  * @returns {Record<string, *>}
  */
-function ensurePlayerTomoMemory(player) {
-  if (!player || typeof player !== 'object') {
+function ensurePlayerTomoMemory(npc, player) {
+  if (!npc || typeof npc !== 'object' || !player || typeof player !== 'object') {
     return {};
   }
 
-  if (!player.metadata || typeof player.metadata !== 'object') {
-    player.metadata = {};
+  if (!npc.__tomoRuntime || typeof npc.__tomoRuntime !== 'object') {
+    npc.__tomoRuntime = {};
   }
 
-  if (!player.metadata.codex || typeof player.metadata.codex !== 'object') {
-    player.metadata.codex = {};
+  // TODO(v1-parity): move per-player Tomo memory to a command+mutator persistence path.
+  if (!npc.__tomoRuntime.playerMemoryById || typeof npc.__tomoRuntime.playerMemoryById !== 'object') {
+    npc.__tomoRuntime.playerMemoryById = {};
   }
 
-  if (!player.metadata.codex.tomo || typeof player.metadata.codex.tomo !== 'object') {
-    player.metadata.codex.tomo = {};
+  const key = playerMemoryKey(player);
+  if (!key) {
+    return {};
   }
 
-  const tomoMemory = player.metadata.codex.tomo;
+  if (!npc.__tomoRuntime.playerMemoryById[key] ||
+    typeof npc.__tomoRuntime.playerMemoryById[key] !== 'object') {
+    npc.__tomoRuntime.playerMemoryById[key] = {};
+  }
+
+  const tomoMemory = npc.__tomoRuntime.playerMemoryById[key];
   if (tomoMemory.introShown !== true) {
     tomoMemory.introShown = false;
   }
@@ -221,7 +237,7 @@ async function maybeGuidePlayer(state, npc, player) {
     return;
   }
 
-  const memory = ensurePlayerTomoMemory(player);
+  const memory = ensurePlayerTomoMemory(npc, player);
   const now = Date.now();
   const config = npc && npc.__tomoConfig ? npc.__tomoConfig : readConfig(npc);
   const ritual = getRitualState(state);
@@ -398,6 +414,9 @@ function createSpawnListener(state) {
     this.__tomoRuntime = {
       routeIndex: initialRouteIndex(this, config),
       lastMoveAt: 0,
+      playerMemoryById: {},
+      // TODO(v1-parity): replace runtime-only Tomo memory with persisted command+mutator memory operations.
+      lastPatrolError: null,
     };
   };
 }

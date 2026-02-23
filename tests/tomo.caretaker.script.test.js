@@ -188,22 +188,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p2',
-      metadata: {
-        codex: {
-          tomo: {
-            introShown: true,
-            completionShown: false,
-            galleryRedirectShown: false,
-            lastHintAt: 0,
-          },
-        },
-      },
+      metadata: {},
       inventory: new Set(),
       socket: { writable: false },
     };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: false,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: -1,
+    };
     await withNow(10000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
@@ -226,22 +224,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p3',
-      metadata: {
-        codex: {
-          tomo: {
-            introShown: true,
-            completionShown: false,
-            galleryRedirectShown: false,
-            lastHintAt: 0,
-          },
-        },
-      },
+      metadata: {},
       inventory: new Set(),
       socket: { writable: false },
     };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: false,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: 2,
+    };
     await withNow(20000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
@@ -264,22 +260,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p4',
-      metadata: {
-        codex: {
-          tomo: {
-            introShown: true,
-            completionShown: true,
-            galleryRedirectShown: false,
-            lastHintAt: 0,
-          },
-        },
-      },
+      metadata: {},
       inventory: new Set([{ entityReference: 'codex:resonantShard' }]),
       socket: { writable: false },
     };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: true,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: 3,
+    };
     await withNow(30000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
