@@ -82,19 +82,7 @@ describe('bundle-rantamuta npc intent normalization', function () {
     });
 
     const command = {
-      metadata: {
-        entityResolution: {
-          rules: {
-            directIndirect: {
-              acceptedRelations: ['in'],
-              scopeProfile: {
-                direct: ['room.items'],
-                indirect: ['room.items'],
-              },
-            },
-          },
-        },
-      },
+      metadata: {},
       execute: async (_args, _player, _alias, context) => {
         seenParsedInput = context && context.parsedInput;
         return {
