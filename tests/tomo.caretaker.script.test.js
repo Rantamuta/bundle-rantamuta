@@ -5,6 +5,7 @@ const assert = require('assert');
 const ranvier = require('ranvier');
 const tomoScript = require('../areas/codex/scripts/npcs/tomoCaretaker');
 const CommandDispatch = require('../lib/session/command-dispatch');
+const sayDef = require('../commands/say');
 
 function createContainer(entityReference, containsRefs) {
   return {
@@ -18,7 +19,7 @@ function createState({ wax = false, stone = false, clapper = false, rooms = {} }
   const basin = createContainer('codex:stoneBasin', stone ? ['codex:prayerStone'] : []);
   const bell = createContainer('codex:crackedBell', clapper ? ['codex:bronzeClapper'] : []);
 
-  return {
+  const state = {
     ItemManager: {
       items: new Set([reliquary, basin, bell]),
     },
@@ -26,16 +27,40 @@ function createState({ wax = false, stone = false, clapper = false, rooms = {} }
       getRoom: (ref) => rooms[ref] || null,
     },
   };
+
+  const sayCommand = {
+    metadata: sayDef.metadata,
+    execute: sayDef.command(state),
+  };
+  state.CommandManager = {
+    get: key => key === 'say' ? sayCommand : null,
+  };
+
+  return state;
 }
 
 function withNow(now, fn) {
   const originalNow = Date.now;
   Date.now = () => now;
   try {
-    return fn();
-  } finally {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(() => {
+        Date.now = originalNow;
+      });
+    }
     Date.now = originalNow;
+    return result;
+  } catch (err) {
+    Date.now = originalNow;
+    throw err;
   }
+}
+
+function linesForTarget(deliveries, target) {
+  return deliveries
+    .filter(entry => entry.target === target)
+    .map(entry => entry.line);
 }
 
 describe('bundle-rantamuta codex tomo caretaker script', function () {
@@ -52,10 +77,10 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     CommandDispatch.dispatchNpcIntent = originalDispatchNpcIntent;
   });
 
-  it('emits intro once per player', function () {
-    const lines = [];
+  it('emits intro once per player', async function () {
+    const deliveries = [];
     ranvier.Broadcast.sayAt = (target, line) => {
-      lines.push({ target, line: String(line) });
+      deliveries.push({ target, line: String(line) });
     };
 
     const state = createState();
@@ -68,27 +93,28 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       room: {
         players: new Set(),
       },
+      socket: { writable: false },
     };
     const player = { uuid: 'p1', metadata: {}, inventory: new Set() };
+    npc.room.getBroadcastTargets = () => [npc, player];
 
     const onSpawn = tomoScript.listeners.spawn(state);
     const onPlayerEnter = tomoScript.listeners.playerEnter(state);
     onSpawn.call(npc);
 
-    withNow(1000, () => onPlayerEnter.call(npc, player, null));
-    withNow(2000, () => onPlayerEnter.call(npc, player, null));
+    await withNow(1000, () => onPlayerEnter.call(npc, player, null));
+    await withNow(2000, () => onPlayerEnter.call(npc, player, null));
 
-    const introLines = lines
-      .map(entry => entry.line)
-      .filter(line => /three offerings/i.test(line));
+    const playerLines = linesForTarget(deliveries, player);
+    const introLines = playerLines.filter(line => /three offerings/i.test(line));
 
     assert.strictEqual(introLines.length, 1);
   });
 
-  it('emits progress hint with remaining ritual placements', function () {
-    const lines = [];
-    ranvier.Broadcast.sayAt = (_target, line) => {
-      lines.push(String(line));
+  it('emits progress hint with remaining ritual placements', async function () {
+    const deliveries = [];
+    ranvier.Broadcast.sayAt = (target, line) => {
+      deliveries.push({ target, line: String(line) });
     };
 
     const state = createState({ wax: true, stone: false, clapper: false });
@@ -101,6 +127,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       room: {
         players: new Set(),
       },
+      socket: { writable: false },
     };
     const player = {
       uuid: 'p2',
@@ -115,26 +142,30 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
         },
       },
       inventory: new Set(),
+      socket: { writable: false },
     };
+    npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    withNow(10000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
+    await withNow(10000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
-    assert.strictEqual(lines.length, 1);
-    assert.match(lines[0], /prayer stone/i);
-    assert.match(lines[0], /bronze clapper/i);
+    const playerLines = linesForTarget(deliveries, player);
+    assert.strictEqual(playerLines.length, 1);
+    assert.match(playerLines[0], /prayer stone/i);
+    assert.match(playerLines[0], /bronze clapper/i);
   });
 
-  it('emits completion redirect when ritual is complete', function () {
-    const lines = [];
-    ranvier.Broadcast.sayAt = (_target, line) => {
-      lines.push(String(line));
+  it('emits completion redirect when ritual is complete', async function () {
+    const deliveries = [];
+    ranvier.Broadcast.sayAt = (target, line) => {
+      deliveries.push({ target, line: String(line) });
     };
 
     const state = createState({ wax: true, stone: true, clapper: true });
     const npc = {
       metadata: { tomo: {} },
       room: { players: new Set() },
+      socket: { writable: false },
     };
     const player = {
       uuid: 'p3',
@@ -149,26 +180,30 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
         },
       },
       inventory: new Set(),
+      socket: { writable: false },
     };
+    npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    withNow(20000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
+    await withNow(20000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
-    assert.strictEqual(lines.length, 1);
-    assert.match(lines[0], /descent/i);
-    assert.match(lines[0], /crypt/i);
+    const playerLines = linesForTarget(deliveries, player);
+    assert.strictEqual(playerLines.length, 1);
+    assert.match(playerLines[0], /descent/i);
+    assert.match(playerLines[0], /crypt/i);
   });
 
-  it('emits gallery redirect after completion when player has shard', function () {
-    const lines = [];
-    ranvier.Broadcast.sayAt = (_target, line) => {
-      lines.push(String(line));
+  it('emits gallery redirect after completion when player has shard', async function () {
+    const deliveries = [];
+    ranvier.Broadcast.sayAt = (target, line) => {
+      deliveries.push({ target, line: String(line) });
     };
 
     const state = createState({ wax: true, stone: true, clapper: true });
     const npc = {
       metadata: { tomo: {} },
       room: { players: new Set() },
+      socket: { writable: false },
     };
     const player = {
       uuid: 'p4',
@@ -183,16 +218,19 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
         },
       },
       inventory: new Set([{ entityReference: 'codex:resonantShard' }]),
+      socket: { writable: false },
     };
+    npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    withNow(30000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
+    await withNow(30000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
-    assert.strictEqual(lines.length, 1);
-    assert.match(lines[0], /perception gallery/i);
+    const playerLines = linesForTarget(deliveries, player);
+    assert.strictEqual(playerLines.length, 1);
+    assert.match(playerLines[0], /perception gallery/i);
   });
 
-  it('patrols to next route room on updateTick when room is empty', function () {
+  it('patrols to next route room on updateTick when room is empty', async function () {
     const movedTo = [];
     const rooms = {
       'codex:bell_courtyard': { entityReference: 'codex:bell_courtyard', players: new Set() },
@@ -221,12 +259,12 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
 
     tomoScript.listeners.spawn(state).call(npc);
-    withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
+    await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
 
     assert.deepStrictEqual(movedTo, ['codex:bell_nave']);
   });
 
-  it('does not patrol when players are present in Tomo room', function () {
+  it('does not patrol when players are present in Tomo room', async function () {
     const movedTo = [];
     const rooms = {
       'codex:bell_courtyard': { entityReference: 'codex:bell_courtyard', players: new Set([{ uuid: 'player-1' }]) },
@@ -255,7 +293,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
 
     tomoScript.listeners.spawn(state).call(npc);
-    withNow(60000, () => tomoScript.listeners.updateTick(state).call(npc));
+    await withNow(60000, () => tomoScript.listeners.updateTick(state).call(npc));
 
     assert.deepStrictEqual(movedTo, []);
   });
@@ -281,8 +319,10 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       room: {
         players: new Set(),
       },
+      socket: { writable: false },
     };
-    const player = { uuid: 'p-dispatch', metadata: {}, inventory: new Set() };
+    const player = { uuid: 'p-dispatch', metadata: {}, inventory: new Set(), socket: { writable: false } };
+    npc.room.getBroadcastTargets = () => [npc, player];
 
     const onSpawn = tomoScript.listeners.spawn(state);
     const onPlayerEnter = tomoScript.listeners.playerEnter(state);
