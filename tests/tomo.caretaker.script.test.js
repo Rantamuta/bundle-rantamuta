@@ -6,6 +6,7 @@ const ranvier = require('ranvier');
 const tomoScript = require('../areas/codex/scripts/npcs/tomoCaretaker');
 const CommandDispatch = require('../lib/session/command-dispatch');
 const sayDef = require('../commands/say');
+const goDef = require('../commands/go');
 
 function createContainer(entityReference, containsRefs) {
   return {
@@ -14,7 +15,7 @@ function createContainer(entityReference, containsRefs) {
   };
 }
 
-function createState({ wax = false, stone = false, clapper = false, rooms = {} } = {}) {
+function createState({ wax = false, stone = false, clapper = false, rooms = {}, includeGo = false } = {}) {
   const reliquary = createContainer('codex:reliquary', wax ? ['codex:waxSeal'] : []);
   const basin = createContainer('codex:stoneBasin', stone ? ['codex:prayerStone'] : []);
   const bell = createContainer('codex:crackedBell', clapper ? ['codex:bronzeClapper'] : []);
@@ -32,8 +33,22 @@ function createState({ wax = false, stone = false, clapper = false, rooms = {} }
     metadata: sayDef.metadata,
     execute: sayDef.command(state),
   };
+  const goCommand = includeGo
+    ? {
+      metadata: goDef.metadata,
+      execute: goDef.command(state),
+    }
+    : null;
   state.CommandManager = {
-    get: key => key === 'say' ? sayCommand : null,
+    get: key => {
+      if (key === 'say') {
+        return sayCommand;
+      }
+      if (includeGo && key === 'go') {
+        return goCommand;
+      }
+      return null;
+    },
   };
 
   return state;
@@ -368,6 +383,88 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
 
     assert.strictEqual(movedTo.length, 0);
     assert.strictEqual(dispatchCalls.length, 1);
+  });
+
+  it('routes patrol movement through shared NPC dispatch and commit mutation path', async function () {
+    const moves = [];
+    const courtyard = {
+      entityReference: 'codex:bell_courtyard',
+      players: new Set(),
+      exits: [],
+      getExits() { return this.exits; },
+      getBroadcastTargets: () => [npc],
+    };
+    const nave = {
+      entityReference: 'codex:bell_nave',
+      players: new Set(),
+      exits: [],
+      getExits() { return this.exits; },
+      getBroadcastTargets: () => [npc],
+    };
+    const rooms = {
+      'codex:bell_courtyard': courtyard,
+      'codex:bell_nave': nave,
+      'codex:bell_stair': { entityReference: 'codex:bell_stair', players: new Set(), exits: [] },
+    };
+
+    const state = createState({ rooms, includeGo: true });
+    const npc = {
+      name: 'Tomo',
+      metadata: {
+        tomo: {
+          patrolIntervalMs: 1,
+          patrolRoute: [
+            'codex:bell_courtyard',
+            'codex:bell_nave',
+            'codex:bell_stair',
+            'codex:bell_nave',
+          ],
+        },
+      },
+      room: courtyard,
+      socket: { writable: false },
+      moveTo(room) {
+        moves.push(room && room.entityReference);
+        this.room = room;
+      },
+      getBroadcastTargets() {
+        return [this];
+      },
+    };
+    courtyard.getBroadcastTargets = () => [npc];
+    nave.getBroadcastTargets = () => [npc];
+
+    const northExit = {
+      id: 'north',
+      entityReference: 'codex:exit-north',
+      direction: 'north',
+      roomId: 'codex:bell_nave',
+      keywords: ['north'],
+      planDirect(actor) {
+        return {
+          ok: true,
+          plan: {
+            operations: [
+              {
+                type: 'movePlayer',
+                player: actor,
+                toRoom: nave,
+                direction: 'north',
+              },
+            ],
+          },
+        };
+      },
+    };
+    courtyard.exits = [northExit];
+
+    tomoScript.listeners.spawn(state).call(npc);
+    const startRouteIndex = npc.__tomoRuntime.routeIndex;
+    await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
+
+    assert.ok(moves.includes('codex:bell_nave'));
+    assert.strictEqual(npc.room, nave);
+    assert.strictEqual(npc.__tomoRuntime.routeIndex, (startRouteIndex + 1) % 4);
   });
 
   it('patrol dispatch emits go intent for route movement', async function () {
