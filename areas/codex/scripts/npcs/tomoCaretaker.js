@@ -91,64 +91,6 @@ function initialRouteIndex(npc, config) {
 
 /**
  * @param {*} player
- * @returns {string}
- */
-function playerMemoryKey(player) {
-  return normalizeRef(player && (player.uuid || player.entityReference || player.name));
-}
-
-/**
- * @param {*} npc
- * @param {*} player
- * @returns {Record<string, *>}
- */
-function ensurePlayerTomoMemory(npc, player) {
-  if (!npc || typeof npc !== 'object' || !player || typeof player !== 'object') {
-    return {};
-  }
-
-  if (!npc.__tomoRuntime || typeof npc.__tomoRuntime !== 'object') {
-    npc.__tomoRuntime = {};
-  }
-
-  // TODO(v1-parity): move per-player Tomo memory to a command+mutator persistence path.
-  if (!npc.__tomoRuntime.playerMemoryById || typeof npc.__tomoRuntime.playerMemoryById !== 'object') {
-    npc.__tomoRuntime.playerMemoryById = {};
-  }
-
-  const key = playerMemoryKey(player);
-  if (!key) {
-    return {};
-  }
-
-  if (!npc.__tomoRuntime.playerMemoryById[key] ||
-    typeof npc.__tomoRuntime.playerMemoryById[key] !== 'object') {
-    npc.__tomoRuntime.playerMemoryById[key] = {};
-  }
-
-  const tomoMemory = npc.__tomoRuntime.playerMemoryById[key];
-  if (tomoMemory.introShown !== true) {
-    tomoMemory.introShown = false;
-  }
-  if (tomoMemory.completionShown !== true) {
-    tomoMemory.completionShown = false;
-  }
-  if (tomoMemory.galleryRedirectShown !== true) {
-    tomoMemory.galleryRedirectShown = false;
-  }
-  if (!Number.isFinite(tomoMemory.lastHintAt)) {
-    tomoMemory.lastHintAt = 0;
-  }
-  if (!Number.isFinite(tomoMemory.lastProgressCount)) {
-    tomoMemory.lastProgressCount = -1;
-  }
-
-  return tomoMemory;
-}
-
-/**
- * @param {*} player
- * @param {Record<string, *>} runtimeMemory
  * @returns {{
  *   introShown: boolean,
  *   completionShown: boolean,
@@ -157,29 +99,19 @@ function ensurePlayerTomoMemory(npc, player) {
  *   lastProgressCount: number,
  * }}
  */
-function readPlayerTomoMemory(player, runtimeMemory) {
-  const persistedIntroShown = getPlayerMetadata(player, 'tomo.introShown', undefined);
-  const persistedCompletionShown = getPlayerMetadata(player, 'tomo.completionShown', undefined);
-  const persistedGalleryRedirectShown = getPlayerMetadata(player, 'tomo.galleryRedirectShown', undefined);
-  const persistedLastHintAt = getPlayerMetadata(player, 'tomo.lastHintAt', undefined);
-  const persistedLastProgressCount = getPlayerMetadata(player, 'tomo.lastProgressCount', undefined);
+function readPlayerTomoMemory(player) {
+  const persistedIntroShown = getPlayerMetadata(player, 'tomo.introShown', false);
+  const persistedCompletionShown = getPlayerMetadata(player, 'tomo.completionShown', false);
+  const persistedGalleryRedirectShown = getPlayerMetadata(player, 'tomo.galleryRedirectShown', false);
+  const persistedLastHintAt = getPlayerMetadata(player, 'tomo.lastHintAt', 0);
+  const persistedLastProgressCount = getPlayerMetadata(player, 'tomo.lastProgressCount', -1);
 
   return {
-    introShown: typeof persistedIntroShown === 'boolean'
-      ? persistedIntroShown
-      : runtimeMemory.introShown === true,
-    completionShown: typeof persistedCompletionShown === 'boolean'
-      ? persistedCompletionShown
-      : runtimeMemory.completionShown === true,
-    galleryRedirectShown: typeof persistedGalleryRedirectShown === 'boolean'
-      ? persistedGalleryRedirectShown
-      : runtimeMemory.galleryRedirectShown === true,
-    lastHintAt: Number.isFinite(persistedLastHintAt)
-      ? Number(persistedLastHintAt)
-      : Number(runtimeMemory.lastHintAt || 0),
-    lastProgressCount: Number.isFinite(persistedLastProgressCount)
-      ? Number(persistedLastProgressCount)
-      : Number(runtimeMemory.lastProgressCount || -1),
+    introShown: persistedIntroShown === true,
+    completionShown: persistedCompletionShown === true,
+    galleryRedirectShown: persistedGalleryRedirectShown === true,
+    lastHintAt: Number.isFinite(persistedLastHintAt) ? Number(persistedLastHintAt) : 0,
+    lastProgressCount: Number.isFinite(persistedLastProgressCount) ? Number(persistedLastProgressCount) : -1,
   };
 }
 
@@ -266,6 +198,58 @@ function galleryRedirectLine() {
 }
 
 /**
+ * @param {*} value
+ * @returns {string}
+ */
+function stringifyMetadataValue(value) {
+  if (value === true) {
+    return 'true';
+  }
+  if (value === false) {
+    return 'false';
+  }
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+/**
+ * @param {*} state
+ * @param {*} npc
+ * @param {*} player
+ * @param {string} key
+ * @param {*} value
+ * @returns {Promise<{ ok: true } | { ok: false, error: { code?: string, details?: Record<string, *> } }>}
+ */
+async function setPlayerMetadataViaCommandDispatch(state, npc, player, key, value) {
+  const playerName = player && typeof player.name === 'string'
+    ? player.name.trim()
+    : '';
+  if (!playerName) {
+    return {
+      ok: false,
+      error: {
+        code: 'SET_PLAYER_METADATA_PLAYER_NAME_MISSING',
+        details: { key },
+      },
+    };
+  }
+
+  return CommandDispatch.dispatchNpcIntent(state, npc, {
+    kind: 'structured',
+    verb: 'setplayermetadata',
+    direct: [playerName, key, stringifyMetadataValue(value)],
+    relationToken: null,
+    indirect: [],
+  });
+}
+
+/**
  * @param {*} state
  * @param {*} npc
  * @param {*} player
@@ -275,35 +259,34 @@ async function maybeGuidePlayer(state, npc, player) {
     return;
   }
 
-  const runtimeMemory = ensurePlayerTomoMemory(npc, player);
-  const memory = readPlayerTomoMemory(player, runtimeMemory);
+  const memory = readPlayerTomoMemory(player);
   const now = Date.now();
   const config = npc && npc.__tomoConfig ? npc.__tomoConfig : readConfig(npc);
   const ritual = getRitualState(state);
 
   if (!memory.introShown) {
     await speakViaCommandDispatch(state, npc, introLine());
-    runtimeMemory.introShown = true;
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.introShown', true);
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
     await speakViaCommandDispatch(state, npc, completionLine());
-    runtimeMemory.completionShown = true;
-    runtimeMemory.lastProgressCount = 3;
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.completionShown', true);
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.lastProgressCount', 3);
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
     await speakViaCommandDispatch(state, npc, galleryRedirectLine());
-    runtimeMemory.galleryRedirectShown = true;
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.galleryRedirectShown', true);
     return;
   }
 
   if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    runtimeMemory.lastProgressCount = ritual.completedCount;
-    runtimeMemory.lastHintAt = now;
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.lastProgressCount', ritual.completedCount);
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.lastHintAt', now);
     return;
   }
 
@@ -314,8 +297,8 @@ async function maybeGuidePlayer(state, npc, player) {
 
   if (!ritual.isComplete) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    runtimeMemory.lastProgressCount = ritual.completedCount;
-    runtimeMemory.lastHintAt = now;
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.lastProgressCount', ritual.completedCount);
+    await setPlayerMetadataViaCommandDispatch(state, npc, player, 'tomo.lastHintAt', now);
   }
 }
 
@@ -453,8 +436,6 @@ function createSpawnListener(state) {
     this.__tomoRuntime = {
       routeIndex: initialRouteIndex(this, config),
       lastMoveAt: 0,
-      playerMemoryById: {},
-      // TODO(v1-parity): replace runtime-only Tomo memory with persisted command+mutator memory operations.
       lastPatrolError: null,
     };
   };

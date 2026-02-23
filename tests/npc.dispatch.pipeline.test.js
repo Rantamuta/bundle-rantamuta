@@ -238,4 +238,65 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     assert.deepStrictEqual(resolutionCalls[0].parsedInput, parseInput('look'));
     assert.deepStrictEqual(resolutionCalls[1].parsedInput, parseInput('look'));
   });
+
+  it('commits npc setplayermetadata through mutator commit path', async function () {
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const commitOps = [];
+    mutator.applyMutationPlan = (state, plan) => {
+      commitOps.push(...plan.operations);
+      return originalMutatorApply(state, plan);
+    };
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+
+    const targetPlayer = {
+      name: 'Rendall',
+      metadata: {},
+      room: null,
+      socket: { writable: false },
+    };
+    const npc = asActor({
+      name: 'Tomo',
+      isNpc: true,
+      room: {
+        area: {},
+        getBroadcastTargets: () => [npc],
+      },
+      socket: { writable: false },
+    });
+    npc.room.getBroadcastTargets = () => [npc];
+
+    const setMetadataDef = require('../commands/setplayermetadata');
+    const command = {
+      metadata: setMetadataDef.metadata,
+      execute: setMetadataDef.command({
+        PlayerManager: {
+          getPlayer: name => String(name || '').toLowerCase() === 'rendall' ? targetPlayer : null,
+        },
+      }),
+    };
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'setplayermetadata' ? command : null,
+      },
+      PlayerManager: {
+        getPlayer: name => String(name || '').toLowerCase() === 'rendall' ? targetPlayer : null,
+      },
+    }, npc);
+
+    const result = await dispatchNpcIntent(state, npc, {
+      kind: 'structured',
+      verb: 'setplayermetadata',
+      direct: ['Rendall', 'tomo.introShown', 'true'],
+      relationToken: null,
+      indirect: [],
+    });
+
+    assert.deepStrictEqual(result, { ok: true });
+    assert.strictEqual(commitOps.length, 1);
+    assert.strictEqual(commitOps[0].type, 'setPlayerMetadata');
+    assert.strictEqual(targetPlayer.metadata.tomo.introShown, true);
+  });
 });
