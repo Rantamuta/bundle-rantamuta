@@ -232,6 +232,38 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     assert.strictEqual(Object.prototype.hasOwnProperty.call(npc.__tomoRuntime, 'playerMemoryById'), false);
   });
 
+  it('routes guidance-state writes through setplayermetadata dispatch', async function () {
+    const intents = [];
+    ranvier.Broadcast.sayAt = () => { };
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      intents.push(intent);
+      return { ok: true };
+    };
+
+    const state = createState();
+    const npc = {
+      metadata: { tomo: {} },
+      room: { players: new Set() },
+      socket: { writable: false },
+    };
+    const player = {
+      uuid: 'p-guidance-dispatch',
+      name: 'Rendall',
+      metadata: {},
+      inventory: new Set(),
+      socket: { writable: false },
+    };
+    npc.room.getBroadcastTargets = () => [npc, player];
+
+    tomoScript.listeners.spawn(state).call(npc);
+    await withNow(12345, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
+
+    const metadataIntents = intents.filter(intent => intent && intent.verb === 'setplayermetadata');
+    assert.ok(metadataIntents.length >= 1);
+    assert.deepStrictEqual(metadataIntents[0].direct, ['Rendall', 'tomo.introShown', 'true']);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(npc.__tomoRuntime, 'playerMemoryById'), false);
+  });
+
   it('emits progress hint with remaining ritual placements', async function () {
     const deliveries = [];
     ranvier.Broadcast.sayAt = (target, line) => {
