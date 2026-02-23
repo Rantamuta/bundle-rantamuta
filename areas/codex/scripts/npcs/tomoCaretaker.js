@@ -91,79 +91,24 @@ function initialRouteIndex(npc, config) {
 
 /**
  * @param {*} player
- * @returns {string}
- */
-function playerMemoryKey(player) {
-  return normalizeRef(player && (player.uuid || player.entityReference || player.name));
-}
-
-/**
- * @param {*} npc
- * @param {*} player
- * @returns {Record<string, *>}
- */
-function ensurePlayerTomoMemory(npc, player) {
-  if (!npc || typeof npc !== 'object' || !player || typeof player !== 'object') {
-    return {};
-  }
-
-  if (!npc.__tomoRuntime || typeof npc.__tomoRuntime !== 'object') {
-    npc.__tomoRuntime = {};
-  }
-
-  // TODO(v1-parity): move per-player Tomo memory to a command+mutator persistence path.
-  if (!npc.__tomoRuntime.playerMemoryById || typeof npc.__tomoRuntime.playerMemoryById !== 'object') {
-    npc.__tomoRuntime.playerMemoryById = {};
-  }
-
-  const key = playerMemoryKey(player);
-  if (!key) {
-    return {};
-  }
-
-  if (!npc.__tomoRuntime.playerMemoryById[key] ||
-    typeof npc.__tomoRuntime.playerMemoryById[key] !== 'object') {
-    npc.__tomoRuntime.playerMemoryById[key] = {};
-  }
-
-  const tomoMemory = npc.__tomoRuntime.playerMemoryById[key];
-  if (tomoMemory.introShown !== true) {
-    tomoMemory.introShown = false;
-  }
-  if (tomoMemory.completionShown !== true) {
-    tomoMemory.completionShown = false;
-  }
-  if (tomoMemory.galleryRedirectShown !== true) {
-    tomoMemory.galleryRedirectShown = false;
-  }
-  if (!Number.isFinite(tomoMemory.lastHintAt)) {
-    tomoMemory.lastHintAt = 0;
-  }
-  if (!Number.isFinite(tomoMemory.lastProgressCount)) {
-    tomoMemory.lastProgressCount = -1;
-  }
-
-  return tomoMemory;
-}
-
-/**
- * @param {*} player
- * @param {Record<string, *>} runtimeMemory
  * @returns {{
  *   introShown: boolean,
  *   completionShown: boolean,
  *   galleryRedirectShown: boolean,
  *   lastHintAt: number,
  *   lastProgressCount: number,
+ *   playerToken: string,
  * }}
  */
-function readPlayerTomoMemory(player, runtimeMemory) {
-  const fallback = runtimeMemory && typeof runtimeMemory === 'object' ? runtimeMemory : {};
-  const introShown = getPlayerMetadata(player, 'tomo.introShown', fallback.introShown === true) === true;
-  const completionShown = getPlayerMetadata(player, 'tomo.completionShown', fallback.completionShown === true) === true;
-  const galleryRedirectShown = getPlayerMetadata(player, 'tomo.galleryRedirectShown', fallback.galleryRedirectShown === true) === true;
-  const lastHintAt = Number(getPlayerMetadata(player, 'tomo.lastHintAt', fallback.lastHintAt));
-  const lastProgressCount = Number(getPlayerMetadata(player, 'tomo.lastProgressCount', fallback.lastProgressCount));
+function readPlayerTomoMemory(player) {
+  const introShown = getPlayerMetadata(player, 'tomo.introShown', false) === true;
+  const completionShown = getPlayerMetadata(player, 'tomo.completionShown', false) === true;
+  const galleryRedirectShown = getPlayerMetadata(player, 'tomo.galleryRedirectShown', false) === true;
+  const lastHintAt = Number(getPlayerMetadata(player, 'tomo.lastHintAt', 0));
+  const lastProgressCount = Number(getPlayerMetadata(player, 'tomo.lastProgressCount', -1));
+  const playerToken = String(
+    (player && (player.name || player.uuid || normalizeRef(player.entityReference))) || ''
+  ).trim();
 
   return {
     introShown,
@@ -171,6 +116,7 @@ function readPlayerTomoMemory(player, runtimeMemory) {
     galleryRedirectShown,
     lastHintAt: Number.isFinite(lastHintAt) ? lastHintAt : 0,
     lastProgressCount: Number.isFinite(lastProgressCount) ? lastProgressCount : -1,
+    playerToken,
   };
 }
 
@@ -208,6 +154,30 @@ async function speakViaCommandDispatch(state, npc, line) {
     kind: 'structured',
     verb: 'say',
     direct: [line],
+  });
+}
+
+/**
+ * @param {*} state
+ * @param {*} npc
+ * @param {*} player
+ * @param {string} key
+ * @param {*} value
+ */
+async function persistPlayerTomoMemory(state, npc, player, key, value) {
+  const playerToken = String(
+    (player && (player.name || player.uuid || normalizeRef(player.entityReference))) || ''
+  ).trim();
+  if (!playerToken) {
+    return { ok: false, error: { code: 'TOMO_PLAYER_TOKEN_MISSING' } };
+  }
+
+  return CommandDispatch.dispatchNpcIntent(state, npc, {
+    kind: 'structured',
+    verb: 'setplayermetadata',
+    direct: [playerToken, `tomo.${key}`, String(value)],
+    relationToken: null,
+    indirect: [],
   });
 }
 
@@ -266,35 +236,34 @@ async function maybeGuidePlayer(state, npc, player) {
     return;
   }
 
-  const runtimeMemory = ensurePlayerTomoMemory(npc, player);
-  const memory = readPlayerTomoMemory(player, runtimeMemory);
+  const memory = readPlayerTomoMemory(player);
   const now = Date.now();
   const config = npc && npc.__tomoConfig ? npc.__tomoConfig : readConfig(npc);
   const ritual = getRitualState(state);
 
   if (!memory.introShown) {
     await speakViaCommandDispatch(state, npc, introLine());
-    runtimeMemory.introShown = true;
+    await persistPlayerTomoMemory(state, npc, player, 'introShown', true);
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
     await speakViaCommandDispatch(state, npc, completionLine());
-    runtimeMemory.completionShown = true;
-    runtimeMemory.lastProgressCount = 3;
+    await persistPlayerTomoMemory(state, npc, player, 'completionShown', true);
+    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', 3);
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
     await speakViaCommandDispatch(state, npc, galleryRedirectLine());
-    runtimeMemory.galleryRedirectShown = true;
+    await persistPlayerTomoMemory(state, npc, player, 'galleryRedirectShown', true);
     return;
   }
 
   if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    runtimeMemory.lastProgressCount = ritual.completedCount;
-    runtimeMemory.lastHintAt = now;
+    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', ritual.completedCount);
+    await persistPlayerTomoMemory(state, npc, player, 'lastHintAt', now);
     return;
   }
 
@@ -305,8 +274,8 @@ async function maybeGuidePlayer(state, npc, player) {
 
   if (!ritual.isComplete) {
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    runtimeMemory.lastProgressCount = ritual.completedCount;
-    runtimeMemory.lastHintAt = now;
+    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', ritual.completedCount);
+    await persistPlayerTomoMemory(state, npc, player, 'lastHintAt', now);
   }
 }
 
@@ -444,8 +413,6 @@ function createSpawnListener(state) {
     this.__tomoRuntime = {
       routeIndex: initialRouteIndex(this, config),
       lastMoveAt: 0,
-      playerMemoryById: {},
-      // TODO(v1-parity): replace runtime-only Tomo memory with persisted command+mutator memory operations.
       lastPatrolError: null,
     };
   };

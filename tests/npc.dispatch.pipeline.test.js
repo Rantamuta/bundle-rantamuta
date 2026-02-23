@@ -7,6 +7,7 @@ const ranvier = require('ranvier');
 const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
 const EntityResolution = require('../lib/session/entity-resolution');
 const { parseInput } = require('../lib/parse-input');
+const setPlayerMetadataDef = require('../commands/setplayermetadata');
 
 /**
  * @param {*} value
@@ -237,5 +238,54 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     assert.strictEqual(resolutionCalls.length, 2);
     assert.deepStrictEqual(resolutionCalls[0].parsedInput, parseInput('look'));
     assert.deepStrictEqual(resolutionCalls[1].parsedInput, parseInput('look'));
+  });
+
+  it('commits setplayermetadata through npc dispatch commit path', async function () {
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+
+    const targetPlayer = {
+      name: 'Rendall',
+      metadata: {},
+      socket: { writable: false },
+    };
+    const npc = asActor({
+      name: 'Tomo',
+      isNpc: true,
+      room: {
+        area: {},
+        getBroadcastTargets: () => [npc],
+      },
+      socket: { writable: false },
+    });
+    npc.room.getBroadcastTargets = () => [npc];
+
+    const state = {
+      CommandManager: {
+        get: key => {
+          if (key !== 'setplayermetadata') {
+            return null;
+          }
+          return {
+            metadata: setPlayerMetadataDef.metadata,
+            execute: setPlayerMetadataDef.command(state),
+          };
+        },
+      },
+      PlayerManager: {
+        getPlayer: token => token === 'Rendall' ? targetPlayer : null,
+      },
+    };
+
+    const result = await dispatchNpcIntent(state, npc, {
+      kind: 'structured',
+      verb: 'setplayermetadata',
+      direct: ['Rendall', 'tomo.introShown', 'true'],
+      relationToken: null,
+      indirect: [],
+    });
+
+    assert.deepStrictEqual(result, { ok: true });
+    assert.strictEqual(targetPlayer.metadata.tomo.introShown, true);
   });
 });

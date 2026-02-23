@@ -93,10 +93,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
   });
 
   it('emits intro once per player', async function () {
-    const deliveries = [];
-    ranvier.Broadcast.sayAt = (target, line) => {
-      deliveries.push({ target, line: String(line) });
-    };
+    const lines = [];
 
     const state = createState();
     const npc = {
@@ -112,6 +109,32 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = { uuid: 'p1', metadata: {}, inventory: new Set() };
     npc.room.getBroadcastTargets = () => [npc, player];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      if (intent && intent.verb === 'say') {
+        lines.push(String(intent.direct && intent.direct[0]));
+      }
+
+      if (intent && intent.verb === 'setplayermetadata') {
+        const direct = Array.isArray(intent.direct) ? intent.direct : [];
+        const key = String(direct[1] || '');
+        const rawValue = String(direct[2] || '');
+        const value = rawValue === 'true'
+          ? true
+          : rawValue === 'false'
+            ? false
+            : rawValue;
+
+        player.metadata = player.metadata && typeof player.metadata === 'object' ? player.metadata : {};
+        player.metadata.tomo = player.metadata.tomo && typeof player.metadata.tomo === 'object'
+          ? player.metadata.tomo
+          : {};
+        if (key === 'tomo.introShown') {
+          player.metadata.tomo.introShown = value;
+        }
+      }
+
+      return { ok: true };
+    };
 
     const onSpawn = tomoScript.listeners.spawn(state);
     const onPlayerEnter = tomoScript.listeners.playerEnter(state);
@@ -120,8 +143,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
     await withNow(2000, () => onPlayerEnter.call(npc, player, null));
 
-    const playerLines = linesForTarget(deliveries, player);
-    const introLines = playerLines.filter(line => /three offerings/i.test(line));
+    const introLines = lines.filter(line => /three offerings/i.test(line));
 
     assert.strictEqual(introLines.length, 1);
   });
@@ -154,7 +176,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     });
   });
 
-  it('stores Tomo per-player guidance state in NPC-local runtime memory', async function () {
+  it('does not store Tomo per-player guidance state in NPC-local runtime memory', async function () {
     ranvier.Broadcast.sayAt = () => { };
     CommandDispatch.dispatchNpcIntent = async () => ({ ok: true });
 
@@ -179,8 +201,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
 
     const memoryStore = npc.__tomoRuntime && npc.__tomoRuntime.playerMemoryById;
-    assert.ok(memoryStore && typeof memoryStore === 'object');
-    assert.ok(memoryStore[player.uuid]);
+    assert.strictEqual(memoryStore, undefined);
   });
 
   it('uses persisted player metadata to suppress intro when already shown', async function () {
@@ -291,7 +312,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+    player.metadata.tomo = {
       introShown: true,
       completionShown: false,
       galleryRedirectShown: false,
@@ -327,7 +348,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+    player.metadata.tomo = {
       introShown: true,
       completionShown: false,
       galleryRedirectShown: false,
@@ -363,7 +384,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
-    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+    player.metadata.tomo = {
       introShown: true,
       completionShown: true,
       galleryRedirectShown: false,
@@ -679,10 +700,10 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
   });
 
   it('routes intro speech through npc dispatcher and does not use direct speech helper', async function () {
-    let dispatchCalls = 0;
+    const dispatchIntents = [];
     const directSpeechCalls = [];
     CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
-      dispatchCalls += 1;
+      dispatchIntents.push(intent);
       return { ok: true, intent };
     };
     ranvier.Broadcast.sayAt = (target, line) => {
@@ -710,7 +731,9 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
 
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
 
-    assert.strictEqual(dispatchCalls, 1);
+    assert.ok(dispatchIntents.length >= 2);
+    assert.ok(dispatchIntents.some(intent => intent && intent.verb === 'say'));
+    assert.ok(dispatchIntents.some(intent => intent && intent.verb === 'setplayermetadata'));
     assert.strictEqual(directSpeechCalls.length, 0);
   });
 });
