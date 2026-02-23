@@ -7,7 +7,6 @@ const tomoScript = require('../areas/codex/scripts/npcs/tomoCaretaker');
 const CommandDispatch = require('../lib/session/command-dispatch');
 const sayDef = require('../commands/say');
 const goDef = require('../commands/go');
-const setPlayerMetadataDef = require('../commands/setplayermetadata');
 
 function createContainer(entityReference, containsRefs) {
   return {
@@ -40,27 +39,10 @@ function createState({ wax = false, stone = false, clapper = false, rooms = {}, 
       execute: goDef.command(state),
     }
     : null;
-  const setPlayerMetadataCommand = {
-    metadata: setPlayerMetadataDef.metadata,
-    execute: setPlayerMetadataDef.command(state),
-  };
-  const playersByName = new Map();
-  state.PlayerManager = {
-    getPlayer: name => playersByName.get(String(name || '').toLowerCase()) || null,
-  };
-  state.registerPlayer = player => {
-    if (!player || typeof player !== 'object' || typeof player.name !== 'string' || !player.name.trim()) {
-      return;
-    }
-    playersByName.set(player.name.trim().toLowerCase(), player);
-  };
   state.CommandManager = {
     get: key => {
       if (key === 'say') {
         return sayCommand;
-      }
-      if (key === 'setplayermetadata') {
-        return setPlayerMetadataCommand;
       }
       if (includeGo && key === 'go') {
         return goCommand;
@@ -128,8 +110,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       },
       socket: { writable: false },
     };
-    const player = { uuid: 'p1', name: 'Rendall', metadata: {}, inventory: new Set() };
-    state.registerPlayer(player);
+    const player = { uuid: 'p1', metadata: {}, inventory: new Set() };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     const onSpawn = tomoScript.listeners.spawn(state);
@@ -173,15 +154,9 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     });
   });
 
-  it('routes guidance-state writes through setplayermetadata dispatcher intent', async function () {
+  it('stores Tomo per-player guidance state in NPC-local runtime memory', async function () {
     ranvier.Broadcast.sayAt = () => { };
-    const intents = [];
-    CommandDispatch.dispatchNpcIntent = async (state, actor, intent) => {
-      void state;
-      void actor;
-      intents.push(intent);
-      return { ok: true };
-    };
+    CommandDispatch.dispatchNpcIntent = async () => ({ ok: true });
 
     const state = createState();
     const npc = {
@@ -195,8 +170,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       },
       socket: { writable: false },
     };
-    const player = { uuid: 'p-runtime-memory', name: 'Rendall', metadata: {}, inventory: new Set(), socket: { writable: false } };
-    state.registerPlayer(player);
+    const player = { uuid: 'p-runtime-memory', metadata: {}, inventory: new Set(), socket: { writable: false } };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     const onSpawn = tomoScript.listeners.spawn(state);
@@ -204,8 +178,9 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     onSpawn.call(npc);
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
 
-    assert.strictEqual(intents.some(intent => intent && intent.verb === 'say'), true);
-    assert.strictEqual(intents.some(intent => intent && intent.verb === 'setplayermetadata'), true);
+    const memoryStore = npc.__tomoRuntime && npc.__tomoRuntime.playerMemoryById;
+    assert.ok(memoryStore && typeof memoryStore === 'object');
+    assert.ok(memoryStore[player.uuid]);
   });
 
   it('uses persisted player metadata to suppress intro when already shown', async function () {
@@ -235,7 +210,6 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       inventory: new Set(),
       socket: { writable: false },
     };
-    state.registerPlayer(player);
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
@@ -278,23 +252,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p2',
-      name: 'Rendall',
-      metadata: {
-        tomo: {
-          introShown: true,
-          completionShown: false,
-          galleryRedirectShown: false,
-          lastHintAt: 0,
-          lastProgressCount: -1,
-        },
-      },
+      metadata: {},
       inventory: new Set(),
       socket: { writable: false },
     };
-    state.registerPlayer(player);
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: false,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: -1,
+    };
     await withNow(10000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
@@ -317,23 +288,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p3',
-      name: 'Rendall',
-      metadata: {
-        tomo: {
-          introShown: true,
-          completionShown: false,
-          galleryRedirectShown: false,
-          lastHintAt: 0,
-          lastProgressCount: 2,
-        },
-      },
+      metadata: {},
       inventory: new Set(),
       socket: { writable: false },
     };
-    state.registerPlayer(player);
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: false,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: 2,
+    };
     await withNow(20000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
@@ -356,23 +324,20 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     };
     const player = {
       uuid: 'p4',
-      name: 'Rendall',
-      metadata: {
-        tomo: {
-          introShown: true,
-          completionShown: true,
-          galleryRedirectShown: false,
-          lastHintAt: 0,
-          lastProgressCount: 3,
-        },
-      },
+      metadata: {},
       inventory: new Set([{ entityReference: 'codex:resonantShard' }]),
       socket: { writable: false },
     };
-    state.registerPlayer(player);
     npc.room.getBroadcastTargets = () => [npc, player];
 
     tomoScript.listeners.spawn(state).call(npc);
+    npc.__tomoRuntime.playerMemoryById[player.uuid] = {
+      introShown: true,
+      completionShown: true,
+      galleryRedirectShown: false,
+      lastHintAt: 0,
+      lastProgressCount: 3,
+    };
     await withNow(30000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
     const playerLines = linesForTarget(deliveries, player);
@@ -682,10 +647,10 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
   });
 
   it('routes intro speech through npc dispatcher and does not use direct speech helper', async function () {
-    const intents = [];
+    let dispatchCalls = 0;
     const directSpeechCalls = [];
     CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
-      intents.push(intent);
+      dispatchCalls += 1;
       return { ok: true, intent };
     };
     ranvier.Broadcast.sayAt = (target, line) => {
@@ -704,7 +669,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
       },
       socket: { writable: false },
     };
-    const player = { uuid: 'p-dispatch', name: 'Rendall', metadata: {}, inventory: new Set(), socket: { writable: false } };
+    const player = { uuid: 'p-dispatch', metadata: {}, inventory: new Set(), socket: { writable: false } };
     npc.room.getBroadcastTargets = () => [npc, player];
 
     const onSpawn = tomoScript.listeners.spawn(state);
@@ -713,9 +678,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
 
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
 
-    assert.strictEqual(intents.length, 2);
-    assert.strictEqual(intents[0].verb, 'say');
-    assert.strictEqual(intents[1].verb, 'setplayermetadata');
+    assert.strictEqual(dispatchCalls, 1);
     assert.strictEqual(directSpeechCalls.length, 0);
   });
 });
