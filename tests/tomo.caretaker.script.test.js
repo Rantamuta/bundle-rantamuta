@@ -4,6 +4,7 @@
 const assert = require('assert');
 const ranvier = require('ranvier');
 const tomoScript = require('../areas/codex/scripts/npcs/tomoCaretaker');
+const CommandDispatch = require('../lib/session/command-dispatch');
 
 function createContainer(entityReference, containsRefs) {
   return {
@@ -39,13 +40,16 @@ function withNow(now, fn) {
 
 describe('bundle-rantamuta codex tomo caretaker script', function () {
   let originalSayAt;
+  let originalDispatchNpcIntent;
 
   beforeEach(function () {
     originalSayAt = ranvier.Broadcast.sayAt;
+    originalDispatchNpcIntent = CommandDispatch.dispatchNpcIntent;
   });
 
   afterEach(function () {
     ranvier.Broadcast.sayAt = originalSayAt;
+    CommandDispatch.dispatchNpcIntent = originalDispatchNpcIntent;
   });
 
   it('emits intro once per player', function () {
@@ -254,5 +258,39 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     withNow(60000, () => tomoScript.listeners.updateTick(state).call(npc));
 
     assert.deepStrictEqual(movedTo, []);
+  });
+
+  it('routes intro speech through npc dispatcher and does not use direct speech helper', async function () {
+    let dispatchCalls = 0;
+    const directSpeechCalls = [];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      dispatchCalls += 1;
+      return { ok: true, intent };
+    };
+    ranvier.Broadcast.sayAt = (target, line) => {
+      directSpeechCalls.push({ target, line: String(line) });
+    };
+
+    const state = createState();
+    const npc = {
+      metadata: {
+        tomo: {
+          hintCooldownMs: 999999,
+        },
+      },
+      room: {
+        players: new Set(),
+      },
+    };
+    const player = { uuid: 'p-dispatch', metadata: {}, inventory: new Set() };
+
+    const onSpawn = tomoScript.listeners.spawn(state);
+    const onPlayerEnter = tomoScript.listeners.playerEnter(state);
+    onSpawn.call(npc);
+
+    await withNow(1000, () => onPlayerEnter.call(npc, player, null));
+
+    assert.strictEqual(dispatchCalls, 1);
+    assert.strictEqual(directSpeechCalls.length, 0);
   });
 });
