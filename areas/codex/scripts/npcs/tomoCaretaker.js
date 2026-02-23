@@ -1,8 +1,8 @@
 // @ts-check
 'use strict';
 
-const { Broadcast } = require('ranvier');
 const { getRitualState, normalizeRef } = require('../helpers/ritualState');
+const CommandDispatch = require('../../../../lib/session/command-dispatch');
 
 const DEFAULT_ROUTE = Object.freeze([
   'codex:bell_courtyard',
@@ -150,22 +150,27 @@ function playerHasItemRef(player, itemRef) {
 }
 
 /**
- * @param {*} player
+ * @param {*} state
+ * @param {*} npc
  * @param {string} line
  */
-function sayToPlayer(player, line) {
-  if (!player || typeof line !== 'string' || line.length === 0) {
-    return;
+async function speakViaCommandDispatch(state, npc, line) {
+  if (!npc || typeof npc !== 'object' || typeof line !== 'string' || line.length === 0) {
+    return { ok: false, error: { code: 'NPC_SAY_INVALID' } };
   }
 
-  Broadcast.sayAt(player, line);
+  return CommandDispatch.dispatchNpcIntent(state, npc, {
+    kind: 'structured',
+    verb: 'say',
+    direct: [line],
+  });
 }
 
 /**
  * @returns {string}
  */
 function introLine() {
-  return 'Tomo says, "Three offerings wake this tower: seal to reliquary, stone to basin, clapper to bell."';
+  return 'Three offerings wake this tower: seal to reliquary, stone to basin, clapper to bell.';
 }
 
 /**
@@ -178,32 +183,32 @@ function progressLine(missingSteps) {
     .filter(Boolean);
 
   if (phrases.length === 0) {
-    return 'Tomo says, "The rite is balanced."';
+    return 'The rite is balanced.';
   }
 
   if (phrases.length === 1) {
-    return `Tomo says, "Only one offering remains: ${phrases[0]}."`;
+    return `Only one offering remains: ${phrases[0]}.`;
   }
 
   if (phrases.length === 2) {
-    return `Tomo says, "You still need to ${phrases[0]}, and ${phrases[1]}."`;
+    return `You still need to ${phrases[0]}, and ${phrases[1]}.`;
   }
 
-  return 'Tomo says, "Start with the reliquary, then the basin, then the bell."';
+  return 'Start with the reliquary, then the basin, then the bell.';
 }
 
 /**
  * @returns {string}
  */
 function completionLine() {
-  return 'Tomo says, "The descent is open. Go down from the crypt and see what answered the rite."';
+  return 'The descent is open. Go down from the crypt and see what answered the rite.';
 }
 
 /**
  * @returns {string}
  */
 function galleryRedirectLine() {
-  return 'Tomo says, "Take that resonant shard east to the Perception Gallery. The mirrors will answer it."';
+  return 'Take that resonant shard east to the Perception Gallery. The mirrors will answer it.';
 }
 
 /**
@@ -211,9 +216,7 @@ function galleryRedirectLine() {
  * @param {*} npc
  * @param {*} player
  */
-function maybeGuidePlayer(state, npc, player) {
-  void npc;
-
+async function maybeGuidePlayer(state, npc, player) {
   if (!player || typeof player !== 'object') {
     return;
   }
@@ -224,26 +227,26 @@ function maybeGuidePlayer(state, npc, player) {
   const ritual = getRitualState(state);
 
   if (!memory.introShown) {
-    sayToPlayer(player, introLine());
+    await speakViaCommandDispatch(state, npc, introLine());
     memory.introShown = true;
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
-    sayToPlayer(player, completionLine());
+    await speakViaCommandDispatch(state, npc, completionLine());
     memory.completionShown = true;
     memory.lastProgressCount = 3;
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
-    sayToPlayer(player, galleryRedirectLine());
+    await speakViaCommandDispatch(state, npc, galleryRedirectLine());
     memory.galleryRedirectShown = true;
     return;
   }
 
   if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
-    sayToPlayer(player, progressLine(ritual.missingSteps));
+    await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
     memory.lastProgressCount = ritual.completedCount;
     memory.lastHintAt = now;
     return;
@@ -255,7 +258,7 @@ function maybeGuidePlayer(state, npc, player) {
   }
 
   if (!ritual.isComplete) {
-    sayToPlayer(player, progressLine(ritual.missingSteps));
+    await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
     memory.lastProgressCount = ritual.completedCount;
     memory.lastHintAt = now;
   }
@@ -331,9 +334,9 @@ function createSpawnListener(state) {
  * @returns {function(*, *): void}
  */
 function createPlayerEnterListener(state) {
-  return function onPlayerEnter(player, prevRoom) {
+  return async function onPlayerEnter(player, prevRoom) {
     void prevRoom;
-    maybeGuidePlayer(state, this, player);
+    await maybeGuidePlayer(state, this, player);
   };
 }
 
