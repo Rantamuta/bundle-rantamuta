@@ -264,6 +264,147 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     assert.deepStrictEqual(movedTo, ['codex:bell_nave']);
   });
 
+  it('patrol uses NPC command dispatch and does not call moveTo directly', async function () {
+    const dispatchCalls = [];
+    const movedTo = [];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      dispatchCalls.push(intent);
+      return { ok: true };
+    };
+
+    const rooms = {
+      'codex:bell_courtyard': {
+        entityReference: 'codex:bell_courtyard',
+        players: new Set(),
+        exits: [{ direction: 'north', roomId: 'codex:bell_nave' }],
+      },
+      'codex:bell_nave': { entityReference: 'codex:bell_nave', players: new Set() },
+      'codex:bell_stair': { entityReference: 'codex:bell_stair', players: new Set() },
+    };
+
+    const state = createState({ rooms });
+    const npc = {
+      metadata: {
+        tomo: {
+          patrolIntervalMs: 1,
+          patrolRoute: [
+            'codex:bell_courtyard',
+            'codex:bell_nave',
+            'codex:bell_stair',
+            'codex:bell_nave',
+          ],
+        },
+      },
+      room: rooms['codex:bell_courtyard'],
+      moveTo(room) {
+        movedTo.push(room.entityReference);
+        this.room = room;
+      },
+    };
+
+    tomoScript.listeners.spawn(state).call(npc);
+    await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
+
+    assert.strictEqual(movedTo.length, 0);
+    assert.strictEqual(dispatchCalls.length, 1);
+  });
+
+  it('patrol dispatch emits go intent for route movement', async function () {
+    const dispatchCalls = [];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      dispatchCalls.push(intent);
+      return { ok: true };
+    };
+
+    const rooms = {
+      'codex:bell_courtyard': {
+        entityReference: 'codex:bell_courtyard',
+        players: new Set(),
+        exits: [{ direction: 'north', roomId: 'codex:bell_nave' }],
+      },
+      'codex:bell_nave': { entityReference: 'codex:bell_nave', players: new Set() },
+      'codex:bell_stair': { entityReference: 'codex:bell_stair', players: new Set() },
+    };
+
+    const state = createState({ rooms });
+    const npc = {
+      metadata: {
+        tomo: {
+          patrolIntervalMs: 1,
+          patrolRoute: [
+            'codex:bell_courtyard',
+            'codex:bell_nave',
+            'codex:bell_stair',
+            'codex:bell_nave',
+          ],
+        },
+      },
+      room: rooms['codex:bell_courtyard'],
+      moveTo() { },
+    };
+
+    tomoScript.listeners.spawn(state).call(npc);
+    await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
+
+    assert.deepStrictEqual(dispatchCalls[0], {
+      kind: 'structured',
+      verb: 'go',
+      direct: ['north'],
+      relationToken: null,
+      indirect: [],
+    });
+  });
+
+  it('patrol surfaces UNSUPPORTED_MUTATION_OP and does not direct-mutate when movement is not representable', async function () {
+    const dispatchCalls = [];
+    const movedTo = [];
+    CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
+      dispatchCalls.push(intent);
+      return {
+        ok: false,
+        error: { code: 'UNSUPPORTED_MUTATION_OP' },
+      };
+    };
+
+    const rooms = {
+      'codex:bell_courtyard': {
+        entityReference: 'codex:bell_courtyard',
+        players: new Set(),
+        exits: [{ direction: 'north', roomId: 'codex:bell_nave' }],
+      },
+      'codex:bell_nave': { entityReference: 'codex:bell_nave', players: new Set() },
+      'codex:bell_stair': { entityReference: 'codex:bell_stair', players: new Set() },
+    };
+
+    const state = createState({ rooms });
+    const npc = {
+      metadata: {
+        tomo: {
+          patrolIntervalMs: 1,
+          patrolRoute: [
+            'codex:bell_courtyard',
+            'codex:bell_nave',
+            'codex:bell_stair',
+            'codex:bell_nave',
+          ],
+        },
+      },
+      room: rooms['codex:bell_courtyard'],
+      moveTo(room) {
+        movedTo.push(room.entityReference);
+        this.room = room;
+      },
+    };
+
+    tomoScript.listeners.spawn(state).call(npc);
+    const startRouteIndex = npc.__tomoRuntime.routeIndex;
+    await withNow(50000, () => tomoScript.listeners.updateTick(state).call(npc));
+
+    assert.strictEqual(dispatchCalls.length, 1);
+    assert.strictEqual(movedTo.length, 0);
+    assert.strictEqual(npc.__tomoRuntime.routeIndex, startRouteIndex);
+  });
+
   it('does not patrol when players are present in Tomo room', async function () {
     const movedTo = [];
     const rooms = {
