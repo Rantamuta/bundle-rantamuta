@@ -111,6 +111,63 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     assert.strictEqual(introLines.length, 1);
   });
 
+  it('does not mutate player.metadata for Tomo guidance memory', async function () {
+    ranvier.Broadcast.sayAt = () => { };
+    CommandDispatch.dispatchNpcIntent = async () => ({ ok: true });
+
+    const state = createState();
+    const npc = {
+      metadata: {
+        tomo: {
+          hintCooldownMs: 999999,
+        },
+      },
+      room: {
+        players: new Set(),
+      },
+      socket: { writable: false },
+    };
+    const player = { uuid: 'p-metadata', metadata: Object.freeze({}), inventory: new Set(), socket: { writable: false } };
+    npc.room.getBroadcastTargets = () => [npc, player];
+
+    const onSpawn = tomoScript.listeners.spawn(state);
+    const onPlayerEnter = tomoScript.listeners.playerEnter(state);
+    onSpawn.call(npc);
+
+    await withNow(1000, async () => {
+      await assert.doesNotReject(async () => onPlayerEnter.call(npc, player, null));
+    });
+  });
+
+  it('stores Tomo per-player guidance state in NPC-local runtime memory', async function () {
+    ranvier.Broadcast.sayAt = () => { };
+    CommandDispatch.dispatchNpcIntent = async () => ({ ok: true });
+
+    const state = createState();
+    const npc = {
+      metadata: {
+        tomo: {
+          hintCooldownMs: 999999,
+        },
+      },
+      room: {
+        players: new Set(),
+      },
+      socket: { writable: false },
+    };
+    const player = { uuid: 'p-runtime-memory', metadata: {}, inventory: new Set(), socket: { writable: false } };
+    npc.room.getBroadcastTargets = () => [npc, player];
+
+    const onSpawn = tomoScript.listeners.spawn(state);
+    const onPlayerEnter = tomoScript.listeners.playerEnter(state);
+    onSpawn.call(npc);
+    await withNow(1000, () => onPlayerEnter.call(npc, player, null));
+
+    const memoryStore = npc.__tomoRuntime && npc.__tomoRuntime.playerMemoryById;
+    assert.ok(memoryStore && typeof memoryStore === 'object');
+    assert.ok(memoryStore[player.uuid]);
+  });
+
   it('emits progress hint with remaining ritual placements', async function () {
     const deliveries = [];
     ranvier.Broadcast.sayAt = (target, line) => {
