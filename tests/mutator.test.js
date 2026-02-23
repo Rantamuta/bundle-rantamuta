@@ -337,7 +337,7 @@ describe('bundle-rantamuta mutator', function () {
         key: 'tomo.introShown',
         value: true,
       }));
-    }, /setPlayerMetadata\\.player/);
+    }, /setPlayerMetadata\.player/);
   });
 
   it('rejects setPlayerMetadata for invalid or unsafe key segments', function () {
@@ -348,7 +348,7 @@ describe('bundle-rantamuta mutator', function () {
         key: 'foo..bar',
         value: true,
       }));
-    }, /setPlayerMetadata\\.key/);
+    }, /setPlayerMetadata\.key/);
 
     assert.throws(() => {
       applyMutationInstruction({}, /** @type {*} */ ({
@@ -357,7 +357,7 @@ describe('bundle-rantamuta mutator', function () {
         key: 'foo.__proto__.bar',
         value: true,
       }));
-    }, /setPlayerMetadata\\.key/);
+    }, /setPlayerMetadata\.key/);
   });
 
   it('rejects setPlayerMetadata when an intermediate segment is non-object', function () {
@@ -374,7 +374,7 @@ describe('bundle-rantamuta mutator', function () {
         key: 'tomo.progress.lastHintAt',
         value: 1234,
       }));
-    }, /setPlayerMetadata\\.path/);
+    }, /setPlayerMetadata\.path/);
   });
 
   it('applies movePlayer instruction and returns inverse operation', function () {
