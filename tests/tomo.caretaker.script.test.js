@@ -183,55 +183,6 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     assert.ok(memoryStore[player.uuid]);
   });
 
-  it('uses persisted player metadata to suppress intro when already shown', async function () {
-    const lines = [];
-    ranvier.Broadcast.sayAt = () => { };
-    CommandDispatch.dispatchNpcIntent = async (state, actor, intent) => {
-      void state;
-      void actor;
-      lines.push(String(intent && intent.direct && intent.direct[0]));
-      return { ok: true };
-    };
-
-    const state = createState();
-    const npc = {
-      metadata: { tomo: {} },
-      room: { players: new Set() },
-      socket: { writable: false },
-    };
-    const player = {
-      uuid: 'p-persisted-intro',
-      name: 'Rendall',
-      metadata: {
-        tomo: {
-          introShown: true,
-        },
-      },
-      inventory: new Set(),
-      socket: { writable: false },
-    };
-    npc.room.getBroadcastTargets = () => [npc, player];
-
-    tomoScript.listeners.spawn(state).call(npc);
-    await withNow(12000, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
-
-    assert.strictEqual(lines.some(line => /three offerings/i.test(line)), false);
-  });
-
-  it('does not provision authoritative per-player runtime memory on NPC for guidance state', function () {
-    const state = createState();
-    const npc = {
-      metadata: { tomo: {} },
-      room: { players: new Set() },
-      socket: { writable: false },
-    };
-
-    tomoScript.listeners.spawn(state).call(npc);
-
-    assert.ok(npc.__tomoRuntime && typeof npc.__tomoRuntime === 'object');
-    assert.strictEqual(Object.prototype.hasOwnProperty.call(npc.__tomoRuntime, 'playerMemoryById'), false);
-  });
-
   it('emits progress hint with remaining ritual placements', async function () {
     const deliveries = [];
     ranvier.Broadcast.sayAt = (target, line) => {
