@@ -71,6 +71,64 @@ describe('room view baseline behavior', function () {
     ]);
   });
 
+  it('omits exits with metadata.showInExits false from exits line', function () {
+    const room = makeRoom({
+      title: 'Hidden Exit Room',
+      description: 'One route is hidden from room-view exits.',
+      exits: [
+        { direction: 'north' },
+        { direction: 'south', metadata: { showInExits: false } },
+        { direction: 'west' },
+      ],
+    });
+
+    const lines = buildRoomViewLines(room);
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Hidden Exit Room</bold>',
+      'One route is hidden from room-view exits.',
+      'Exits: north, west',
+    ]);
+  });
+
+  it('keeps exits visible by default when metadata.showInExits is absent', function () {
+    const room = makeRoom({
+      title: 'Default Visible Room',
+      description: 'Exits are visible unless explicitly hidden.',
+      exits: [
+        { direction: 'north' },
+        { direction: 'south', metadata: {} },
+      ],
+    });
+
+    const lines = buildRoomViewLines(room);
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Default Visible Room</bold>',
+      'Exits are visible unless explicitly hidden.',
+      'Exits: north, south',
+    ]);
+  });
+
+  it('keeps exits visible when metadata.showInExits is non-boolean', function () {
+    const room = makeRoom({
+      title: 'Invalid Flag Room',
+      description: 'Only boolean false hides exits.',
+      exits: [
+        { direction: 'north', metadata: { showInExits: 'no' } },
+        { direction: 'south', metadata: { showInExits: 0 } },
+      ],
+    });
+
+    const lines = buildRoomViewLines(room);
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Invalid Flag Room</bold>',
+      'Only boolean false hides exits.',
+      'Exits: north, south',
+    ]);
+  });
+
   it('renders room NPC lines after item lines and before exits', function () {
     const room = makeRoom({
       title: 'Courtyard',
