@@ -39,7 +39,7 @@ module.exports = {
         intransitive: {},
         direct: {
           scopeProfile: {
-            direct: ['room.items', 'room.details', 'player.inventory'],
+            direct: ['room.items', 'room.npcs', 'room.details', 'player.inventory'],
           },
         },
       },

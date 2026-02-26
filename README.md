@@ -27,8 +27,8 @@ This checklist tracks feature areas required for a 1.0 reference-bundle release.
   - [x] Predicate runtime and stateful room-render coverage is in place.
 - [ ] Scripts
   - [ ] Area, room, item, and NPC script usage is implemented in production content.
-  - [ ] Script authoring guidance is documented for designers.
-  - [ ] Coverage exists for script-driven content behavior.
+  - [x] Script authoring guidance is documented for designers.
+  - [x] Coverage exists for script-driven content behavior.
 - [ ] Behaviors
   - [ ] Reusable behavior modules are implemented for production use.
   - [ ] Behavior-vs-script guidance is documented for designers.
@@ -46,8 +46,8 @@ This checklist tracks feature areas required for a 1.0 reference-bundle release.
 
 - [ ] NPCs
   - [ ] Production NPC flows are implemented in `areas/rantamuta`.
-  - [ ] Designer-facing authoring section is documented.
-  - [ ] Unit and scenario coverage is in place.
+  - [x] Designer-facing authoring section is documented.
+  - [x] Unit and scenario coverage is in place.
 - [ ] Quests and Quest Rewards
   - [ ] Production quest flows are implemented in `areas/rantamuta`.
   - [ ] Quest reward flows are implemented.

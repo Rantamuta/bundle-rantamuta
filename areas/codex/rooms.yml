@@ -1,13 +1,13 @@
 - id: start
-  title: "Rantamuta"
-  description: "A legacy launch point that now leads to the square."
+  title: "Codex Start"
+  description: "A nexus of stone paths and weathered structures, whence all possibilities converge, where the air hums with latent energy, whither Codex unleashes its mysteries. To the north, is Codex Square, a wind-worn plaza of cracked stone and old banners."
   exits:
     - roomId: codex:square
       direction: north
 
 - id: square
-  title: "Rantamuta Square"
-  description: "A wind-worn square of cracked stone and old banners. A ruined bell courtyard lies to the north, a mirror-lined gallery opens to the east, and a narrow alley runs west toward an old observatory."
+  title: "Codex Square"
+  description: "A wind-worn square of cracked stone and old banners. To the north, a bell courtyard stands silent. To the east, a gallery of mirrors catches the light. To the west, a narrow alley leads to an old observatory."
   exits:
     - roomId: codex:start
       direction: south
@@ -141,6 +141,8 @@
       direction: south
     - roomId: codex:bell_nave
       direction: north
+  npcs:
+    - codex:tomo
   items:
     - id: codex:waxSeal
 

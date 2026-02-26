@@ -10,6 +10,7 @@ function makeRoom(def = {}) {
     description: def.description || 'No description.',
     exits: def.exits || [],
     items: def.items || new Set(),
+    npcs: def.npcs || new Set(),
     getExits: def.getExits,
   };
 }
@@ -67,6 +68,32 @@ describe('room view baseline behavior', function () {
       '<bold>API Room</bold>',
       'Exits are provided by room API.',
       'Exits: east, south',
+    ]);
+  });
+
+  it('renders room NPC lines after item lines and before exits', function () {
+    const room = makeRoom({
+      title: 'Courtyard',
+      description: 'A weathered open space.',
+      exits: [{ direction: 'north' }],
+      items: new Set([
+        { roomDesc: 'A lantern hangs from a hook.' },
+      ]),
+      npcs: new Set([
+        { roomDesc: 'Tomo waits near the bell tower archway.' },
+        { name: 'Bell Keeper Tomo' },
+      ]),
+    });
+
+    const lines = buildRoomViewLines(room);
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Courtyard</bold>',
+      'A weathered open space.',
+      'A lantern hangs from a hook.',
+      'Tomo waits near the bell tower archway.',
+      'You see Bell Keeper Tomo here.',
+      'Exits: north',
     ]);
   });
 });

@@ -217,6 +217,21 @@ test('scenario runner virtual-door scenario validates wrong-key failure and virt
   assert.match(result.stdout, /The south passage is visibly open\./);
 });
 
+test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/tomo-bell-courtyard.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Three offerings wake this tower/i);
+  assert.match(result.stdout, /You still need to|Only one offering remains|Start with the reliquary/i);
+  assert.match(result.stdout, /descent is open/i);
+  assert.match(result.stdout, /Perception Gallery/i);
+
+  const introMatches = result.stdout.match(/Three offerings wake this tower/gi) || [];
+  assert.equal(introMatches.length, 1, 'expected Tomo intro line exactly once');
+});
+
 test('scenario runner shows asymmetry note in north room when south->north door is closed', () => {
   const result = runScenario([
     '--room', 'test:northDoorRoom',

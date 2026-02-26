@@ -20,7 +20,7 @@ describe('bundle-rantamuta look command', function () {
       intransitive: {},
       direct: {
         scopeProfile: {
-          direct: ['room.items', 'room.details', 'player.inventory'],
+          direct: ['room.items', 'room.npcs', 'room.details', 'player.inventory'],
         },
       },
     });
@@ -63,6 +63,35 @@ describe('bundle-rantamuta look command', function () {
 
     assert.strictEqual(result.value.ruleKey, 'direct');
     assert.strictEqual(result.value.directTarget, chest);
+  });
+
+  it('entity-resolution resolves direct-object look form against room NPCs', function () {
+    const tomo = {
+      uuid: 'npc-tomo',
+      name: 'Bell Keeper Tomo',
+      keywords: ['tomo', 'keeper', 'bell', 'caretaker'],
+      description: 'A weathered caretaker with chalk on his sleeves and a calm, listening gaze.',
+      isNpc: true,
+    };
+    const player = createPlayer({
+      room: {
+        title: 'Room',
+        description: 'Desc',
+        items: new Set(),
+        npcs: new Set([tomo]),
+      },
+      inventory: new Map(),
+    });
+
+    const result = EntityResolution.resolveEntityContext({}, lookCommand, player, parseInput('look tomo'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.ruleKey, 'direct');
+    assert.strictEqual(result.value.directTarget, tomo);
   });
 
   it('returns TARGET_NOT_FOUND when direct rule has no bound target', function () {
@@ -183,6 +212,10 @@ describe('bundle-rantamuta look command', function () {
           { roomDesc: 'A brass key glints here.' },
           { name: 'plain box' },
         ]),
+        npcs: new Set([
+          { roomDesc: 'Tomo stands by the broken flagstones.' },
+          { name: 'Bell Keeper Tomo' },
+        ]),
       },
     });
 
@@ -201,6 +234,8 @@ describe('bundle-rantamuta look command', function () {
           'Room with items.',
           'A brass key glints here.',
           'You see plain box here.',
+          'Tomo stands by the broken flagstones.',
+          'You see Bell Keeper Tomo here.',
           'Exits: north, east',
         ],
       },

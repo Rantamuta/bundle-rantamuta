@@ -1,0 +1,32 @@
+# Codex Tomo caretaker guidance flow
+room: codex:square
+seedInventory: codex:resonantShard
+
+# Intro in courtyard
+command: north
+
+# Re-enter before any progress (intro should not repeat)
+command: south
+command: north
+
+# Start ritual progress
+command: take wax seal
+command: north
+command: take prayer stone
+command: put wax seal in reliquary
+command: down
+command: take bronze clapper
+command: put prayer stone in stone basin
+
+# Finish ritual at belfry
+command: up
+command: up
+command: up
+command: put bronze clapper in cracked bell
+
+# Return to Tomo for completion + gallery redirect
+command: down
+command: down
+command: south
+command: south
+command: north

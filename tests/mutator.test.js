@@ -286,6 +286,97 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('applies setPlayerMetadata with autovivification and returns inverse operation', function () {
+    const player = { name: 'Tester', metadata: {} };
+
+    const undo = applyMutationInstruction({}, {
+      type: 'setPlayerMetadata',
+      player,
+      key: 'tomo.progress.lastHintAt',
+      value: 1234,
+    });
+
+    assert.deepStrictEqual(player.metadata, {
+      tomo: {
+        progress: {
+          lastHintAt: 1234,
+        },
+      },
+    });
+
+    undo();
+
+    assert.deepStrictEqual(player.metadata, {});
+  });
+
+  it('rolls back setPlayerMetadata when a later operation fails', function () {
+    const player = { name: 'Tester', metadata: {} };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          {
+            type: 'setPlayerMetadata',
+            player,
+            key: 'tomo.introShown',
+            value: true,
+          },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(player.metadata, {});
+  });
+
+  it('rejects setPlayerMetadata when target is not a player object with metadata', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setPlayerMetadata',
+        player: null,
+        key: 'tomo.introShown',
+        value: true,
+      }));
+    }, /setPlayerMetadata\.player/);
+  });
+
+  it('rejects setPlayerMetadata for invalid or unsafe key segments', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setPlayerMetadata',
+        player: { metadata: {} },
+        key: 'foo..bar',
+        value: true,
+      }));
+    }, /setPlayerMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setPlayerMetadata',
+        player: { metadata: {} },
+        key: 'foo.__proto__.bar',
+        value: true,
+      }));
+    }, /setPlayerMetadata\.key/);
+  });
+
+  it('rejects setPlayerMetadata when an intermediate segment is non-object', function () {
+    const player = {
+      metadata: {
+        tomo: true,
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setPlayerMetadata',
+        player,
+        key: 'tomo.progress.lastHintAt',
+        value: 1234,
+      }));
+    }, /setPlayerMetadata\.path/);
+  });
+
   it('applies movePlayer instruction and returns inverse operation', function () {
     const start = createRoom('start');
     const destination = createRoom('destination');
