@@ -160,6 +160,36 @@ describe('bundle-rantamuta look command', function () {
     });
   });
 
+  it('resolves inline tags in direct look target description', function () {
+    const execute = lookCommand.command({
+      PredicateRuntime: {
+        evaluate: (name) => name === 'is_open',
+      },
+    });
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc', area: { name: 'test-area' } },
+    });
+    const target = {
+      entityReference: 'test:lantern',
+      name: 'lantern',
+      description: 'The lantern is [is_open:open|closed].',
+    };
+
+    const result = execute('', player, null, {
+      entityResolution: { ruleKey: 'direct', directTarget: target },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        messages: ['The lantern is open.'],
+      },
+    });
+  });
+
   it('returns LOOK_NO_ROOM when player has no room', function () {
     const execute = lookCommand.command({});
     const player = createPlayer();
