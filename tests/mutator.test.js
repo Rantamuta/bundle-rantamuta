@@ -782,7 +782,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, false);
   });
 
-  it('applies canonical doorMutation open instruction by roomRef and returns inverse operation', function () {
+  it('applies canonical changeDoor open instruction by roomRef and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -800,7 +800,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     const undo = applyMutationInstruction(state, {
-      type: 'doorMutation',
+      type: 'changeDoor',
       mutation: 'open',
       actor,
       roomRef: destination.entityReference,
@@ -815,7 +815,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, true);
   });
 
-  it('applies canonical doorMutation unlock instruction by roomRef and returns inverse operation', function () {
+  it('applies canonical changeDoor unlock instruction by roomRef and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -833,7 +833,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     const undo = applyMutationInstruction(state, {
-      type: 'doorMutation',
+      type: 'changeDoor',
       mutation: 'unlock',
       actor,
       roomRef: destination.entityReference,
@@ -848,7 +848,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, true);
   });
 
-  it('warns and noops when canonical doorMutation target cannot be resolved', function () {
+  it('warns and noops when canonical changeDoor target cannot be resolved', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -869,7 +869,7 @@ describe('bundle-rantamuta mutator', function () {
     try {
       assert.doesNotThrow(() => {
         const undo = applyMutationInstruction(state, {
-          type: 'doorMutation',
+          type: 'changeDoor',
           mutation: 'open',
           actor,
           roomRef: 'test:missing',
@@ -880,10 +880,10 @@ describe('bundle-rantamuta mutator', function () {
       ranvier.Logger.warn = originalWarn;
     }
 
-    assert.ok(warnings.some(message => message.includes('doorMutation(open): destination_missing')));
+    assert.ok(warnings.some(message => message.includes('changeDoor(open): destination_missing')));
   });
 
-  it('treats idempotent canonical doorMutation success as no-op without warnings', function () {
+  it('treats idempotent canonical changeDoor success as no-op without warnings', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -907,7 +907,7 @@ describe('bundle-rantamuta mutator', function () {
 
     try {
       const undo = applyMutationInstruction(state, {
-        type: 'doorMutation',
+        type: 'changeDoor',
         mutation: 'close',
         actor,
         roomRef: destination.entityReference,

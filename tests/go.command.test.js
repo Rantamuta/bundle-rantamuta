@@ -147,7 +147,7 @@ describe('bundle-rantamuta go command', function () {
     assert.strictEqual(result.ok, true);
   });
 
-  it('does not enqueue doorMutation in go command layer', function () {
+  it('does not enqueue changeDoor in go command layer', function () {
     const currentRoom = createRoom({ entityReference: 'test:current' });
     const destination = createRoom({
       entityReference: 'test:destination',

@@ -87,7 +87,7 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: doorMutation
+      type: changeDoor
       mutation: open
       direction: north
     doorContext:
@@ -110,7 +110,7 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: doorMutation
+      type: changeDoor
       mutation: closeAndLock
       direction: north
     doorContext:

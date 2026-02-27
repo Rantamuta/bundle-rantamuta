@@ -99,7 +99,7 @@ describe('bundle-rantamuta door command surfaces', function () {
     assert.strictEqual(execute(unlockCommand, fixture.state, fixture.player, resolution).error.code, 'TARGET_NOT_DOOR');
   });
 
-  it('maps commands to canonical doorMutation operations', function () {
+  it('maps commands to canonical changeDoor operations', function () {
     const openFixture = buildFixture({ door: { closed: true, locked: false } });
     const closeFixture = buildFixture({ door: { closed: false, locked: false } });
     const lockFixture = buildFixture({ door: { closed: false, locked: false, lockedBy: 'test:bronze_key' }, inventory: [{ entityReference: 'test:bronze_key', name: 'bronze key' }] });
