@@ -236,6 +236,20 @@ test('scenario runner inline-tags scenario resolves room and direct-look tags', 
   assert.doesNotMatch(result.stdout, /\[(bench_always_(true|false)|is_button_pushed):/);
 });
 
+test('scenario runner codex gallery exhibit resolves inline tag swaps', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/perception-gallery-inline-tags.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Perception Gallery/);
+  assert.match(result.stdout, /put resonant shard/);
+  assert.match(result.stdout, /take resonant shard/);
+  assert.equal((result.stdout.match(/Shard resonance is in your hands, and the plinth is empty\./g) || []).length, 2);
+  assert.equal((result.stdout.match(/Shard resonance is in the gallery, and the plinth is occupied\./g) || []).length, 1);
+  assert.doesNotMatch(result.stdout, /\[(does_viewer_hold_resonant_shard|is_resonant_shard_in_gallery):/);
+});
+
 test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => {
   const result = runScenario([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/tomo-bell-courtyard.scenario',
