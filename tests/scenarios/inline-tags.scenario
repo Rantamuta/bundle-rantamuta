@@ -1,0 +1,7 @@
+room: test:inlineTags
+command: look
+command: push enable button
+command: look
+command: push disable button
+command: look
+command: look lantern

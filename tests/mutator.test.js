@@ -377,6 +377,112 @@ describe('bundle-rantamuta mutator', function () {
     }, /setPlayerMetadata\.path/);
   });
 
+  it('applies setRoomFlag and returns inverse operation', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'setRoomFlag',
+      roomRef: 'test:inlineTags',
+      key: 'buttonPushed',
+      value: true,
+    });
+
+    assert.deepStrictEqual(room.metadata, {
+      flags: {
+        buttonPushed: true,
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(room.metadata, {});
+  });
+
+  it('rolls back setRoomFlag when a later operation fails', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          {
+            type: 'setRoomFlag',
+            roomRef: 'test:inlineTags',
+            key: 'buttonPushed',
+            value: true,
+          },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(room.metadata, {});
+  });
+
+  it('rejects setRoomFlag for invalid inputs', function () {
+    const state = {
+      RoomManager: {
+        getRoom() {
+          return null;
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setRoomFlag',
+        roomRef: '',
+        key: 'buttonPushed',
+        value: true,
+      }));
+    }, /setRoomFlag\.roomRef/);
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setRoomFlag',
+        roomRef: 'test:inlineTags',
+        key: 'bad.key',
+        value: true,
+      }));
+    }, /setRoomFlag\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setRoomFlag',
+        roomRef: 'test:inlineTags',
+        key: 'buttonPushed',
+        value: 'true',
+      }));
+    }, /setRoomFlag\.value/);
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setRoomFlag',
+        roomRef: 'test:inlineTags',
+        key: 'buttonPushed',
+        value: true,
+      }));
+    }, /setRoomFlag\.roomRef could not be resolved/);
+  });
+
   it('applies movePlayer instruction and returns inverse operation', function () {
     const start = createRoom('start');
     const destination = createRoom('destination');

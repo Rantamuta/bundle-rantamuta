@@ -36,6 +36,47 @@
       verbs:
         take: "You cannot take the chest. It is extremely heavy."
 
+- id: inlineLantern
+  name: "inline lantern"
+  roomDesc: "A lantern glows [bench_always_true:brightly|dimly]."
+  description: "The lantern is [bench_always_false:closed|open]."
+  keywords: [ "inline", "lantern" ]
+  type: "OBJECT"
+
+- id: inlineButtonOn
+  name: "inline enable button"
+  roomDesc: "A small ENABLE button sits beside the lantern."
+  description: "A round brass button labeled ENABLE."
+  keywords: [ "inline", "enable", "button" ]
+  type: "OBJECT"
+  script: doorControlButton
+  metadata:
+    pushable: true
+    mutationInstruction:
+      type: setRoomFlag
+      roomRef: test:inlineTags
+      key: buttonPushed
+      value: true
+    roomMessages:
+      currentRoom: "Button toggled on."
+
+- id: inlineButtonOff
+  name: "inline disable button"
+  roomDesc: "A matching DISABLE button is mounted below it."
+  description: "A round brass button labeled DISABLE."
+  keywords: [ "inline", "disable", "button" ]
+  type: "OBJECT"
+  script: doorControlButton
+  metadata:
+    pushable: true
+    mutationInstruction:
+      type: setRoomFlag
+      roomRef: test:inlineTags
+      key: buttonPushed
+      value: false
+    roomMessages:
+      currentRoom: "Button toggled off."
+
 - id: northOpenButton
   name: "north open button"
   roomDesc: "A labeled button marked OPEN protrudes from the wall."

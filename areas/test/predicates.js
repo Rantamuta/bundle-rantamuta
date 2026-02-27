@@ -88,4 +88,6 @@ module.exports = {
   bench_fragment_c: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentC'),
   bench_fragment_d: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentD'),
   bench_fragment_e: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentE'),
+
+  is_button_pushed: ({ q }) => q.roomFlag('test:inlineTags', 'buttonPushed'),
 };
