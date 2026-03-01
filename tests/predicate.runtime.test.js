@@ -247,6 +247,12 @@ describe('bundle-rantamuta predicate runtime', function () {
         queryChecks: ({ q }) => {
           return q.roomFlag('query:crypt', 'slabOpen')
             && q.areaFlag('query', 'areaLit')
+            && q.getAreaMetadata('query', 'storyArc.phase') === 2
+            && q.getAreaMetadata('query', 'storyArc.zeroValue') === 0
+            && q.getAreaMetadata('query', 'storyArc.nullValue') === null
+            && q.getAreaMetadata('query', 'storyArc.missingValue') === undefined
+            && q.getRoomMetadata('query:crypt', 'locks.innerDoor') === false
+            && q.getRoomMetadata('query:crypt', 'locks.missingDoor') === undefined
             && q.roomHasItem('query:crypt', 'query:coin')
             && q.currentContainerHasItem('query:prayerStone')
             && q.roomContainerHasItem('query:crypt', 'query:stoneBasin', 'query:prayerStone')
@@ -283,7 +289,14 @@ describe('bundle-rantamuta predicate runtime', function () {
 
     const room = {
       entityReference: 'query:crypt',
-      metadata: { flags: { slabOpen: true } },
+      metadata: {
+        flags: { slabOpen: true },
+        values: {
+          locks: {
+            innerDoor: false,
+          },
+        },
+      },
       items: [
         { entityReference: 'query:coin' },
         basin,
@@ -301,7 +314,16 @@ describe('bundle-rantamuta predicate runtime', function () {
       area: {
         bundle: 'bundle-test',
         name: 'query',
-        metadata: { flags: { areaLit: true } },
+        metadata: {
+          flags: { areaLit: true },
+          values: {
+            storyArc: {
+              phase: 2,
+              zeroValue: 0,
+              nullValue: null,
+            },
+          },
+        },
       },
     };
 
