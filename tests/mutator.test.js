@@ -483,6 +483,173 @@ describe('bundle-rantamuta mutator', function () {
     }, /setRoomFlag\.roomRef could not be resolved/);
   });
 
+  it('applies setAreaMetadata and returns inverse operation', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    const undo = applyMutationInstruction({}, {
+      type: 'setAreaMetadata',
+      actor,
+      key: 'questProgress.stage1',
+      value: 12,
+    });
+
+    assert.deepStrictEqual(area.metadata, {
+      values: {
+        questProgress: {
+          stage1: 12,
+        },
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(area.metadata, {});
+  });
+
+  it('rolls back setAreaMetadata when a later operation fails', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          {
+            type: 'setAreaMetadata',
+            actor,
+            key: 'questProgress.stage1',
+            value: 12,
+          },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata, {});
+  });
+
+  it('rejects setAreaMetadata for missing actor room area context', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor: null,
+        key: 'questProgress.stage1',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.actor/);
+  });
+
+  it('rejects setAreaMetadata for invalid key syntax', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.bad-key',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.bad key',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.key/);
+  });
+
+  it('rejects setAreaMetadata for non-object values root', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: 42,
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.path/);
+  });
+
+  it('rejects setAreaMetadata subtree overwrite conflicts', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          questProgress: {
+            stage1: 12,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress',
+        value: 9,
+      }));
+    }, /setAreaMetadata\.path/);
+  });
+
+  it('rejects setAreaMetadata undefined values and allows null values', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: undefined,
+      }));
+    }, /setAreaMetadata\.value/);
+
+    assert.doesNotThrow(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: null,
+      }));
+    });
+  });
+
+  it('stores cloned object values for setAreaMetadata', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+    const payload = {
+      count: 1,
+      nested: { done: false },
+    };
+
+    applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setAreaMetadata',
+      actor,
+      key: 'questProgress.snapshot',
+      value: payload,
+    }));
+
+    payload.count = 99;
+    payload.nested.done = true;
+
+    assert.deepStrictEqual(area.metadata.values.questProgress.snapshot, {
+      count: 1,
+      nested: { done: false },
+    });
+  });
+
   it('applies movePlayer instruction and returns inverse operation', function () {
     const start = createRoom('start');
     const destination = createRoom('destination');
