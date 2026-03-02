@@ -768,6 +768,325 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('applies deleteRoomMetadata leaf delete without parent pruning and restores on undo', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteRoomMetadata',
+      roomRef: 'test:inlineTags',
+      key: 'puzzle.phase',
+    }));
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {},
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('treats missing deleteAreaMetadata path as idempotent no-op', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          existing: 1,
+        },
+      },
+    };
+    const actor = { room: { area } };
+    const before = JSON.parse(JSON.stringify(area.metadata));
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteAreaMetadata',
+      actor,
+      key: 'missing.path',
+    }));
+
+    assert.deepStrictEqual(area.metadata, before);
+    undo();
+    assert.deepStrictEqual(area.metadata, before);
+  });
+
+  it('rejects deleteAreaMetadata non-leaf deletes unless force is true', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteAreaMetadata',
+        actor,
+        key: 'storyArc',
+      }));
+    }, /deleteAreaMetadata/);
+  });
+
+  it('allows deleteAreaMetadata non-leaf deletes with force true and restores on undo', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+          keep: true,
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteAreaMetadata',
+      actor,
+      key: 'storyArc',
+      force: true,
+    }));
+
+    assert.deepStrictEqual(area.metadata.values, {
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(area.metadata.values, {
+      storyArc: {
+        chapterOne: 1,
+      },
+      keep: true,
+    });
+  });
+
+  it('rejects deleteAreaMetadata force when provided as non-boolean', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteAreaMetadata',
+        actor,
+        key: 'storyArc',
+        force: 'true',
+      }));
+    }, /deleteAreaMetadata\.force/);
+  });
+
+  it('restores deleteAreaMetadata leaf when later op overwrites ancestor path', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          a: {
+            b: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteAreaMetadata',
+            actor,
+            key: 'a.b',
+          }),
+          /** @type {*} */ ({
+            type: 'setAreaMetadata',
+            actor,
+            key: 'a',
+            value: 2,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata.values, {
+      a: {
+        b: 1,
+      },
+    });
+  });
+
+  it('rolls back deleteRoomMetadata when a later operation fails', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {
+            phase: 2,
+          },
+        },
+      },
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteRoomMetadata',
+            roomRef: 'test:inlineTags',
+            key: 'puzzle.phase',
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+    });
+  });
+
+  it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
+    const state = {};
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state, {});
+    undo();
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('applies deleteWorldMetadata leaf delete without parent pruning and restores on undo', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {},
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('rejects deleteWorldMetadata non-leaf deletes unless force is true', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'deleteWorldMetadata',
+        key: 'story',
+      }));
+    }, /deleteWorldMetadata/);
+  });
+
+  it('rolls back deleteWorldMetadata when a later operation fails', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteWorldMetadata',
+            key: 'story',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
   it('integrates setRoomFlag with q.getRoomMetadata without q.roomFlag helper', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
     try {
