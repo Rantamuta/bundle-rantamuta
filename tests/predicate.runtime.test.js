@@ -247,12 +247,12 @@ describe('bundle-rantamuta predicate runtime', function () {
         queryChecks: ({ q }) => {
           return q.roomFlag('query:crypt', 'slabOpen')
             && q.areaFlag('query', 'areaLit')
-            && q.getAreaMetadata('query', 'storyArc.phase') === 2
-            && q.getAreaMetadata('query', 'storyArc.zeroValue') === 0
-            && q.getAreaMetadata('query', 'storyArc.nullValue') === null
-            && q.getAreaMetadata('query', 'storyArc.missingValue') === undefined
-            && q.getRoomMetadata('query:crypt', 'locks.innerDoor') === false
-            && q.getRoomMetadata('query:crypt', 'locks.missingDoor') === undefined
+            && q.getAreaMetadata('query', 'StoryArc.PHASE') === 2
+            && q.getAreaMetadata('query', 'STORYARC.zeroValue') === 0
+            && q.getAreaMetadata('query', 'storyArc.NULLVALUE') === null
+            && q.getAreaMetadata('query', 'storyArc.MISSINGVALUE') === undefined
+            && q.getRoomMetadata('query:crypt', 'LOCKS.innerDoor') === false
+            && q.getRoomMetadata('query:crypt', 'locks.MISSINGDOOR') === undefined
             && q.roomHasItem('query:crypt', 'query:coin')
             && q.currentContainerHasItem('query:prayerStone')
             && q.roomContainerHasItem('query:crypt', 'query:stoneBasin', 'query:prayerStone')
@@ -453,6 +453,88 @@ describe('bundle-rantamuta predicate runtime', function () {
       world,
       source: 'room.description',
     }), true);
+  });
+
+  it('warns on case-collision path matches and reads the last matched value', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'collision',
+      `module.exports = {
+        collisionChecks: ({ q }) => (
+          q.getAreaMetadata('collision', 'storyarc.phase') === 2
+          && q.getRoomMetadata('collision:crypt', 'locks.innerdoor') === true
+        ),
+      };`
+    );
+
+    const warnings = [];
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: message => warnings.push(String(message)),
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'collision',
+      metadata: {
+        values: {
+          storyArc: { phase: 1 },
+          StoryArc: { phase: 2 },
+        },
+      },
+    };
+
+    const room = {
+      entityReference: 'collision:crypt',
+      area,
+      metadata: {
+        values: {
+          locks: { innerDoor: false },
+          LOCKS: { innerDoor: true },
+        },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'collision:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'collision' ? area : null,
+        getArea: name => name === 'collision' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('collisionChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+
+    assert.strictEqual(runtime.evaluate('collisionChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+
+    const collisionWarnings = warnings.filter(line => line.includes('PREDICATE_QUERY_METADATA_KEY_COLLISION'));
+    assert.strictEqual(collisionWarnings.length, 2);
   });
 
   it('prioritizes metadata.values over metadata.flags for roomFlag/areaFlag compatibility reads', function () {
