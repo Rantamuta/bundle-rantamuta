@@ -1,11 +1,27 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const ranvier = require('ranvier');
+const { createPredicateRuntime } = require('../lib/helpers/predicate-runtime');
 const {
   applyMutationInstruction,
   applyMutationPlan,
 } = require('../lib/session/mutator');
+
+/**
+ * @param {string} root
+ * @param {string} bundle
+ * @param {string} area
+ * @param {string} source
+ */
+function writePredicates(root, bundle, area, source) {
+  const areaPath = path.join(root, bundle, 'areas', area);
+  fs.mkdirSync(areaPath, { recursive: true });
+  fs.writeFileSync(path.join(areaPath, 'predicates.js'), source, 'utf8');
+}
 
 function createContainer(items = []) {
   const bag = [...items];
@@ -713,6 +729,75 @@ describe('bundle-rantamuta mutator', function () {
       count: 1,
       nested: { done: false },
     });
+  });
+
+  it('integrates setRoomFlag with q.roomFlag and q.getRoomMetadata', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
+    try {
+      writePredicates(
+        tempRoot,
+        'bundle-test',
+        'integration',
+        `module.exports = {
+          setRoomFlagInterop: ({ q }) => (
+            q.roomFlag('integration:crypt', 'buttonPushed') === true
+            && q.getRoomMetadata('integration:crypt', 'buttonPushed') === true
+          ),
+        };`
+      );
+
+      const runtime = createPredicateRuntime({
+        bundlesRootPath: tempRoot,
+        logger: {
+          warn: () => {},
+          error: () => {},
+        },
+      });
+
+      const area = {
+        bundle: 'bundle-test',
+        name: 'integration',
+        metadata: {},
+      };
+      const room = {
+        entityReference: 'integration:crypt',
+        area,
+        metadata: {},
+        items: [],
+      };
+      const world = {
+        RoomManager: {
+          getRoom: roomRef => roomRef === 'integration:crypt' ? room : null,
+        },
+        AreaManager: {
+          getAreaByReference: areaRef => areaRef === 'integration' ? area : null,
+          getArea: name => name === 'integration' ? area : null,
+        },
+        ItemManager: {
+          items: new Set(),
+        },
+      };
+      const state = {
+        RoomManager: world.RoomManager,
+      };
+
+      applyMutationInstruction(state, {
+        type: 'setRoomFlag',
+        roomRef: 'integration:crypt',
+        key: 'buttonPushed',
+        value: true,
+      });
+
+      assert.strictEqual(runtime.evaluate('setRoomFlagInterop', {
+        actor: null,
+        room,
+        area,
+        world,
+        source: 'room.description',
+      }), true);
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it('applies movePlayer instruction and returns inverse operation', function () {
