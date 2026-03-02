@@ -407,6 +407,29 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
+  it('keeps setRoomFlag writes available in metadata.flags', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    applyMutationInstruction(state, {
+      type: 'setRoomFlag',
+      roomRef: 'test:inlineTags',
+      key: 'legacyButtonFlag',
+      value: true,
+    });
+
+    assert.strictEqual(room.metadata.flags.legacyButtonFlag, true);
+  });
+
   it('rolls back setRoomFlag when a later operation fails', function () {
     const room = {
       entityReference: 'test:inlineTags',

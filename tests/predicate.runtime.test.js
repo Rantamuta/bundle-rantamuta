@@ -389,6 +389,72 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
+  it('reads legacy boolean flags from metadata.flags when metadata.values is missing', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'legacy_flags',
+      `module.exports = {
+        legacyFlagChecks: ({ q }) => (
+          q.roomFlag('legacy_flags:crypt', 'slabOpen')
+          && q.areaFlag('legacy_flags', 'areaLit')
+          && q.getRoomMetadata('legacy_flags:crypt', 'slabOpen') === undefined
+          && q.getAreaMetadata('legacy_flags', 'areaLit') === undefined
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'legacy_flags',
+      metadata: {
+        flags: { areaLit: true },
+      },
+    };
+
+    const room = {
+      entityReference: 'legacy_flags:crypt',
+      area,
+      metadata: {
+        flags: { slabOpen: true },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'legacy_flags:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'legacy_flags' ? area : null,
+        getArea: name => name === 'legacy_flags' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('legacyFlagChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+  });
+
   it('uses virtual-door effective state for virtualized room pairs', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
