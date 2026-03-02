@@ -5,12 +5,12 @@ const assert = require('assert');
 const predicates = require('../areas/codex/predicates');
 
 describe('bundle-rantamuta codex predicates area identity', function () {
-  it('checks gallery feature flag on codex area id', function () {
+  it('checks gallery metadata on codex area id', function () {
     const calls = [];
     const q = {
-      areaFlag(areaRef, flag) {
-        calls.push([areaRef, flag]);
-        return areaRef === 'codex' && flag === 'galleryFeatureEnabled';
+      getAreaMetadata(areaRef, key) {
+        calls.push([areaRef, key]);
+        return areaRef === 'codex' && key === 'galleryFeatureEnabled';
       },
     };
 

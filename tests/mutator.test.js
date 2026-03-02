@@ -414,9 +414,6 @@ describe('bundle-rantamuta mutator', function () {
     });
 
     assert.deepStrictEqual(room.metadata, {
-      flags: {
-        buttonPushed: true,
-      },
       values: {
         buttonPushed: true,
       },
@@ -426,7 +423,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('keeps setRoomFlag writes available in metadata.flags', function () {
+  it('does not write setRoomFlag values into metadata.flags', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
@@ -446,7 +443,8 @@ describe('bundle-rantamuta mutator', function () {
       value: true,
     });
 
-    assert.strictEqual(room.metadata.flags.legacyButtonFlag, true);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(room.metadata, 'flags'), false);
+    assert.strictEqual(room.metadata.values.legacyButtonFlag, true);
   });
 
   it('rolls back setRoomFlag when a later operation fails', function () {
@@ -503,9 +501,7 @@ describe('bundle-rantamuta mutator', function () {
     });
 
     assert.deepStrictEqual(room.metadata, {
-      flags: {
-        buttonPushed: true,
-      },
+      flags: 42,
       values: {
         buttonPushed: true,
       },
@@ -548,9 +544,6 @@ describe('bundle-rantamuta mutator', function () {
     undoA();
 
     assert.deepStrictEqual(room.metadata, {
-      flags: {
-        flagB: true,
-      },
       values: {
         flagB: true,
       },
@@ -558,7 +551,6 @@ describe('bundle-rantamuta mutator', function () {
 
     undoB();
     assert.deepStrictEqual(room.metadata, {
-      flags: {},
       values: {},
     });
   });
@@ -776,7 +768,7 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
-  it('integrates setRoomFlag with q.roomFlag and q.getRoomMetadata', function () {
+  it('integrates setRoomFlag with q.getRoomMetadata without q.roomFlag helper', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
     try {
       writePredicates(
@@ -785,7 +777,7 @@ describe('bundle-rantamuta mutator', function () {
         'integration',
         `module.exports = {
           setRoomFlagInterop: ({ q }) => (
-            q.roomFlag('integration:crypt', 'buttonPushed') === true
+            typeof q.roomFlag === 'undefined'
             && q.getRoomMetadata('integration:crypt', 'buttonPushed') === true
           ),
         };`

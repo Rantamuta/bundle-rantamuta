@@ -1,4 +1,4 @@
 title: "Codex playground"
 metadata:
-  flags:
+  values:
     galleryFeatureEnabled: true
