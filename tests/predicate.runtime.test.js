@@ -245,8 +245,10 @@ describe('bundle-rantamuta predicate runtime', function () {
       'query',
       `module.exports = {
         queryChecks: ({ q }) => {
-          return q.roomFlag('query:crypt', 'slabOpen')
-            && q.areaFlag('query', 'areaLit')
+          return typeof q.roomFlag === 'undefined'
+            && typeof q.areaFlag === 'undefined'
+            && q.getRoomMetadata('query:crypt', 'slabOpen') === true
+            && q.getAreaMetadata('query', 'areaLit') === true
             && q.getAreaMetadata('query', 'StoryArc.PHASE') === 2
             && q.getAreaMetadata('query', 'STORYARC.zeroValue') === 0
             && q.getAreaMetadata('query', 'storyArc.NULLVALUE') === null
@@ -290,8 +292,8 @@ describe('bundle-rantamuta predicate runtime', function () {
     const room = {
       entityReference: 'query:crypt',
       metadata: {
-        flags: { slabOpen: true },
         values: {
+          slabOpen: true,
           locks: {
             innerDoor: false,
           },
@@ -315,8 +317,8 @@ describe('bundle-rantamuta predicate runtime', function () {
         bundle: 'bundle-test',
         name: 'query',
         metadata: {
-          flags: { areaLit: true },
           values: {
+            areaLit: true,
             storyArc: {
               phase: 2,
               zeroValue: 0,
@@ -389,7 +391,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
-  it('reads legacy boolean flags from metadata.flags when metadata.values is missing', function () {
+  it('does not expose legacy q.*Flag helpers and does not read metadata.flags fallback', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
 
@@ -399,8 +401,8 @@ describe('bundle-rantamuta predicate runtime', function () {
       'legacy_flags',
       `module.exports = {
         legacyFlagChecks: ({ q }) => (
-          q.roomFlag('legacy_flags:crypt', 'slabOpen')
-          && q.areaFlag('legacy_flags', 'areaLit')
+          typeof q.roomFlag === 'undefined'
+          && typeof q.areaFlag === 'undefined'
           && q.getRoomMetadata('legacy_flags:crypt', 'slabOpen') === undefined
           && q.getAreaMetadata('legacy_flags', 'areaLit') === undefined
         ),
@@ -537,7 +539,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     assert.strictEqual(collisionWarnings.length, 2);
   });
 
-  it('prioritizes metadata.values over metadata.flags for roomFlag/areaFlag compatibility reads', function () {
+  it('reads metadata values for booleans and non-booleans through q.get*Metadata', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
 
@@ -547,11 +549,12 @@ describe('bundle-rantamuta predicate runtime', function () {
       'compat_values',
       `module.exports = {
         valuesFirstChecks: ({ q }) => (
-          q.roomFlag('compat_values:crypt', 'slabOpen') === false
-          && q.areaFlag('compat_values', 'areaLit') === true
-          && q.roomFlag('compat_values:crypt', 'nonBoolean') === false
-          && q.roomFlag('compat_values:crypt', 'legacyOnly') === true
-          && q.roomFlag('compat_values:crypt', 'legacy_key') === true
+          typeof q.roomFlag === 'undefined'
+          && typeof q.areaFlag === 'undefined'
+          && q.getRoomMetadata('compat_values:crypt', 'slabOpen') === false
+          && q.getAreaMetadata('compat_values', 'areaLit') === true
+          && q.getRoomMetadata('compat_values:crypt', 'nonBoolean') === 'yes'
+          && q.getRoomMetadata('compat_values:crypt', 'legacyOnly') === undefined
           && q.getRoomMetadata('compat_values:crypt', 'legacy_key') === true
           && q.getAreaMetadata('compat_values', 'legacy_key') === true
         ),
@@ -570,9 +573,6 @@ describe('bundle-rantamuta predicate runtime', function () {
       bundle: 'bundle-test',
       name: 'compat_values',
       metadata: {
-        flags: {
-          areaLit: false,
-        },
         values: {
           areaLit: true,
           legacy_key: true,
@@ -584,12 +584,6 @@ describe('bundle-rantamuta predicate runtime', function () {
       entityReference: 'compat_values:crypt',
       area,
       metadata: {
-        flags: {
-          slabOpen: true,
-          nonBoolean: true,
-          legacyOnly: true,
-          legacy_key: false,
-        },
         values: {
           slabOpen: false,
           nonBoolean: 'yes',
