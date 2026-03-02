@@ -29,7 +29,7 @@ function makeRenderContext(areaName, overrides = {}) {
     bundle: 'bundle-test',
     name: areaName,
     metadata: {
-      flags: {
+      values: {
         areaLit: true,
       },
     },
@@ -39,7 +39,7 @@ function makeRenderContext(areaName, overrides = {}) {
     entityReference: `${areaName}:crypt`,
     area,
     metadata: {
-      flags: {
+      values: {
         slabOpen: true,
       },
     },
@@ -225,11 +225,11 @@ describe('bundle-rantamuta predicate runtime', function () {
       actor,
       room: {
         entityReference: 'actor:crypt',
-        metadata: { flags: {} },
+        metadata: { values: {} },
         items: [],
-        area: { bundle: 'bundle-test', name: 'actor', metadata: { flags: {} } },
+        area: { bundle: 'bundle-test', name: 'actor', metadata: { values: {} } },
       },
-      area: { bundle: 'bundle-test', name: 'actor', metadata: { flags: {} } },
+      area: { bundle: 'bundle-test', name: 'actor', metadata: { values: {} } },
     });
 
     assert.strictEqual(runtime.evaluate('actorShape', context), true);
@@ -645,7 +645,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     const area = {
       bundle: 'bundle-test',
       name: 'virtual',
-      metadata: { flags: {} },
+      metadata: { values: {} },
     };
 
     const roomA = {
@@ -738,7 +738,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     const area = {
       bundle: 'bundle-test',
       name: 'nonvirtual',
-      metadata: { flags: {} },
+      metadata: { values: {} },
     };
 
     const roomA = {

@@ -14,7 +14,7 @@ function buildFixture() {
     bundle: 'bundle-rantamuta',
     name: 'test',
     metadata: {
-      flags: {
+      values: {
         benchmarkEnabled: true,
       },
     },
@@ -31,7 +31,7 @@ function buildFixture() {
     entityReference: 'test:predicates',
     area,
     metadata: {
-      flags: {
+      values: {
         variantPrimary: true,
         variantSecondary: false,
       },
