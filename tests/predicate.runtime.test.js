@@ -389,6 +389,157 @@ describe('bundle-rantamuta predicate runtime', function () {
     }), true);
   });
 
+  it('reads legacy boolean flags from metadata.flags when metadata.values is missing', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'legacy_flags',
+      `module.exports = {
+        legacyFlagChecks: ({ q }) => (
+          q.roomFlag('legacy_flags:crypt', 'slabOpen')
+          && q.areaFlag('legacy_flags', 'areaLit')
+          && q.getRoomMetadata('legacy_flags:crypt', 'slabOpen') === undefined
+          && q.getAreaMetadata('legacy_flags', 'areaLit') === undefined
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'legacy_flags',
+      metadata: {
+        flags: { areaLit: true },
+      },
+    };
+
+    const room = {
+      entityReference: 'legacy_flags:crypt',
+      area,
+      metadata: {
+        flags: { slabOpen: true },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'legacy_flags:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'legacy_flags' ? area : null,
+        getArea: name => name === 'legacy_flags' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('legacyFlagChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+  });
+
+  it('prioritizes metadata.values over metadata.flags for roomFlag/areaFlag compatibility reads', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'compat_values',
+      `module.exports = {
+        valuesFirstChecks: ({ q }) => (
+          q.roomFlag('compat_values:crypt', 'slabOpen') === false
+          && q.areaFlag('compat_values', 'areaLit') === true
+          && q.roomFlag('compat_values:crypt', 'nonBoolean') === false
+          && q.roomFlag('compat_values:crypt', 'legacyOnly') === true
+          && q.roomFlag('compat_values:crypt', 'legacy_key') === true
+          && q.getRoomMetadata('compat_values:crypt', 'legacy_key') === true
+          && q.getAreaMetadata('compat_values', 'legacy_key') === true
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'compat_values',
+      metadata: {
+        flags: {
+          areaLit: false,
+        },
+        values: {
+          areaLit: true,
+          legacy_key: true,
+        },
+      },
+    };
+
+    const room = {
+      entityReference: 'compat_values:crypt',
+      area,
+      metadata: {
+        flags: {
+          slabOpen: true,
+          nonBoolean: true,
+          legacyOnly: true,
+          legacy_key: false,
+        },
+        values: {
+          slabOpen: false,
+          nonBoolean: 'yes',
+          legacy_key: true,
+        },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'compat_values:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'compat_values' ? area : null,
+        getArea: name => name === 'compat_values' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('valuesFirstChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+  });
+
   it('uses virtual-door effective state for virtualized room pairs', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
     tempRoots.push(tempRoot);
