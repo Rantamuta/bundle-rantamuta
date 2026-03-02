@@ -557,7 +557,10 @@ describe('bundle-rantamuta mutator', function () {
     });
 
     undoB();
-    assert.deepStrictEqual(room.metadata, {});
+    assert.deepStrictEqual(room.metadata, {
+      flags: {},
+      values: {},
+    });
   });
 
   it('rejects setRoomFlag for invalid inputs', function () {
