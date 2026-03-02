@@ -501,6 +501,7 @@ describe('bundle-rantamuta mutator', function () {
     });
 
     assert.deepStrictEqual(room.metadata, {
+      flags: 42,
       values: {
         buttonPushed: true,
       },
