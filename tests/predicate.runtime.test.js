@@ -470,6 +470,8 @@ describe('bundle-rantamuta predicate runtime', function () {
           && q.roomFlag('compat_values:crypt', 'nonBoolean') === false
           && q.roomFlag('compat_values:crypt', 'legacyOnly') === true
           && q.roomFlag('compat_values:crypt', 'legacy_key') === true
+          && q.getRoomMetadata('compat_values:crypt', 'legacy_key') === true
+          && q.getAreaMetadata('compat_values', 'legacy_key') === true
         ),
       };`
     );
@@ -491,6 +493,7 @@ describe('bundle-rantamuta predicate runtime', function () {
         },
         values: {
           areaLit: true,
+          legacy_key: true,
         },
       },
     };
