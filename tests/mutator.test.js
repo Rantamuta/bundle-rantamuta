@@ -401,6 +401,9 @@ describe('bundle-rantamuta mutator', function () {
       flags: {
         buttonPushed: true,
       },
+      values: {
+        buttonPushed: true,
+      },
     });
 
     undo();
@@ -458,6 +461,45 @@ describe('bundle-rantamuta mutator', function () {
     }, /Unsupported mutation instruction type/);
 
     assert.deepStrictEqual(room.metadata, {});
+  });
+
+  it('restores setRoomFlag metadata root shapes on undo', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        flags: 42,
+        values: 'legacy',
+      },
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, {
+      type: 'setRoomFlag',
+      roomRef: 'test:inlineTags',
+      key: 'buttonPushed',
+      value: true,
+    });
+
+    assert.deepStrictEqual(room.metadata, {
+      flags: {
+        buttonPushed: true,
+      },
+      values: {
+        buttonPushed: true,
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(room.metadata, {
+      flags: 42,
+      values: 'legacy',
+    });
   });
 
   it('rejects setRoomFlag for invalid inputs', function () {
