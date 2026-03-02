@@ -912,6 +912,45 @@ describe('bundle-rantamuta mutator', function () {
     }, /deleteAreaMetadata\.force/);
   });
 
+  it('restores deleteAreaMetadata leaf when later op overwrites ancestor path', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          a: {
+            b: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteAreaMetadata',
+            actor,
+            key: 'a.b',
+          }),
+          /** @type {*} */ ({
+            type: 'setAreaMetadata',
+            actor,
+            key: 'a',
+            value: 2,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata.values, {
+      a: {
+        b: 1,
+      },
+    });
+  });
+
   it('rolls back deleteRoomMetadata when a later operation fails', function () {
     const room = {
       entityReference: 'test:inlineTags',
