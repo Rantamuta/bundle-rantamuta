@@ -518,6 +518,48 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('does not clobber later setRoomFlag writes when undoing an earlier op', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const state = {
+      RoomManager: {
+        getRoom(roomRef) {
+          return roomRef === room.entityReference ? room : null;
+        },
+      },
+    };
+
+    const undoA = applyMutationInstruction(state, {
+      type: 'setRoomFlag',
+      roomRef: 'test:inlineTags',
+      key: 'flagA',
+      value: true,
+    });
+
+    const undoB = applyMutationInstruction(state, {
+      type: 'setRoomFlag',
+      roomRef: 'test:inlineTags',
+      key: 'flagB',
+      value: true,
+    });
+
+    undoA();
+
+    assert.deepStrictEqual(room.metadata, {
+      flags: {
+        flagB: true,
+      },
+      values: {
+        flagB: true,
+      },
+    });
+
+    undoB();
+    assert.deepStrictEqual(room.metadata, {});
+  });
+
   it('rejects setRoomFlag for invalid inputs', function () {
     const state = {
       RoomManager: {
