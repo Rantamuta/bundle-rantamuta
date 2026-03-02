@@ -117,7 +117,7 @@
   title: "Predicate Test Room"
   description: "A deterministic benchmark room for predicate render measurements."
   metadata:
-    flags:
+    values:
       variantPrimary: true
       variantSecondary: false
       variantNever: false

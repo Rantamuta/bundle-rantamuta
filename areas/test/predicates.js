@@ -49,9 +49,9 @@ module.exports = {
   bench_always_true: () => true,
   bench_always_false: () => false,
 
-  bench_room_flag_primary: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'variantPrimary'),
-  bench_room_flag_secondary: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'variantSecondary'),
-  bench_area_flag_enabled: ({ q }) => q.areaFlag(PREDICATE_AREA_REF, 'benchmarkEnabled'),
+  bench_room_flag_primary: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantPrimary') === true,
+  bench_room_flag_secondary: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantSecondary') === true,
+  bench_area_flag_enabled: ({ q }) => q.getAreaMetadata(PREDICATE_AREA_REF, 'benchmarkEnabled') === true,
   bench_room_has_apple: ({ q }) => q.roomHasItem(PREDICATE_ROOM_REF, APPLE_REF),
   bench_room_container_has_apple: ({ q }) => q.roomContainerHasItem(PREDICATE_ROOM_REF, CHEST_REF, APPLE_REF),
   bench_actor_has_apple: ({ q }) => q.actorHasItem(APPLE_REF),
@@ -60,13 +60,13 @@ module.exports = {
   bench_actor_quest_completed: ({ q }) => q.actorQuestCompleted('test:predicateQuestDone'),
 
   bench_composite_small: ({ q }) =>
-    q.roomFlag(PREDICATE_ROOM_REF, 'variantPrimary')
-      && q.areaFlag(PREDICATE_AREA_REF, 'benchmarkEnabled')
+    q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantPrimary') === true
+      && q.getAreaMetadata(PREDICATE_AREA_REF, 'benchmarkEnabled') === true
       && q.roomHasItem(PREDICATE_ROOM_REF, APPLE_REF),
 
   bench_composite_large: ({ q }) =>
-    q.roomFlag(PREDICATE_ROOM_REF, 'variantPrimary')
-      && q.areaFlag(PREDICATE_AREA_REF, 'benchmarkEnabled')
+    q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantPrimary') === true
+      && q.getAreaMetadata(PREDICATE_AREA_REF, 'benchmarkEnabled') === true
       && q.roomHasItem(PREDICATE_ROOM_REF, APPLE_REF)
       && q.roomContainerHasItem(PREDICATE_ROOM_REF, CHEST_REF, APPLE_REF)
       && q.actorHasItem(APPLE_REF)
@@ -79,15 +79,15 @@ module.exports = {
     throw new Error('bench predicate throw');
   },
 
-  bench_variant_primary: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'variantPrimary'),
-  bench_variant_secondary: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'variantSecondary'),
-  bench_variant_never: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'variantNever'),
+  bench_variant_primary: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantPrimary') === true,
+  bench_variant_secondary: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantSecondary') === true,
+  bench_variant_never: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'variantNever') === true,
 
-  bench_fragment_a: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentA'),
-  bench_fragment_b: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentB'),
-  bench_fragment_c: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentC'),
-  bench_fragment_d: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentD'),
-  bench_fragment_e: ({ q }) => q.roomFlag(PREDICATE_ROOM_REF, 'fragmentE'),
+  bench_fragment_a: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'fragmentA') === true,
+  bench_fragment_b: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'fragmentB') === true,
+  bench_fragment_c: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'fragmentC') === true,
+  bench_fragment_d: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'fragmentD') === true,
+  bench_fragment_e: ({ q }) => q.getRoomMetadata(PREDICATE_ROOM_REF, 'fragmentE') === true,
 
-  is_button_pushed: ({ q }) => q.roomFlag('test:inlineTags', 'buttonPushed'),
+  is_button_pushed: ({ q }) => q.getRoomMetadata('test:inlineTags', 'buttonPushed') === true,
 };

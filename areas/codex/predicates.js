@@ -97,9 +97,9 @@ module.exports = {
   is_slab_open: ({ q }) => isDescentOpen(q),
   is_basin_runes_glowing: ({ q }) => basinRunesGlowing(q),
   is_gallery_feature_enabled: ({ q }) =>
-    !!(q && typeof q.areaFlag === 'function' && q.areaFlag('codex', 'galleryFeatureEnabled')),
+    !!(q && typeof q.getAreaMetadata === 'function' && q.getAreaMetadata('codex', 'galleryFeatureEnabled') === true),
   is_gallery_mirrors_awake: ({ q }) =>
-    !!(q && typeof q.roomFlag === 'function' && q.roomFlag('codex:perception_gallery', 'mirrorsAwake')),
+    !!(q && typeof q.getRoomMetadata === 'function' && q.getRoomMetadata('codex:perception_gallery', 'mirrorsAwake') === true),
   is_resonant_shard_in_gallery: ({ q }) => hasResonantShardInGallery(q),
   does_viewer_hold_resonant_shard: ({ q }) =>
     !!(q && typeof q.actorHasItem === 'function' && q.actorHasItem('codex:resonantShard')),
