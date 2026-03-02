@@ -768,6 +768,175 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('applies setWorldMetadata and returns inverse operation', function () {
+    const state = {};
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'setWorldMetadata',
+      key: 'story.phase',
+      value: 2,
+    }));
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+    });
+
+    undo();
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {},
+    });
+  });
+
+  it('rolls back setWorldMetadata when a later operation fails', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {},
+    });
+  });
+
+  it('rejects setWorldMetadata invalid key syntax', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.bad-key',
+        value: 2,
+      }));
+    }, /setWorldMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.bad key',
+        value: 2,
+      }));
+    }, /setWorldMetadata\.key/);
+  });
+
+  it('rejects setWorldMetadata undefined values and allows null values', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.phase',
+        value: undefined,
+      }));
+    }, /setWorldMetadata\.value/);
+
+    assert.doesNotThrow(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.phase',
+        value: null,
+      }));
+    });
+  });
+
+  it('coerces setWorldMetadata non-object root values and stores cloned object values', function () {
+    const state = {
+      metadata: {
+        values: 42,
+      },
+    };
+    const payload = {
+      count: 1,
+      nested: {
+        done: false,
+      },
+    };
+
+    applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'setWorldMetadata',
+      key: 'story.snapshot',
+      value: payload,
+    }));
+
+    payload.count = 9;
+    payload.nested.done = true;
+
+    assert.deepStrictEqual(state.metadata.values.story.snapshot, {
+      count: 1,
+      nested: {
+        done: false,
+      },
+    });
+  });
+
+  it('rejects setWorldMetadata subtree overwrite conflicts', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story',
+        value: 5,
+      }));
+    }, /setWorldMetadata\.path/);
+  });
+
+  it('restores setWorldMetadata leaf when later rollback recreates ancestor path', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 1,
+          },
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({
+            type: 'deleteWorldMetadata',
+            key: 'story',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 1,
+      },
+    });
+  });
+
   it('applies deleteRoomMetadata leaf delete without parent pruning and restores on undo', function () {
     const room = {
       entityReference: 'test:inlineTags',
