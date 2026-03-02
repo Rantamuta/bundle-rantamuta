@@ -951,6 +951,103 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
+    const state = {};
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state, {});
+    undo();
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('applies deleteWorldMetadata leaf delete without parent pruning and restores on undo', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {},
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('rejects deleteWorldMetadata non-leaf deletes unless force is true', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'deleteWorldMetadata',
+        key: 'story',
+      }));
+    }, /deleteWorldMetadata/);
+  });
+
+  it('rolls back deleteWorldMetadata when a later operation fails', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteWorldMetadata',
+            key: 'story',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
   it('integrates setRoomFlag with q.getRoomMetadata without q.roomFlag helper', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
     try {
