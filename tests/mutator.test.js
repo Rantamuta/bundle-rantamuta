@@ -785,9 +785,7 @@ describe('bundle-rantamuta mutator', function () {
 
     undo();
 
-    assert.deepStrictEqual(state.metadata.values, {
-      story: {},
-    });
+    assert.deepStrictEqual(state, {});
   });
 
   it('rolls back setWorldMetadata when a later operation fails', function () {
@@ -806,9 +804,31 @@ describe('bundle-rantamuta mutator', function () {
       });
     }, /Unsupported mutation instruction type/);
 
-    assert.deepStrictEqual(state.metadata.values, {
-      story: {},
-    });
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('restores world metadata root shape when setWorldMetadata rollback runs', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.history.chapter',
+            value: 3,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state, {});
   });
 
   it('rejects setWorldMetadata invalid key syntax', function () {
