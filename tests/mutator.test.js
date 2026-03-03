@@ -1139,6 +1139,33 @@ describe('bundle-rantamuta mutator', function () {
     }, /deleteRoomMetadata\.actor/);
   });
 
+  it('deletes digit-leading room metadata keys that setRoomMetadata accepts', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const actor = { room };
+
+    applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setRoomMetadata',
+      actor,
+      key: '1phase',
+      value: true,
+    }));
+    assert.strictEqual(room.metadata.values['1phase'], true);
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteRoomMetadata',
+      actor,
+      key: '1phase',
+    }));
+
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(room.metadata.values, '1phase'), false);
+
+    undo();
+    assert.strictEqual(room.metadata.values['1phase'], true);
+  });
+
   it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
     const state = {};
 
