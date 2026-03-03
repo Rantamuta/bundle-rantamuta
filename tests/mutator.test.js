@@ -393,22 +393,16 @@ describe('bundle-rantamuta mutator', function () {
     }, /setPlayerMetadata\.path/);
   });
 
-  it('applies setRoomFlag and returns inverse operation', function () {
+  it('applies setRoomMetadata and returns inverse operation', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    const undo = applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    const undo = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'buttonPushed',
       value: true,
     });
@@ -423,22 +417,16 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('does not write setRoomFlag values into metadata.flags', function () {
+  it('does not write setRoomMetadata values into metadata.flags', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'legacyButtonFlag',
       value: true,
     });
@@ -447,25 +435,19 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(room.metadata.values.legacyButtonFlag, true);
   });
 
-  it('rolls back setRoomFlag when a later operation fails', function () {
+  it('rolls back setRoomMetadata when a later operation fails', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
     assert.throws(() => {
-      applyMutationPlan(state, {
+      applyMutationPlan({}, {
         operations: [
           {
-            type: 'setRoomFlag',
-            roomRef: 'test:inlineTags',
+            type: 'setRoomMetadata',
+            actor,
             key: 'buttonPushed',
             value: true,
           },
@@ -477,7 +459,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('restores setRoomFlag metadata root shapes on undo', function () {
+  it('restores setRoomMetadata metadata root shapes on undo', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {
@@ -485,17 +467,11 @@ describe('bundle-rantamuta mutator', function () {
         values: 'legacy',
       },
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    const undo = applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    const undo = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'buttonPushed',
       value: true,
     });
@@ -514,29 +490,23 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
-  it('does not clobber later setRoomFlag writes when undoing an earlier op', function () {
+  it('does not clobber later setRoomMetadata writes when undoing an earlier op', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    const undoA = applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    const undoA = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'flagA',
       value: true,
     });
 
-    const undoB = applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    const undoB = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'flagB',
       value: true,
     });
@@ -555,50 +525,48 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
-  it('rejects setRoomFlag for invalid inputs', function () {
-    const state = {
-      RoomManager: {
-        getRoom() {
-          return null;
-        },
-      },
+  it('rejects setRoomMetadata for invalid inputs', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
     };
+    const actor = { room };
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: '',
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor: null,
         key: 'buttonPushed',
         value: true,
       }));
-    }, /setRoomFlag\.roomRef/);
+    }, /setRoomMetadata\.actor/);
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
-        key: 'bad.key',
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'bad-key',
         value: true,
       }));
-    }, /setRoomFlag\.key/);
+    }, /setRoomMetadata\.key/);
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
         key: 'buttonPushed',
-        value: 'true',
+        value: undefined,
       }));
-    }, /setRoomFlag\.value/);
+    }, /setRoomMetadata\.value/);
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
         key: 'buttonPushed',
-        value: true,
+        value: () => true,
       }));
-    }, /setRoomFlag\.roomRef could not be resolved/);
+    }, /setRoomMetadata\.value/);
   });
 
   it('applies setAreaMetadata and returns inverse operation', function () {
@@ -969,17 +937,11 @@ describe('bundle-rantamuta mutator', function () {
         },
       },
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
       type: 'deleteRoomMetadata',
-      roomRef: 'test:inlineTags',
+      actor,
       key: 'puzzle.phase',
     }));
 
@@ -1151,20 +1113,14 @@ describe('bundle-rantamuta mutator', function () {
         },
       },
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
     assert.throws(() => {
-      applyMutationPlan(state, {
+      applyMutationPlan({}, {
         operations: [
           /** @type {*} */ ({
             type: 'deleteRoomMetadata',
-            roomRef: 'test:inlineTags',
+            actor,
             key: 'puzzle.phase',
           }),
           /** @type {*} */ ({ type: 'unsupported' }),
@@ -1177,6 +1133,16 @@ describe('bundle-rantamuta mutator', function () {
         phase: 2,
       },
     });
+  });
+
+  it('rejects deleteRoomMetadata for missing actor room context', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteRoomMetadata',
+        actor: null,
+        key: 'puzzle.phase',
+      }));
+    }, /deleteRoomMetadata\.actor/);
   });
 
   it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
@@ -1276,7 +1242,7 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
-  it('integrates setRoomFlag with q.getRoomMetadata without q.roomFlag helper', function () {
+  it('integrates setRoomMetadata with q.getRoomMetadata without q.roomFlag helper', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
     try {
       writePredicates(
@@ -1284,7 +1250,7 @@ describe('bundle-rantamuta mutator', function () {
         'bundle-test',
         'integration',
         `module.exports = {
-          setRoomFlagInterop: ({ q }) => (
+          setRoomMetadataInterop: ({ q }) => (
             typeof q.roomFlag === 'undefined'
             && q.getRoomMetadata('integration:crypt', 'buttonPushed') === true
           ),
@@ -1325,15 +1291,16 @@ describe('bundle-rantamuta mutator', function () {
       const state = {
         RoomManager: world.RoomManager,
       };
+      const actor = { room };
 
       applyMutationInstruction(state, {
-        type: 'setRoomFlag',
-        roomRef: 'integration:crypt',
+        type: 'setRoomMetadata',
+        actor,
         key: 'buttonPushed',
         value: true,
       });
 
-      assert.strictEqual(runtime.evaluate('setRoomFlagInterop', {
+      assert.strictEqual(runtime.evaluate('setRoomMetadataInterop', {
         actor: null,
         room,
         area,
