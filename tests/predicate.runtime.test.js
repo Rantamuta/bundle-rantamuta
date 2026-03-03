@@ -560,7 +560,7 @@ describe('bundle-rantamuta predicate runtime', function () {
       source: 'room.description',
     }), true);
 
-    const collisionWarnings = warnings.filter(line => line.includes('PREDICATE_QUERY_METADATA_KEY_COLLISION'));
+    const collisionWarnings = warnings.filter(line => line.includes('KEY_COLLISION'));
     assert.strictEqual(collisionWarnings.length, 3);
     const worldCollisionWarnings = collisionWarnings.filter(line =>
       line.includes('q.getWorldMetadata("storyarc.phase")')
