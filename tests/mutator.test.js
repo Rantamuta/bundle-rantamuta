@@ -519,6 +519,36 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('preserves preexisting empty parent objects on setRoomMetadata undo', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {},
+        },
+      },
+    };
+    const actor = { room };
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setRoomMetadata',
+      actor,
+      key: 'puzzle.phase',
+      value: 2,
+    }));
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {},
+    });
+  });
+
   it('rejects setRoomMetadata for invalid inputs', function () {
     const room = {
       entityReference: 'test:inlineTags',
