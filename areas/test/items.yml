@@ -53,8 +53,7 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: setRoomFlag
-      roomRef: test:inlineTags
+      type: setRoomMetadata
       key: buttonPushed
       value: true
     roomMessages:
@@ -70,8 +69,7 @@
   metadata:
     pushable: true
     mutationInstruction:
-      type: setRoomFlag
-      roomRef: test:inlineTags
+      type: setRoomMetadata
       key: buttonPushed
       value: false
     roomMessages:

@@ -459,7 +459,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('restores setRoomMetadata metadata root shapes on undo', function () {
+  it('rejects setRoomMetadata for non-object values root', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {
@@ -469,21 +469,15 @@ describe('bundle-rantamuta mutator', function () {
     };
     const actor = { room };
 
-    const undo = applyMutationInstruction({}, {
-      type: 'setRoomMetadata',
-      actor,
-      key: 'buttonPushed',
-      value: true,
-    });
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'buttonPushed',
+        value: true,
+      }));
+    }, /setRoomMetadata\.path/);
 
-    assert.deepStrictEqual(room.metadata, {
-      flags: 42,
-      values: {
-        buttonPushed: true,
-      },
-    });
-
-    undo();
     assert.deepStrictEqual(room.metadata, {
       flags: 42,
       values: 'legacy',
