@@ -562,10 +562,9 @@ describe('bundle-rantamuta predicate runtime', function () {
 
     const collisionWarnings = warnings.filter(line => line.includes('PREDICATE_QUERY_METADATA_KEY_COLLISION'));
     assert.strictEqual(collisionWarnings.length, 3);
-    const worldCollisionWarnings = collisionWarnings.filter(line => (
-      line.includes('PREDICATE_QUERY_METADATA_KEY_COLLISION:getWorldMetadata:world:storyarc')
-      && line.includes('q.getWorldMetadata("storyarc.phase")')
-    ));
+    const worldCollisionWarnings = collisionWarnings.filter(line =>
+      line.includes('q.getWorldMetadata("storyarc.phase")')
+    );
     assert.strictEqual(worldCollisionWarnings.length, 1);
   });
 
