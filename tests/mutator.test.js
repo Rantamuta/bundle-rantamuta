@@ -1126,6 +1126,38 @@ describe('bundle-rantamuta mutator', function () {
     });
   });
 
+  it('rolls back setAreaMetadata when a later deleteAreaMetadata removes its ancestor path', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {},
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setAreaMetadata',
+            actor,
+            key: 'a.b',
+            value: 1,
+          }),
+          /** @type {*} */ ({
+            type: 'deleteAreaMetadata',
+            actor,
+            key: 'a',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata.values, {});
+  });
+
   it('rolls back deleteRoomMetadata when a later operation fails', function () {
     const room = {
       entityReference: 'test:inlineTags',
