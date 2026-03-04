@@ -1,11 +1,27 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const ranvier = require('ranvier');
+const { createPredicateRuntime } = require('../lib/helpers/predicate-runtime');
 const {
   applyMutationInstruction,
   applyMutationPlan,
 } = require('../lib/session/mutator');
+
+/**
+ * @param {string} root
+ * @param {string} bundle
+ * @param {string} area
+ * @param {string} source
+ */
+function writePredicates(root, bundle, area, source) {
+  const areaPath = path.join(root, bundle, 'areas', area);
+  fs.mkdirSync(areaPath, { recursive: true });
+  fs.writeFileSync(path.join(areaPath, 'predicates.js'), source, 'utf8');
+}
 
 function createContainer(items = []) {
   const bag = [...items];
@@ -377,28 +393,22 @@ describe('bundle-rantamuta mutator', function () {
     }, /setPlayerMetadata\.path/);
   });
 
-  it('applies setRoomFlag and returns inverse operation', function () {
+  it('applies setRoomMetadata and returns inverse operation', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
-    };
+    const actor = { room };
 
-    const undo = applyMutationInstruction(state, {
-      type: 'setRoomFlag',
-      roomRef: 'test:inlineTags',
+    const undo = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
       key: 'buttonPushed',
       value: true,
     });
 
     assert.deepStrictEqual(room.metadata, {
-      flags: {
+      values: {
         buttonPushed: true,
       },
     });
@@ -407,25 +417,37 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('rolls back setRoomFlag when a later operation fails', function () {
+  it('does not write setRoomMetadata values into metadata.flags', function () {
     const room = {
       entityReference: 'test:inlineTags',
       metadata: {},
     };
-    const state = {
-      RoomManager: {
-        getRoom(roomRef) {
-          return roomRef === room.entityReference ? room : null;
-        },
-      },
+    const actor = { room };
+
+    applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
+      key: 'legacyButtonFlag',
+      value: true,
+    });
+
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(room.metadata, 'flags'), false);
+    assert.strictEqual(room.metadata.values.legacyButtonFlag, true);
+  });
+
+  it('rolls back setRoomMetadata when a later operation fails', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
     };
+    const actor = { room };
 
     assert.throws(() => {
-      applyMutationPlan(state, {
+      applyMutationPlan({}, {
         operations: [
           {
-            type: 'setRoomFlag',
-            roomRef: 'test:inlineTags',
+            type: 'setRoomMetadata',
+            actor,
             key: 'buttonPushed',
             value: true,
           },
@@ -437,50 +459,940 @@ describe('bundle-rantamuta mutator', function () {
     assert.deepStrictEqual(room.metadata, {});
   });
 
-  it('rejects setRoomFlag for invalid inputs', function () {
+  it('rejects setRoomMetadata for non-object values root', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        flags: 42,
+        values: 'legacy',
+      },
+    };
+    const actor = { room };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'buttonPushed',
+        value: true,
+      }));
+    }, /setRoomMetadata\.path/);
+
+    assert.deepStrictEqual(room.metadata, {
+      flags: 42,
+      values: 'legacy',
+    });
+  });
+
+  it('does not clobber later setRoomMetadata writes when undoing an earlier op', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const actor = { room };
+
+    const undoA = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
+      key: 'flagA',
+      value: true,
+    });
+
+    const undoB = applyMutationInstruction({}, {
+      type: 'setRoomMetadata',
+      actor,
+      key: 'flagB',
+      value: true,
+    });
+
+    undoA();
+
+    assert.deepStrictEqual(room.metadata, {
+      values: {
+        flagB: true,
+      },
+    });
+
+    undoB();
+    assert.deepStrictEqual(room.metadata, {
+      values: {},
+    });
+  });
+
+  it('preserves preexisting empty parent objects on setRoomMetadata undo', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {},
+        },
+      },
+    };
+    const actor = { room };
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setRoomMetadata',
+      actor,
+      key: 'puzzle.phase',
+      value: 2,
+    }));
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {},
+    });
+  });
+
+  it('rejects setRoomMetadata for invalid inputs', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const actor = { room };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor: null,
+        key: 'buttonPushed',
+        value: true,
+      }));
+    }, /setRoomMetadata\.actor/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'bad-key',
+        value: true,
+      }));
+    }, /setRoomMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'buttonPushed',
+        value: undefined,
+      }));
+    }, /setRoomMetadata\.value/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setRoomMetadata',
+        actor,
+        key: 'buttonPushed',
+        value: () => true,
+      }));
+    }, /setRoomMetadata\.value/);
+  });
+
+  it('applies setAreaMetadata and returns inverse operation', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    const undo = applyMutationInstruction({}, {
+      type: 'setAreaMetadata',
+      actor,
+      key: 'questProgress.stage1',
+      value: 12,
+    });
+
+    assert.deepStrictEqual(area.metadata, {
+      values: {
+        questProgress: {
+          stage1: 12,
+        },
+      },
+    });
+
+    undo();
+    assert.deepStrictEqual(area.metadata, {});
+  });
+
+  it('rolls back setAreaMetadata when a later operation fails', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          {
+            type: 'setAreaMetadata',
+            actor,
+            key: 'questProgress.stage1',
+            value: 12,
+          },
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata, {});
+  });
+
+  it('rejects setAreaMetadata for missing actor room area context', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor: null,
+        key: 'questProgress.stage1',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.actor/);
+  });
+
+  it('rejects setAreaMetadata for invalid key syntax', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.bad-key',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.bad key',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.key/);
+  });
+
+  it('rejects setAreaMetadata for non-object values root', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: 42,
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: 12,
+      }));
+    }, /setAreaMetadata\.path/);
+  });
+
+  it('rejects setAreaMetadata subtree overwrite conflicts', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          questProgress: {
+            stage1: 12,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress',
+        value: 9,
+      }));
+    }, /setAreaMetadata\.path/);
+  });
+
+  it('rejects setAreaMetadata undefined values and allows null values', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: undefined,
+      }));
+    }, /setAreaMetadata\.value/);
+
+    assert.doesNotThrow(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'setAreaMetadata',
+        actor,
+        key: 'questProgress.stage1',
+        value: null,
+      }));
+    });
+  });
+
+  it('stores cloned object values for setAreaMetadata', function () {
+    const area = { name: 'test', metadata: {} };
+    const actor = { room: { area } };
+    const payload = {
+      count: 1,
+      nested: { done: false },
+    };
+
+    applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setAreaMetadata',
+      actor,
+      key: 'questProgress.snapshot',
+      value: payload,
+    }));
+
+    payload.count = 99;
+    payload.nested.done = true;
+
+    assert.deepStrictEqual(area.metadata.values.questProgress.snapshot, {
+      count: 1,
+      nested: { done: false },
+    });
+  });
+
+  it('applies setWorldMetadata and returns inverse operation', function () {
+    const state = {};
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'setWorldMetadata',
+      key: 'story.phase',
+      value: 2,
+    }));
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+    });
+
+    undo();
+
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('rolls back setWorldMetadata when a later operation fails', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('restores world metadata root shape when setWorldMetadata rollback runs', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.history.chapter',
+            value: 3,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('rejects setWorldMetadata invalid key syntax', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.bad-key',
+        value: 2,
+      }));
+    }, /setWorldMetadata\.key/);
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.bad key',
+        value: 2,
+      }));
+    }, /setWorldMetadata\.key/);
+  });
+
+  it('rejects setWorldMetadata undefined values and allows null values', function () {
+    const state = {};
+
+    assert.throws(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.phase',
+        value: undefined,
+      }));
+    }, /setWorldMetadata\.value/);
+
+    assert.doesNotThrow(() => {
+      applyMutationInstruction(state, /** @type {*} */ ({
+        type: 'setWorldMetadata',
+        key: 'story.phase',
+        value: null,
+      }));
+    });
+  });
+
+  it('coerces setWorldMetadata non-object root values and stores cloned object values', function () {
     const state = {
-      RoomManager: {
-        getRoom() {
-          return null;
+      metadata: {
+        values: 42,
+      },
+    };
+    const payload = {
+      count: 1,
+      nested: {
+        done: false,
+      },
+    };
+
+    applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'setWorldMetadata',
+      key: 'story.snapshot',
+      value: payload,
+    }));
+
+    payload.count = 9;
+    payload.nested.done = true;
+
+    assert.deepStrictEqual(state.metadata.values.story.snapshot, {
+      count: 1,
+      nested: {
+        done: false,
+      },
+    });
+  });
+
+  it('rejects setWorldMetadata subtree overwrite conflicts', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
         },
       },
     };
 
     assert.throws(() => {
       applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: '',
-        key: 'buttonPushed',
-        value: true,
+        type: 'setWorldMetadata',
+        key: 'story',
+        value: 5,
       }));
-    }, /setRoomFlag\.roomRef/);
+    }, /setWorldMetadata\.path/);
+  });
+
+  it('restores setWorldMetadata leaf when later rollback recreates ancestor path', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 1,
+          },
+        },
+      },
+    };
+
+    assert.throws(() => {
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setWorldMetadata',
+            key: 'story.phase',
+            value: 2,
+          }),
+          /** @type {*} */ ({
+            type: 'deleteWorldMetadata',
+            key: 'story',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 1,
+      },
+    });
+  });
+
+  it('applies deleteRoomMetadata leaf delete without parent pruning and restores on undo', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+    const actor = { room };
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteRoomMetadata',
+      actor,
+      key: 'puzzle.phase',
+    }));
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {},
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('treats missing deleteAreaMetadata path as idempotent no-op', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          existing: 1,
+        },
+      },
+    };
+    const actor = { room: { area } };
+    const before = JSON.parse(JSON.stringify(area.metadata));
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteAreaMetadata',
+      actor,
+      key: 'missing.path',
+    }));
+
+    assert.deepStrictEqual(area.metadata, before);
+    undo();
+    assert.deepStrictEqual(area.metadata, before);
+  });
+
+  it('rejects deleteAreaMetadata non-leaf deletes unless force is true', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteAreaMetadata',
+        actor,
+        key: 'storyArc',
+      }));
+    }, /deleteAreaMetadata/);
+  });
+
+  it('allows deleteAreaMetadata non-leaf deletes with force true and restores on undo', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+          keep: true,
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteAreaMetadata',
+      actor,
+      key: 'storyArc',
+      force: true,
+    }));
+
+    assert.deepStrictEqual(area.metadata.values, {
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(area.metadata.values, {
+      storyArc: {
+        chapterOne: 1,
+      },
+      keep: true,
+    });
+  });
+
+  it('rejects deleteAreaMetadata force when provided as non-boolean', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          storyArc: {
+            chapterOne: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteAreaMetadata',
+        actor,
+        key: 'storyArc',
+        force: 'true',
+      }));
+    }, /deleteAreaMetadata\.force/);
+  });
+
+  it('restores deleteAreaMetadata leaf when later op overwrites ancestor path', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {
+          a: {
+            b: 1,
+          },
+        },
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteAreaMetadata',
+            actor,
+            key: 'a.b',
+          }),
+          /** @type {*} */ ({
+            type: 'setAreaMetadata',
+            actor,
+            key: 'a',
+            value: 2,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata.values, {
+      a: {
+        b: 1,
+      },
+    });
+  });
+
+  it('rolls back setAreaMetadata when a later deleteAreaMetadata removes its ancestor path', function () {
+    const area = {
+      name: 'test',
+      metadata: {
+        values: {},
+      },
+    };
+    const actor = { room: { area } };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'setAreaMetadata',
+            actor,
+            key: 'a.b',
+            value: 1,
+          }),
+          /** @type {*} */ ({
+            type: 'deleteAreaMetadata',
+            actor,
+            key: 'a',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(area.metadata.values, {});
+  });
+
+  it('rolls back deleteRoomMetadata when a later operation fails', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {
+        values: {
+          puzzle: {
+            phase: 2,
+          },
+        },
+      },
+    };
+    const actor = { room };
+
+    assert.throws(() => {
+      applyMutationPlan({}, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteRoomMetadata',
+            actor,
+            key: 'puzzle.phase',
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
+
+    assert.deepStrictEqual(room.metadata.values, {
+      puzzle: {
+        phase: 2,
+      },
+    });
+  });
+
+  it('rejects deleteRoomMetadata for missing actor room context', function () {
+    assert.throws(() => {
+      applyMutationInstruction({}, /** @type {*} */ ({
+        type: 'deleteRoomMetadata',
+        actor: null,
+        key: 'puzzle.phase',
+      }));
+    }, /deleteRoomMetadata\.actor/);
+  });
+
+  it('deletes digit-leading room metadata keys that setRoomMetadata accepts', function () {
+    const room = {
+      entityReference: 'test:inlineTags',
+      metadata: {},
+    };
+    const actor = { room };
+
+    applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'setRoomMetadata',
+      actor,
+      key: '1phase',
+      value: true,
+    }));
+    assert.strictEqual(room.metadata.values['1phase'], true);
+
+    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+      type: 'deleteRoomMetadata',
+      actor,
+      key: '1phase',
+    }));
+
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(room.metadata.values, '1phase'), false);
+
+    undo();
+    assert.strictEqual(room.metadata.values['1phase'], true);
+  });
+
+  it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
+    const state = {};
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state, {});
+    undo();
+    assert.deepStrictEqual(state, {});
+  });
+
+  it('applies deleteWorldMetadata leaf delete without parent pruning and restores on undo', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
+
+    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+      type: 'deleteWorldMetadata',
+      key: 'story.phase',
+    }));
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {},
+      keep: true,
+    });
+
+    undo();
+
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('rejects deleteWorldMetadata non-leaf deletes unless force is true', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+        },
+      },
+    };
 
     assert.throws(() => {
       applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
-        key: 'bad.key',
-        value: true,
+        type: 'deleteWorldMetadata',
+        key: 'story',
       }));
-    }, /setRoomFlag\.key/);
+    }, /deleteWorldMetadata/);
+  });
+
+  it('rolls back deleteWorldMetadata when a later operation fails', function () {
+    const state = {
+      metadata: {
+        values: {
+          story: {
+            phase: 2,
+          },
+          keep: true,
+        },
+      },
+    };
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
-        key: 'buttonPushed',
-        value: 'true',
-      }));
-    }, /setRoomFlag\.value/);
+      applyMutationPlan(state, {
+        operations: [
+          /** @type {*} */ ({
+            type: 'deleteWorldMetadata',
+            key: 'story',
+            force: true,
+          }),
+          /** @type {*} */ ({ type: 'unsupported' }),
+        ],
+      });
+    }, /Unsupported mutation instruction type/);
 
-    assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
-        type: 'setRoomFlag',
-        roomRef: 'test:inlineTags',
+    assert.deepStrictEqual(state.metadata.values, {
+      story: {
+        phase: 2,
+      },
+      keep: true,
+    });
+  });
+
+  it('integrates setRoomMetadata with q.getRoomMetadata without q.roomFlag helper', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mutator-integration-'));
+    try {
+      writePredicates(
+        tempRoot,
+        'bundle-test',
+        'integration',
+        `module.exports = {
+          setRoomMetadataInterop: ({ q }) => (
+            typeof q.roomFlag === 'undefined'
+            && q.getRoomMetadata('integration:crypt', 'buttonPushed') === true
+          ),
+        };`
+      );
+
+      const runtime = createPredicateRuntime({
+        bundlesRootPath: tempRoot,
+        logger: {
+          warn: () => {},
+          error: () => {},
+        },
+      });
+
+      const area = {
+        bundle: 'bundle-test',
+        name: 'integration',
+        metadata: {},
+      };
+      const room = {
+        entityReference: 'integration:crypt',
+        area,
+        metadata: {},
+        items: [],
+      };
+      const world = {
+        RoomManager: {
+          getRoom: roomRef => roomRef === 'integration:crypt' ? room : null,
+        },
+        AreaManager: {
+          getAreaByReference: areaRef => areaRef === 'integration' ? area : null,
+          getArea: name => name === 'integration' ? area : null,
+        },
+        ItemManager: {
+          items: new Set(),
+        },
+      };
+      const state = {
+        RoomManager: world.RoomManager,
+      };
+      const actor = { room };
+
+      applyMutationInstruction(state, {
+        type: 'setRoomMetadata',
+        actor,
         key: 'buttonPushed',
         value: true,
-      }));
-    }, /setRoomFlag\.roomRef could not be resolved/);
+      });
+
+      assert.strictEqual(runtime.evaluate('setRoomMetadataInterop', {
+        actor: null,
+        room,
+        area,
+        world,
+        source: 'room.description',
+      }), true);
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it('applies movePlayer instruction and returns inverse operation', function () {

@@ -29,7 +29,7 @@ function makeRenderContext(areaName, overrides = {}) {
     bundle: 'bundle-test',
     name: areaName,
     metadata: {
-      flags: {
+      values: {
         areaLit: true,
       },
     },
@@ -39,7 +39,7 @@ function makeRenderContext(areaName, overrides = {}) {
     entityReference: `${areaName}:crypt`,
     area,
     metadata: {
-      flags: {
+      values: {
         slabOpen: true,
       },
     },
@@ -225,11 +225,11 @@ describe('bundle-rantamuta predicate runtime', function () {
       actor,
       room: {
         entityReference: 'actor:crypt',
-        metadata: { flags: {} },
+        metadata: { values: {} },
         items: [],
-        area: { bundle: 'bundle-test', name: 'actor', metadata: { flags: {} } },
+        area: { bundle: 'bundle-test', name: 'actor', metadata: { values: {} } },
       },
-      area: { bundle: 'bundle-test', name: 'actor', metadata: { flags: {} } },
+      area: { bundle: 'bundle-test', name: 'actor', metadata: { values: {} } },
     });
 
     assert.strictEqual(runtime.evaluate('actorShape', context), true);
@@ -245,8 +245,21 @@ describe('bundle-rantamuta predicate runtime', function () {
       'query',
       `module.exports = {
         queryChecks: ({ q }) => {
-          return q.roomFlag('query:crypt', 'slabOpen')
-            && q.areaFlag('query', 'areaLit')
+          return typeof q.roomFlag === 'undefined'
+            && typeof q.areaFlag === 'undefined'
+            && q.getRoomMetadata('query:crypt', 'slabOpen') === true
+            && q.getAreaMetadata('query', 'areaLit') === true
+            && q.getWorldMetadata('queryState.phase') === 2
+            && q.getAreaMetadata('query', 'StoryArc.PHASE') === 2
+            && q.getAreaMetadata('query', 'STORYARC.zeroValue') === 0
+            && q.getAreaMetadata('query', 'storyArc.NULLVALUE') === null
+            && q.getAreaMetadata('query', 'storyArc.MISSINGVALUE') === undefined
+            && q.getWorldMetadata('querystate.zeroValue') === 0
+            && q.getWorldMetadata('queryState.nullValue') === null
+            && q.getWorldMetadata('queryState.MISSINGVALUE') === undefined
+            && q.getWorldMetadata('') === undefined
+            && q.getRoomMetadata('query:crypt', 'LOCKS.innerDoor') === false
+            && q.getRoomMetadata('query:crypt', 'locks.MISSINGDOOR') === undefined
             && q.roomHasItem('query:crypt', 'query:coin')
             && q.currentContainerHasItem('query:prayerStone')
             && q.roomContainerHasItem('query:crypt', 'query:stoneBasin', 'query:prayerStone')
@@ -283,7 +296,14 @@ describe('bundle-rantamuta predicate runtime', function () {
 
     const room = {
       entityReference: 'query:crypt',
-      metadata: { flags: { slabOpen: true } },
+      metadata: {
+        values: {
+          slabOpen: true,
+          locks: {
+            innerDoor: false,
+          },
+        },
+      },
       items: [
         { entityReference: 'query:coin' },
         basin,
@@ -301,7 +321,16 @@ describe('bundle-rantamuta predicate runtime', function () {
       area: {
         bundle: 'bundle-test',
         name: 'query',
-        metadata: { flags: { areaLit: true } },
+        metadata: {
+          values: {
+            areaLit: true,
+            storyArc: {
+              phase: 2,
+              zeroValue: 0,
+              nullValue: null,
+            },
+          },
+        },
       },
     };
 
@@ -347,6 +376,15 @@ describe('bundle-rantamuta predicate runtime', function () {
       ItemManager: {
         items: new Set(room.items),
       },
+      metadata: {
+        values: {
+          queryState: {
+            phase: 2,
+            zeroValue: 0,
+            nullValue: null,
+          },
+        },
+      },
     };
 
     assert.strictEqual(runtime.evaluate('queryChecks', {
@@ -364,6 +402,307 @@ describe('bundle-rantamuta predicate runtime', function () {
       area: room.area,
       world,
       source: 'room.fragment',
+    }), true);
+  });
+
+  it('does not expose legacy q.*Flag helpers and does not read metadata.flags fallback', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'legacy_flags',
+      `module.exports = {
+        legacyFlagChecks: ({ q }) => (
+          typeof q.roomFlag === 'undefined'
+          && typeof q.areaFlag === 'undefined'
+          && q.getRoomMetadata('legacy_flags:crypt', 'slabOpen') === undefined
+          && q.getAreaMetadata('legacy_flags', 'areaLit') === undefined
+          && q.getWorldMetadata('worldLit') === undefined
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'legacy_flags',
+      metadata: {
+        flags: { areaLit: true },
+      },
+    };
+
+    const room = {
+      entityReference: 'legacy_flags:crypt',
+      area,
+      metadata: {
+        flags: { slabOpen: true },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'legacy_flags:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'legacy_flags' ? area : null,
+        getArea: name => name === 'legacy_flags' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+      metadata: {
+        flags: { worldLit: true },
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('legacyFlagChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+  });
+
+  it('warns on case-collision path matches and reads the last matched value', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'collision',
+      `module.exports = {
+        collisionChecks: ({ q }) => (
+          q.getAreaMetadata('collision', 'storyarc.phase') === 2
+          && q.getRoomMetadata('collision:crypt', 'locks.innerdoor') === true
+          && q.getWorldMetadata('storyarc.phase') === 4
+        ),
+      };`
+    );
+
+    const warnings = [];
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: message => warnings.push(String(message)),
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'collision',
+      metadata: {
+        values: {
+          storyArc: { phase: 1 },
+          StoryArc: { phase: 2 },
+        },
+      },
+    };
+
+    const room = {
+      entityReference: 'collision:crypt',
+      area,
+      metadata: {
+        values: {
+          locks: { innerDoor: false },
+          LOCKS: { innerDoor: true },
+        },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'collision:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'collision' ? area : null,
+        getArea: name => name === 'collision' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+      metadata: {
+        values: {
+          storyArc: { phase: 3 },
+          StoryArc: { phase: 4 },
+        },
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('collisionChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+
+    assert.strictEqual(runtime.evaluate('collisionChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+
+    const collisionWarnings = warnings.filter(line => line.includes('KEY_COLLISION'));
+    assert.strictEqual(collisionWarnings.length, 3);
+    const worldCollisionWarnings = collisionWarnings.filter(line =>
+      line.includes('q.getWorldMetadata("storyarc.phase")')
+    );
+    assert.strictEqual(worldCollisionWarnings.length, 1);
+  });
+
+  it('reads metadata values for booleans and non-booleans through q.get*Metadata', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'compat_values',
+      `module.exports = {
+        valuesFirstChecks: ({ q }) => (
+          typeof q.roomFlag === 'undefined'
+          && typeof q.areaFlag === 'undefined'
+          && q.getRoomMetadata('compat_values:crypt', 'slabOpen') === false
+          && q.getAreaMetadata('compat_values', 'areaLit') === true
+          && q.getWorldMetadata('worldLit') === true
+          && q.getRoomMetadata('compat_values:crypt', 'nonBoolean') === 'yes'
+          && q.getWorldMetadata('worldNonBoolean') === 'yes'
+          && q.getRoomMetadata('compat_values:crypt', 'legacyOnly') === undefined
+          && q.getRoomMetadata('compat_values:crypt', 'legacy_key') === true
+          && q.getAreaMetadata('compat_values', 'legacy_key') === true
+          && q.getWorldMetadata('legacy_key') === true
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const area = {
+      bundle: 'bundle-test',
+      name: 'compat_values',
+      metadata: {
+        values: {
+          areaLit: true,
+          legacy_key: true,
+        },
+      },
+    };
+
+    const room = {
+      entityReference: 'compat_values:crypt',
+      area,
+      metadata: {
+        values: {
+          slabOpen: false,
+          nonBoolean: 'yes',
+          legacy_key: true,
+        },
+      },
+      items: [],
+      exits: [],
+    };
+
+    const world = {
+      RoomManager: {
+        getRoom: roomRef => roomRef === 'compat_values:crypt' ? room : null,
+      },
+      AreaManager: {
+        getAreaByReference: areaRef => areaRef === 'compat_values' ? area : null,
+        getArea: name => name === 'compat_values' ? area : null,
+      },
+      ItemManager: {
+        items: new Set(),
+      },
+      metadata: {
+        values: {
+          worldLit: true,
+          worldNonBoolean: 'yes',
+          legacy_key: true,
+        },
+      },
+    };
+
+    assert.strictEqual(runtime.evaluate('valuesFirstChecks', {
+      actor: null,
+      room,
+      area,
+      world,
+      source: 'room.description',
+    }), true);
+  });
+
+  it('returns undefined for missing world metadata context or roots', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'predicate-runtime-'));
+    tempRoots.push(tempRoot);
+
+    writePredicates(
+      tempRoot,
+      'bundle-test',
+      'world_missing',
+      `module.exports = {
+        worldMissingChecks: ({ q }) => (
+          q.getWorldMetadata('story.phase') === undefined
+          && q.getWorldMetadata('') === undefined
+        ),
+      };`
+    );
+
+    const runtime = createPredicateRuntime({
+      bundlesRootPath: tempRoot,
+      logger: {
+        warn: () => {},
+        error: () => {},
+      },
+    });
+
+    const baseContext = makeRenderContext('world_missing');
+
+    assert.strictEqual(runtime.evaluate('worldMissingChecks', {
+      ...baseContext,
+      world: null,
+      source: 'room.description',
+    }), true);
+
+    assert.strictEqual(runtime.evaluate('worldMissingChecks', {
+      ...baseContext,
+      world: {},
+      source: 'room.description',
+    }), true);
+
+    assert.strictEqual(runtime.evaluate('worldMissingChecks', {
+      ...baseContext,
+      world: { metadata: 12 },
+      source: 'room.description',
+    }), true);
+
+    assert.strictEqual(runtime.evaluate('worldMissingChecks', {
+      ...baseContext,
+      world: { metadata: { values: 12 } },
+      source: 'room.description',
     }), true);
   });
 
@@ -396,7 +735,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     const area = {
       bundle: 'bundle-test',
       name: 'virtual',
-      metadata: { flags: {} },
+      metadata: { values: {} },
     };
 
     const roomA = {
@@ -489,7 +828,7 @@ describe('bundle-rantamuta predicate runtime', function () {
     const area = {
       bundle: 'bundle-test',
       name: 'nonvirtual',
-      metadata: { flags: {} },
+      metadata: { values: {} },
     };
 
     const roomA = {

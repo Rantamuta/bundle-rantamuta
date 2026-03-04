@@ -65,7 +65,7 @@
   title: "Perception Gallery"
   description: "An arc of polished stone mirrors catches every footfall."
   metadata:
-    flags:
+    values:
       mirrorsAwake: true
     details:
       - name: "mirrors"
