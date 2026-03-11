@@ -55,9 +55,29 @@ function extractRawSpeechFromParsedInput(parsedInput) {
   return normalizedInput.slice(firstSpaceIndex + 1);
 }
 
+/**
+ * @param {*} span
+ * @returns {string}
+ */
+function spanText(span) {
+  return Array.isArray(span) ? span.join(' ') : '';
+}
+
 module.exports = {
   aliases: [],
   metadata: {
+    entityResolution: {
+      rules: {
+        literal: {},
+        literalIndirect: {
+          acceptedRelations: ['to'],
+          allowUnresolvedIndirect: true,
+          scopeProfile: {
+            indirect: ['room.players', 'room.npcs'],
+          },
+        },
+      },
+    },
     captureChecks: [
       context => {
         const text = sanitizeSpeech(extractRawSpeechFromParsedInput(context && context.parsedInput));
@@ -77,17 +97,31 @@ module.exports = {
       },
     ],
     errorMessages: {
+      FORM_MISSING_DIRECT: 'Say what?',
       SAY_EMPTY: 'Say what?',
       SAY_TOO_LONG: 'That is too much to say at once.',
+      FORM_QUOTED_SECONDARY_UNSUPPORTED: 'You cannot put the addressee in quotes.',
     },
   },
   command: state => (args, player, alias, context) => {
     void state;
     void player;
     void alias;
-    void context;
 
-    const text = sanitizeSpeech(args);
+    const resolution = context && typeof context.entityResolution === 'object'
+      ? context.entityResolution
+      : {};
+    const primaryText = spanText(resolution.directSpan);
+    const relationText = typeof resolution.relationTokenRaw === 'string'
+      ? resolution.relationTokenRaw
+      : '';
+    const secondaryText = spanText(resolution.indirectSpan);
+
+    const directedText = sanitizeSpeech(primaryText || args);
+    const fallbackText = sanitizeSpeech(
+      [primaryText, relationText, secondaryText].filter(Boolean).join(' ') || args
+    );
+    const text = resolution.indirectTarget ? directedText : fallbackText;
     if (!text) {
       return fail('SAY_EMPTY');
     }
@@ -102,17 +136,30 @@ module.exports = {
       },
       render: {
         messages: [
-          {
-            type: 'semanticEvent',
-            template: '{actor.you} {verb:say}, "{object.direct}"',
-            audiencePolicy: 'self_and_others',
-            participants: {
-              actor: { selector: 'currentActor' },
-            },
-            objectText: {
-              direct: text,
-            },
-          },
+          resolution.indirectTarget
+            ? {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:say}, "{object.direct}" to {target.you}',
+                audiencePolicy: 'self_target_and_others',
+                participants: {
+                  actor: { selector: 'currentActor' },
+                  target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+                },
+                objectText: {
+                  direct: text,
+                },
+              }
+            : {
+                type: 'semanticEvent',
+                template: '{actor.you} {verb:say}, "{object.direct}"',
+                audiencePolicy: 'self_and_others',
+                participants: {
+                  actor: { selector: 'currentActor' },
+                },
+                objectText: {
+                  direct: text,
+                },
+              },
         ],
       },
     };

@@ -154,4 +154,25 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.relationToken, 'to');
     assert.deepStrictEqual(result.secondaryTargetSpan, ['"demon"']);
   });
+
+  it('treats non-to relation tokens inside say text as literal speech', function () {
+    const result = parseInput('say go down from the crypt and see what answered the rite');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, [
+      'go',
+      'down',
+      'from',
+      'the',
+      'crypt',
+      'and',
+      'see',
+      'what',
+      'answered',
+      'the',
+      'rite',
+    ]);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
+  });
 });
