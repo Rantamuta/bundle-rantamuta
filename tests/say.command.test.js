@@ -11,12 +11,20 @@ function createPlayer(def = {}) {
 }
 
 describe('bundle-rantamuta say command', function () {
-  it('uses legacy entity-resolution path (no explicit declaration)', function () {
+  it('declares literal and literalIndirect entity-resolution rules', function () {
     assert.ok(sayCommand.metadata);
-    assert.strictEqual(
-      Object.prototype.hasOwnProperty.call(sayCommand.metadata, 'entityResolution'),
-      false
-    );
+    assert.deepStrictEqual(sayCommand.metadata.entityResolution, {
+      rules: {
+        literal: {},
+        literalIndirect: {
+          acceptedRelations: ['to'],
+          allowUnresolvedIndirect: true,
+          scopeProfile: {
+            indirect: ['room.players', 'room.npcs'],
+          },
+        },
+      },
+    });
   });
 
   it('returns SAY_EMPTY veto for empty normalized speech', function () {
@@ -51,14 +59,62 @@ describe('bundle-rantamuta say command', function () {
     });
   });
 
-  it('sanitizes whitespace and returns semanticEvent success envelope with noop plan', function () {
+  it('renders directed public speech when literalIndirect resolves an addressee', function () {
     const execute = sayCommand.command({});
     const player = createPlayer({
       room: { title: 'Room', description: 'Desc' },
     });
 
-    const result = execute('   hello\n\n   there\tfriend   ', player, null, {
-      entityResolution: { ruleKey: 'legacy' },
+    const result = execute('who are you to demon', player, null, {
+      entityResolution: {
+        ruleKey: 'literalIndirect',
+        directSpan: ['who', 'are', 'you'],
+        indirectSpan: ['demon'],
+        relationTokenRaw: 'to',
+        relationTokenCanonical: 'to',
+        indirectTarget: { name: 'demon', uuid: 'npc-demon' },
+      },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [{ type: 'noop' }],
+      },
+      render: {
+        messages: [
+          {
+            type: 'semanticEvent',
+            template: '{actor.you} {verb:say}, "{object.direct}" to {target.you}',
+            audiencePolicy: 'self_target_and_others',
+            participants: {
+              actor: { selector: 'currentActor' },
+              target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+            },
+            objectText: {
+              direct: 'who are you',
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('reconstructs literal public speech when literalIndirect does not resolve an addressee', function () {
+    const execute = sayCommand.command({});
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc' },
+    });
+
+    const result = execute('who are you to demon', player, null, {
+      entityResolution: {
+        ruleKey: 'literalIndirect',
+        directSpan: ['who', 'are', 'you'],
+        indirectSpan: ['demon'],
+        relationTokenRaw: 'to',
+        relationTokenCanonical: 'to',
+        indirectResolutionError: { code: 'TARGET_NOT_FOUND' },
+      },
     });
 
     assert.deepStrictEqual(result, {
@@ -76,11 +132,18 @@ describe('bundle-rantamuta say command', function () {
               actor: { selector: 'currentActor' },
             },
             objectText: {
-              direct: 'hello there friend',
+              direct: 'who are you to demon',
             },
           },
         ],
       },
     });
+  });
+
+  it('defines a dedicated player-facing message for quoted secondary spans', function () {
+    assert.strictEqual(
+      sayCommand.metadata.errorMessages.FORM_QUOTED_SECONDARY_UNSUPPORTED,
+      'You cannot put the addressee in quotes.'
+    );
   });
 });
