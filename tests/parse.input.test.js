@@ -118,4 +118,40 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
+
+  it('parses quoted primary say text as one logical primary span', function () {
+    const result = parseInput('say "blue car"');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['blue car']);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
+  });
+
+  it('parses relation-form input after a quoted primary span', function () {
+    const result = parseInput('say "blue car" to demon');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['blue car']);
+    assert.strictEqual(result.relationToken, 'to');
+    assert.deepStrictEqual(result.secondaryTargetSpan, ['demon']);
+  });
+
+  it('does not treat relation text inside a quoted primary span as structural', function () {
+    const result = parseInput('say "blue car to demon" to demon');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['blue car to demon']);
+    assert.strictEqual(result.relationToken, 'to');
+    assert.deepStrictEqual(result.secondaryTargetSpan, ['demon']);
+  });
+
+  it('surfaces quoted secondary span text for unsupported-form handling', function () {
+    const result = parseInput('say "blue car" to "demon"');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['blue car']);
+    assert.strictEqual(result.relationToken, 'to');
+    assert.deepStrictEqual(result.secondaryTargetSpan, ['"demon"']);
+  });
 });
