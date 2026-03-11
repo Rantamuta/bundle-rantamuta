@@ -45,11 +45,22 @@ function createDetail(def = {}) {
   };
 }
 
+function createNpc(def = {}) {
+  return {
+    uuid: def.uuid || String(def.name || 'npc').replace(/\s+/gu, '-'),
+    name: def.name || 'npc',
+    keywords: def.keywords || [],
+    metadata: def.metadata || {},
+  };
+}
+
 function createPlayer(def = {}) {
   const inventoryItems = Array.isArray(def.inventoryItems) ? def.inventoryItems : [];
   const roomItems = Array.isArray(def.roomItems) ? def.roomItems : [];
+  const roomNpcs = Array.isArray(def.roomNpcs) ? def.roomNpcs : [];
   const room = def.room || {
     items: new Set(roomItems),
+    npcs: new Set(roomNpcs),
   };
 
   return {
@@ -194,6 +205,106 @@ describe('bundle-rantamuta entity-resolution', function () {
     }
 
     assert.strictEqual(result.error.code, 'TARGET_NOT_FOUND');
+  });
+
+  it('supports literal rule shape without direct entity binding', function () {
+    const command = makeCommand({
+      rules: {
+        literal: {},
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('say hello there'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.ruleKey, 'literal');
+    assert.deepStrictEqual(result.value.directSpan, ['hello', 'there']);
+    assert.strictEqual(result.value.directTarget, undefined);
+    assert.strictEqual(result.value.indirectTarget, undefined);
+  });
+
+  it('supports literalIndirect rule shape and binds only the indirect target', function () {
+    const demon = createNpc({ uuid: 'npc-demon', name: 'demon', keywords: ['demon'] });
+    const command = makeCommand({
+      rules: {
+        literalIndirect: {
+          acceptedRelations: ['to'],
+          scopeProfile: {
+            indirect: ['room.npcs'],
+          },
+        },
+      },
+    });
+    const player = createPlayer({ roomNpcs: [demon] });
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('say who are you to demon'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.ruleKey, 'literalIndirect');
+    assert.deepStrictEqual(result.value.directSpan, ['who', 'are', 'you']);
+    assert.deepStrictEqual(result.value.indirectSpan, ['demon']);
+    assert.strictEqual(result.value.directTarget, undefined);
+    assert.strictEqual(result.value.indirectTarget, demon);
+  });
+
+  it('allows unresolved literalIndirect binding when rule opts in via allowUnresolvedIndirect', function () {
+    const command = makeCommand({
+      rules: {
+        literalIndirect: {
+          acceptedRelations: ['to'],
+          allowUnresolvedIndirect: true,
+          scopeProfile: {
+            indirect: ['room.npcs'],
+          },
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('say hello there to missing'));
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.strictEqual(result.value.ruleKey, 'literalIndirect');
+    assert.strictEqual(result.value.directTarget, undefined);
+    assert.strictEqual(result.value.indirectTarget, undefined);
+    assert.strictEqual(result.value.indirectResolutionError.code, 'TARGET_NOT_FOUND');
+  });
+
+  it('rejects quoted secondary span for literalIndirect forms', function () {
+    const command = makeCommand({
+      rules: {
+        literalIndirect: {
+          acceptedRelations: ['to'],
+          allowUnresolvedIndirect: true,
+          scopeProfile: {
+            indirect: ['room.npcs'],
+          },
+        },
+      },
+    });
+    const player = createPlayer();
+
+    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('say "blue car" to "demon"'));
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'FORM_QUOTED_SECONDARY_UNSUPPORTED',
+      },
+    });
   });
 
   it('supports intransitive offramp with empty bindings', function () {
