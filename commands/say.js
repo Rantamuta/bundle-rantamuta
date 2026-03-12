@@ -108,14 +108,17 @@ module.exports = {
     void player;
     void alias;
 
+    const parsedInput = context && context.parsedInput && typeof context.parsedInput === 'object'
+      ? context.parsedInput
+      : {};
     const resolution = context && typeof context.entityResolution === 'object'
       ? context.entityResolution
       : {};
-    const primaryText = spanText(resolution.directSpan);
-    const relationText = typeof resolution.relationTokenRaw === 'string'
-      ? resolution.relationTokenRaw
-      : '';
-    const secondaryText = spanText(resolution.indirectSpan);
+    const primaryText = spanText(parsedInput.primaryTargetSpan) || spanText(resolution.directSpan);
+    const relationText = typeof parsedInput.relationToken === 'string'
+      ? parsedInput.relationToken
+      : (typeof resolution.relationTokenRaw === 'string' ? resolution.relationTokenRaw : '');
+    const secondaryText = spanText(parsedInput.secondaryTargetSpan) || spanText(resolution.indirectSpan);
 
     const directedText = sanitizeSpeech(primaryText || args);
     const fallbackText = sanitizeSpeech(
