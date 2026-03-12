@@ -175,4 +175,13 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
+
+  it('splits say input on the last relation token when multiple to tokens appear', function () {
+    const result = parseInput('say Hamlet says to be or not to be');
+
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.primaryTargetSpan, ['Hamlet', 'says', 'to', 'be', 'or', 'not']);
+    assert.strictEqual(result.relationToken, 'to');
+    assert.deepStrictEqual(result.secondaryTargetSpan, ['be']);
+  });
 });

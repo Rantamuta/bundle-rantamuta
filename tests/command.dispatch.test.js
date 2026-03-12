@@ -4752,6 +4752,63 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('treats leading to in say input as literal speech', async function () {
+    const sayDef = require('../commands/say');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const deliveries = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      deliveries.push({ target, message: String(message) });
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    try {
+      const observer = { name: 'Observer', isNpc: true, uuid: 'npc-observer', socket: { writable: false } };
+      const player = asPlayer({
+        name: 'Tester',
+        isNpc: false,
+        uuid: 'player-tester',
+        room: {
+          title: 'Speech Room',
+          description: 'A room for speech tests.',
+          area: {},
+          players: new Set(),
+          npcs: new Set([observer]),
+          getBroadcastTargets: () => [player, observer],
+        },
+        socket: { writable: false },
+      });
+      player.room.players = new Set([player]);
+      player.room.getBroadcastTargets = () => [player, observer];
+
+      const command = {
+        metadata: sayDef.metadata,
+        execute: wrapLegacyRenderCommand(sayDef.command({})),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'say' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'say to be or not');
+
+      const actorMessages = deliveries
+        .filter(entry => entry.target === player)
+        .map(entry => entry.message);
+      const observerMessages = deliveries
+        .filter(entry => entry.target === observer)
+        .map(entry => entry.message);
+
+      assert.deepStrictEqual(actorMessages, ['You say, "to be or not"']);
+      assert.deepStrictEqual(observerMessages, ['Tester says, "to be or not"']);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+    }
+  });
+
   it('falls back to literal speech when addressed say target is unresolved', async function () {
     const sayDef = require('../commands/say');
     const ranvierPath = require.resolve('ranvier');
