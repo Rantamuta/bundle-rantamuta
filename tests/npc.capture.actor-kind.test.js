@@ -171,4 +171,136 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
     assert.strictEqual(executeCalled, false);
     assert.ok(outputs.includes('Only NPCs may perform that action.'));
   });
+
+  it('lets canActor deny before metadata gate, entity policy, and planner', async function () {
+    let canDirectCalls = 0;
+    let executeCalled = false;
+    const guardedRelic = {
+      uuid: 'actor-can-actor-deny-relic',
+      name: 'guarded relic',
+      keywords: ['guarded', 'relic'],
+      canDirect() {
+        canDirectCalls += 1;
+        return null;
+      },
+    };
+    const npc = {
+      name: 'Tomo',
+      isNpc: true,
+      canActor(actor, verbId, context) {
+        assert.strictEqual(actor, npc);
+        assert.strictEqual(verbId, 'inspect');
+        assert.strictEqual(context.player, npc);
+        return {
+          allow: false,
+          message: 'Actor gate refused.',
+          details: { source: 'npc.canActor' },
+        };
+      },
+      room: {
+        items: new Set([guardedRelic]),
+        area: {},
+        getBroadcastTargets: () => [npc],
+      },
+      socket: { writable: false },
+    };
+    npc.room.getBroadcastTargets = () => [npc];
+
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+        entityResolution: {
+          rules: {
+            direct: {
+              scopeProfile: {
+                direct: ['room.items'],
+              },
+            },
+          },
+        },
+      },
+      execute: async () => {
+        executeCalled = true;
+        return {
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: [] },
+        };
+      },
+    };
+
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'inspect' ? command : null,
+      },
+    }, npc);
+
+    const result = await dispatchNpcIntent(state, npc, {
+      kind: 'text',
+      input: 'inspect relic',
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'ACTOR_KIND_FORBIDDEN',
+        message: 'Actor gate refused.',
+        details: {
+          source: 'npc.canActor',
+        },
+      },
+    });
+    assert.strictEqual(canDirectCalls, 0);
+    assert.strictEqual(executeCalled, false);
+  });
+
+  it('lets explicit canActor allow bypass a denying actorKindsAllowed gate', async function () {
+    let executeCalled = false;
+    const outputs = [];
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      outputs.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    const player = {
+      name: 'Tester',
+      isNpc: false,
+      canActor(actor, verbId, context) {
+        assert.strictEqual(actor, player);
+        assert.strictEqual(verbId, 'inspect');
+        assert.strictEqual(context.player, player);
+        return true;
+      },
+      room: {
+        area: {},
+      },
+      socket: { writable: false },
+    };
+
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+      },
+      execute: async () => {
+        executeCalled = true;
+        return {
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['inspect-ran'] },
+        };
+      },
+    };
+
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'inspect' ? command : null,
+      },
+    }, player);
+
+    await handleCommand(state, { player }, 'inspect');
+
+    assert.strictEqual(executeCalled, true);
+    assert.ok(outputs.includes('inspect-ran'));
+    assert.ok(!outputs.includes('You can\'t do that.'));
+  });
 });
