@@ -256,6 +256,65 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
     assert.strictEqual(executeCalled, false);
   });
 
+  it('keeps runtime actorKind and verbId details authoritative over canActor details', async function () {
+    const npc = {
+      name: 'Tomo',
+      isNpc: true,
+      canActor() {
+        return {
+          allow: false,
+          message: 'Actor gate refused.',
+          details: {
+            actorKind: 'spoofed',
+            verbId: 'spoofed',
+            source: 'npc.canActor',
+          },
+        };
+      },
+      room: {
+        area: {},
+        getBroadcastTargets: () => [npc],
+      },
+      socket: { writable: false },
+    };
+    npc.room.getBroadcastTargets = () => [npc];
+
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+      },
+      execute: async () => ({
+        ok: true,
+        plan: { operations: [{ type: 'noop' }] },
+        render: { messages: [] },
+      }),
+    };
+
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'inspect' ? command : null,
+      },
+    }, npc);
+
+    const result = await dispatchNpcIntent(state, npc, {
+      kind: 'text',
+      input: 'inspect',
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'ACTOR_KIND_FORBIDDEN',
+        message: 'Actor gate refused.',
+        details: {
+          actorKind: 'npc',
+          verbId: 'inspect',
+          source: 'npc.canActor',
+        },
+      },
+    });
+  });
+
   it('lets explicit canActor allow bypass a denying actorKindsAllowed gate', async function () {
     let executeCalled = false;
     const outputs = [];
