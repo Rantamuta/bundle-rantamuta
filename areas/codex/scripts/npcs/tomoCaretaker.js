@@ -158,27 +158,70 @@ async function speakViaCommandDispatch(state, npc, line) {
 }
 
 /**
- * @param {*} state
  * @param {*} npc
  * @param {*} player
  * @param {string} key
  * @param {*} value
  */
-async function persistPlayerTomoMemory(state, npc, player, key, value) {
-  const playerToken = String(
-    (player && (player.name || player.uuid || normalizeRef(player.entityReference))) || ''
-  ).trim();
-  if (!playerToken) {
-    return { ok: false, error: { code: 'TOMO_PLAYER_TOKEN_MISSING' } };
+function queueTomoMemoryWrite(npc, player, key, value) {
+  if (!npc || typeof npc !== 'object' || !player || typeof player !== 'object') {
+    return;
   }
 
-  return CommandDispatch.dispatchNpcIntent(state, npc, {
-    kind: 'structured',
-    verb: 'setplayermetadata',
-    direct: [playerToken, `tomo.${key}`, String(value)],
-    relationToken: null,
-    indirect: [],
+  const runtime = npc.__tomoRuntime && typeof npc.__tomoRuntime === 'object'
+    ? npc.__tomoRuntime
+    : null;
+  if (!runtime) {
+    return;
+  }
+
+  if (!Array.isArray(runtime.pendingMetadataWrites)) {
+    runtime.pendingMetadataWrites = [];
+  }
+
+  runtime.pendingMetadataWrites.push({
+    player,
+    key: `tomo.${String(key || '').trim()}`,
+    value,
   });
+}
+
+/**
+ * @param {*} npc
+ * @param {string} verbId
+ * @returns {{ plan: { operations: Array<{ type: string, player: *, key: string, value: * }> } } | null}
+ */
+function contributePendingTomoMetadataWrites(npc, verbId) {
+  if (verbId !== 'say' || !npc || typeof npc !== 'object') {
+    return null;
+  }
+
+  const runtime = npc.__tomoRuntime && typeof npc.__tomoRuntime === 'object'
+    ? npc.__tomoRuntime
+    : null;
+  if (!runtime || !Array.isArray(runtime.pendingMetadataWrites) || runtime.pendingMetadataWrites.length === 0) {
+    return null;
+  }
+
+  const operations = runtime.pendingMetadataWrites
+    .filter(write => write && typeof write === 'object' && write.player && typeof write.key === 'string' && write.key.length > 0)
+    .map(write => ({
+      type: 'setPlayerMetadata',
+      player: write.player,
+      key: write.key,
+      value: write.value,
+    }));
+
+  runtime.pendingMetadataWrites = [];
+  if (operations.length === 0) {
+    return null;
+  }
+
+  return {
+    plan: {
+      operations,
+    },
+  };
 }
 
 /**
@@ -242,28 +285,28 @@ async function maybeGuidePlayer(state, npc, player) {
   const ritual = getRitualState(state);
 
   if (!memory.introShown) {
+    queueTomoMemoryWrite(npc, player, 'introShown', true);
     await speakViaCommandDispatch(state, npc, introLine());
-    await persistPlayerTomoMemory(state, npc, player, 'introShown', true);
     return;
   }
 
   if (ritual.isComplete && !memory.completionShown) {
+    queueTomoMemoryWrite(npc, player, 'completionShown', true);
+    queueTomoMemoryWrite(npc, player, 'lastProgressCount', 3);
     await speakViaCommandDispatch(state, npc, completionLine());
-    await persistPlayerTomoMemory(state, npc, player, 'completionShown', true);
-    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', 3);
     return;
   }
 
   if (ritual.isComplete && memory.completionShown && !memory.galleryRedirectShown && playerHasItemRef(player, SHARD_REF)) {
+    queueTomoMemoryWrite(npc, player, 'galleryRedirectShown', true);
     await speakViaCommandDispatch(state, npc, galleryRedirectLine());
-    await persistPlayerTomoMemory(state, npc, player, 'galleryRedirectShown', true);
     return;
   }
 
   if (!ritual.isComplete && memory.lastProgressCount !== ritual.completedCount) {
+    queueTomoMemoryWrite(npc, player, 'lastProgressCount', ritual.completedCount);
+    queueTomoMemoryWrite(npc, player, 'lastHintAt', now);
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', ritual.completedCount);
-    await persistPlayerTomoMemory(state, npc, player, 'lastHintAt', now);
     return;
   }
 
@@ -273,9 +316,9 @@ async function maybeGuidePlayer(state, npc, player) {
   }
 
   if (!ritual.isComplete) {
+    queueTomoMemoryWrite(npc, player, 'lastProgressCount', ritual.completedCount);
+    queueTomoMemoryWrite(npc, player, 'lastHintAt', now);
     await speakViaCommandDispatch(state, npc, progressLine(ritual.missingSteps));
-    await persistPlayerTomoMemory(state, npc, player, 'lastProgressCount', ritual.completedCount);
-    await persistPlayerTomoMemory(state, npc, player, 'lastHintAt', now);
   }
 }
 
@@ -414,6 +457,12 @@ function createSpawnListener(state) {
       routeIndex: initialRouteIndex(this, config),
       lastMoveAt: 0,
       lastPatrolError: null,
+      pendingMetadataWrites: [],
+    };
+    this.planActor = function tomoPlanActor(actor, verbId, context) {
+      void actor;
+      void context;
+      return contributePendingTomoMetadataWrites(this, verbId);
     };
   };
 }

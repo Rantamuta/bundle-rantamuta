@@ -7,7 +7,6 @@ const ranvier = require('ranvier');
 const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
 const EntityResolution = require('../lib/session/entity-resolution');
 const { parseInput } = require('../lib/parse-input');
-const setPlayerMetadataDef = require('../commands/setplayermetadata');
 
 /**
  * @param {*} value
@@ -240,7 +239,7 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     assert.deepStrictEqual(resolutionCalls[1].parsedInput, parseInput('look'));
   });
 
-  it('commits setplayermetadata through npc dispatch commit path', async function () {
+  it('commits actor planActor metadata contribution through npc dispatch commit path', async function () {
     ranvier.Broadcast.sayAt = () => { };
     ranvier.Broadcast.prompt = () => { };
 
@@ -252,6 +251,20 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     const npc = asActor({
       name: 'Tomo',
       isNpc: true,
+      planActor() {
+        return {
+          plan: {
+            operations: [
+              {
+                type: 'setPlayerMetadata',
+                player: targetPlayer,
+                key: 'tomo.introShown',
+                value: true,
+              },
+            ],
+          },
+        };
+      },
       room: {
         area: {},
         getBroadcastTargets: () => [npc],
@@ -260,27 +273,30 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     });
     npc.room.getBroadcastTargets = () => [npc];
 
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+      },
+      execute: async () => ({
+        ok: true,
+        plan: { operations: [] },
+        render: { messages: [] },
+      }),
+    };
+
     const state = {
       CommandManager: {
-        get: key => {
-          if (key !== 'setplayermetadata') {
-            return null;
-          }
-          return {
-            metadata: setPlayerMetadataDef.metadata,
-            execute: setPlayerMetadataDef.command(state),
-          };
-        },
+        get: key => key === 'say' ? command : null,
       },
       PlayerManager: {
-        getPlayer: token => token === 'Rendall' ? targetPlayer : null,
+        getPlayer: () => npc,
       },
     };
 
     const result = await dispatchNpcIntent(state, npc, {
       kind: 'structured',
-      verb: 'setplayermetadata',
-      direct: ['Rendall', 'tomo.introShown', 'true'],
+      verb: 'say',
+      direct: ['hello'],
       relationToken: null,
       indirect: [],
     });
