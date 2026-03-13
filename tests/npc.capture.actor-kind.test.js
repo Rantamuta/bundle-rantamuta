@@ -246,7 +246,9 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
         code: 'ACTOR_KIND_FORBIDDEN',
         message: 'Actor gate refused.',
         details: {
+          actorKind: 'npc',
           source: 'npc.canActor',
+          verbId: 'inspect',
         },
       },
     });
