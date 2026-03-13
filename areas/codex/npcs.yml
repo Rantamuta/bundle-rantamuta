@@ -12,3 +12,17 @@
         - codex:bell_nave
       patrolIntervalMs: 30000
       hintCooldownMs: 90000
+
+- id: mirrorCantor
+  name: "Mirror Cantor"
+  keywords: [ "mirror", "cantor", "singer", "chorister" ]
+  description: "A silver-veiled cantor stands between the mirrors, listening for the room's delayed answer."
+  script: mirrorCantor
+  metadata:
+    mirrorCantor:
+      denyVerb: go
+      denyMessage: "The cantor plants her staff. \"Not while the mirrors are listening.\""
+      planVerb: say
+      planMessage: "The mirrors answer a beat later in borrowed voices."
+      roomMetadataKey: mirrorCantorEchoed
+      roomMetadataValue: true

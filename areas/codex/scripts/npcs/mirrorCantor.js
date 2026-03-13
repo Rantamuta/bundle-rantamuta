@@ -1,0 +1,101 @@
+// @ts-check
+'use strict';
+
+/**
+ * @param {*} value
+ * @returns {Record<string, *>}
+ */
+function asObject(value) {
+  return value && typeof value === 'object'
+    ? /** @type {Record<string, *>} */ (value)
+    : {};
+}
+
+/**
+ * @param {*} npc
+ * @returns {Record<string, *>}
+ */
+function readConfig(npc) {
+  return asObject(asObject(npc && npc.metadata).mirrorCantor);
+}
+
+/**
+ * @param {*} npc
+ * @returns {function(*, string, Record<string, *>): *}
+ */
+function createCanActor(npc) {
+  return (actor, verbId, context) => {
+    void actor;
+    void context;
+
+    const config = readConfig(npc);
+    const denyVerb = String(config.denyVerb || '').trim();
+    if (!denyVerb || verbId !== denyVerb) {
+      return null;
+    }
+
+    return {
+      allow: false,
+      message: String(config.denyMessage || '').trim() || 'The cantor refuses to move.',
+      details: {
+        source: 'codex.mirrorCantor',
+      },
+    };
+  };
+}
+
+/**
+ * @param {*} npc
+ * @returns {function(*, string, Record<string, *>): *}
+ */
+function createPlanActor(npc) {
+  return (actor, verbId, context) => {
+    void context;
+
+    const config = readConfig(npc);
+    const planVerb = String(config.planVerb || '').trim();
+    if (!planVerb || verbId !== planVerb) {
+      return null;
+    }
+
+    const contribution = {};
+    const planMessage = String(config.planMessage || '').trim();
+    if (planMessage) {
+      contribution.render = {
+        messages: [planMessage],
+      };
+    }
+
+    const roomMetadataKey = String(config.roomMetadataKey || '').trim();
+    if (roomMetadataKey) {
+      contribution.plan = {
+        operations: [
+          {
+            type: 'setRoomMetadata',
+            actor,
+            key: roomMetadataKey,
+            value: config.roomMetadataValue,
+          },
+        ],
+      };
+    }
+
+    return Object.keys(contribution).length > 0 ? contribution : null;
+  };
+}
+
+/**
+ * @returns {function(): void}
+ */
+function createSpawnListener() {
+  return function onSpawn() {
+    this.canActor = createCanActor(this);
+    this.planActor = createPlanActor(this);
+  };
+}
+
+module.exports = {
+  listeners: {
+    spawn: () => createSpawnListener(),
+  },
+};

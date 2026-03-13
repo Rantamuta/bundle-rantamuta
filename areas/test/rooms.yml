@@ -113,6 +113,13 @@
     - roomId: test:lab
       direction: east
 
+- id: actorHooks
+  title: "Actor Hook Harness"
+  description: "A deterministic room for exercising actor-side command hooks."
+  npcs:
+    - test:actorPlanner
+    - test:actorGatekeeper
+
 - id: predicates
   title: "Predicate Test Room"
   description: "A deterministic benchmark room for predicate render measurements."
