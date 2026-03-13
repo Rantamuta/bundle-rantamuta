@@ -1,0 +1,21 @@
+- id: actorPlanner
+  name: "actor planner"
+  keywords: [ "actor", "planner" ]
+  description: "A patient harness NPC calibrated to contribute extra plan output."
+  script: actorHookHarness
+  metadata:
+    actorHarness:
+      planVerb: say
+      planMessage: "actor-plan-fired"
+      roomMetadataKey: actorHookPlanFired
+      roomMetadataValue: true
+
+- id: actorGatekeeper
+  name: "actor gatekeeper"
+  keywords: [ "actor", "gatekeeper" ]
+  description: "A strict harness NPC that refuses one otherwise valid command."
+  script: actorHookHarness
+  metadata:
+    actorHarness:
+      denyVerb: say
+      denyMessage: "The harness gate refuses that verb."
