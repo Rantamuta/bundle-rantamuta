@@ -111,6 +111,8 @@
       direction: west
     - roomId: codex:question_apse
       direction: east
+  npcs:
+    - codex:mirrorCantor
 
 - id: question_apse
   title: "Question Apse"
