@@ -1421,6 +1421,60 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
+  it('calls planActor on the actor with actor/verb/context', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    let planActorCalled = 0;
+
+    ranvier.Broadcast.sayAt = () => { };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const player = asPlayer({
+        name: 'Tester',
+        planActor(actor, verbId, context) {
+          planActorCalled += 1;
+          assert.strictEqual(actor, this);
+          assert.strictEqual(verbId, 'sing');
+          assert.strictEqual(context && context.player, this);
+          return null;
+        },
+        room: { items: new Set() },
+        socket: { writable: false },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              intransitive: {},
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['sing-ok'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'sing' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'sing');
+      assert.strictEqual(planActorCalled, 1);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
   it('calls planIndirect on the bound indirect target with canonical relation', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -1657,6 +1711,112 @@ describe('bundle-rantamuta command-dispatch', function () {
       );
       assert.deepStrictEqual(sequence, [
         'target-line',
+        'direct-plan-line',
+        'indirect-plan-line',
+      ]);
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('preserves target -> planActor -> planDirect -> planIndirect render ordering', async function () {
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => { };
+
+    try {
+      const apple = {
+        uuid: 'apple-r-order-actor-1',
+        name: 'apple',
+        keywords: ['apple'],
+        planDirect() {
+          return {
+            render: {
+              messages: ['direct-plan-line'],
+            },
+          };
+        },
+      };
+      const chest = {
+        uuid: 'chest-r-order-actor-1',
+        name: 'chest',
+        keywords: ['chest'],
+        type: 'CONTAINER',
+        maxItems: 3,
+        inventory: new Map(),
+        addItem() { },
+        removeItem() { },
+        planIndirect() {
+          return {
+            render: {
+              messages: ['indirect-plan-line'],
+            },
+          };
+        },
+      };
+      const player = asPlayer({
+        name: 'Tester',
+        planActor() {
+          return {
+            render: {
+              messages: ['actor-plan-line'],
+            },
+          };
+        },
+        inventory: new Map([[apple.uuid, apple]]),
+        room: { items: new Set([chest]) },
+        socket: { writable: false },
+        addItem() { },
+        removeItem() { },
+      });
+      const command = {
+        metadata: {
+          entityResolution: {
+            rules: {
+              directIndirect: {
+                acceptedRelations: ['in', 'into'],
+                scopeProfile: {
+                  direct: ['player.inventory'],
+                  indirect: ['room.items'],
+                },
+              },
+            },
+          },
+        },
+        execute: async () => ({
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['target-line'] },
+        }),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'put' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'put apple into chest');
+
+      const sequence = messages.filter(message =>
+        message === 'target-line' ||
+        message === 'actor-plan-line' ||
+        message === 'direct-plan-line' ||
+        message === 'indirect-plan-line'
+      );
+      assert.deepStrictEqual(sequence, [
+        'target-line',
+        'actor-plan-line',
         'direct-plan-line',
         'indirect-plan-line',
       ]);
