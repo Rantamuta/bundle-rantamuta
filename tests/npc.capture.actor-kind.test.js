@@ -305,4 +305,101 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
     assert.ok(outputs.includes('inspect-ran'));
     assert.ok(!outputs.includes('You can\'t do that.'));
   });
+
+  it('treats canActor no-decision as fallthrough to actorKindsAllowed', async function () {
+    let executeCalled = false;
+    const outputs = [];
+    ranvier.Broadcast.sayAt = (_target, message) => {
+      outputs.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+
+    const player = {
+      name: 'Tester',
+      isNpc: false,
+      canActor(actor, verbId, context) {
+        assert.strictEqual(actor, player);
+        assert.strictEqual(verbId, 'inspect');
+        assert.strictEqual(context.player, player);
+        return undefined;
+      },
+      room: {
+        area: {},
+      },
+      socket: { writable: false },
+    };
+
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+        errorMessages: {
+          ACTOR_KIND_FORBIDDEN: 'Only NPCs may perform that action.',
+        },
+      },
+      execute: async () => {
+        executeCalled = true;
+        return {
+          ok: true,
+          plan: { operations: [{ type: 'noop' }] },
+          render: { messages: ['inspect-ran'] },
+        };
+      },
+    };
+
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'inspect' ? command : null,
+      },
+    }, player);
+
+    await handleCommand(state, { player }, 'inspect');
+
+    assert.strictEqual(executeCalled, false);
+    assert.ok(outputs.includes('Only NPCs may perform that action.'));
+    assert.ok(!outputs.includes('inspect-ran'));
+  });
+
+  it('is deterministic for identical state/input with canActor deny', async function () {
+    const npc = {
+      name: 'Tomo',
+      isNpc: true,
+      canActor() {
+        return 'Actor gate refused.';
+      },
+      room: {
+        area: {},
+        getBroadcastTargets: () => [npc],
+      },
+      socket: { writable: false },
+    };
+    npc.room.getBroadcastTargets = () => [npc];
+
+    const command = {
+      metadata: {
+        actorKindsAllowed: ['npc'],
+      },
+      execute: async () => ({
+        ok: true,
+        plan: { operations: [{ type: 'noop' }] },
+        render: { messages: [] },
+      }),
+    };
+
+    const state = withPlayerManager({
+      CommandManager: {
+        get: key => key === 'inspect' ? command : null,
+      },
+    }, npc);
+
+    const first = await dispatchNpcIntent(state, npc, {
+      kind: 'text',
+      input: 'inspect',
+    });
+    const second = await dispatchNpcIntent(state, npc, {
+      kind: 'text',
+      input: 'inspect',
+    });
+
+    assert.deepStrictEqual(second, first);
+  });
 });
