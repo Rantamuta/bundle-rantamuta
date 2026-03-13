@@ -114,22 +114,23 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
         lines.push(String(intent.direct && intent.direct[0]));
       }
 
-      if (intent && intent.verb === 'setplayermetadata') {
-        const direct = Array.isArray(intent.direct) ? intent.direct : [];
-        const key = String(direct[1] || '');
-        const rawValue = String(direct[2] || '');
-        const value = rawValue === 'true'
-          ? true
-          : rawValue === 'false'
-            ? false
-            : rawValue;
+      if (intent && intent.verb === 'say' && _npc && typeof _npc.planActor === 'function') {
+        const contribution = _npc.planActor(_npc, 'say', { player: _npc });
+        const operations = contribution && contribution.plan && Array.isArray(contribution.plan.operations)
+          ? contribution.plan.operations
+          : [];
+        for (const operation of operations) {
+          if (!operation || operation.type !== 'setPlayerMetadata' || operation.player !== player) {
+            continue;
+          }
 
-        player.metadata = player.metadata && typeof player.metadata === 'object' ? player.metadata : {};
-        player.metadata.tomo = player.metadata.tomo && typeof player.metadata.tomo === 'object'
-          ? player.metadata.tomo
-          : {};
-        if (key === 'tomo.introShown') {
-          player.metadata.tomo.introShown = value;
+          player.metadata = player.metadata && typeof player.metadata === 'object' ? player.metadata : {};
+          player.metadata.tomo = player.metadata.tomo && typeof player.metadata.tomo === 'object'
+            ? player.metadata.tomo
+            : {};
+          if (operation.key === 'tomo.introShown') {
+            player.metadata.tomo.introShown = operation.value;
+          }
         }
       }
 
@@ -253,7 +254,7 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     assert.strictEqual(Object.prototype.hasOwnProperty.call(npc.__tomoRuntime, 'playerMemoryById'), false);
   });
 
-  it('routes guidance-state writes through setplayermetadata dispatch', async function () {
+  it('queues guidance-state writes for actor planActor commit contribution', async function () {
     const intents = [];
     ranvier.Broadcast.sayAt = () => { };
     CommandDispatch.dispatchNpcIntent = async (_state, _npc, intent) => {
@@ -279,9 +280,16 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
     tomoScript.listeners.spawn(state).call(npc);
     await withNow(12345, () => tomoScript.listeners.playerEnter(state).call(npc, player, null));
 
-    const metadataIntents = intents.filter(intent => intent && intent.verb === 'setplayermetadata');
-    assert.ok(metadataIntents.length >= 1);
-    assert.deepStrictEqual(metadataIntents[0].direct, ['Rendall', 'tomo.introShown', 'true']);
+    const sayIntents = intents.filter(intent => intent && intent.verb === 'say');
+    assert.strictEqual(sayIntents.length, 1);
+    assert.ok(Array.isArray(npc.__tomoRuntime.pendingMetadataWrites));
+    assert.deepStrictEqual(npc.__tomoRuntime.pendingMetadataWrites, [
+      {
+        player,
+        key: 'tomo.introShown',
+        value: true,
+      },
+    ]);
     assert.strictEqual(Object.prototype.hasOwnProperty.call(npc.__tomoRuntime, 'playerMemoryById'), false);
   });
 
@@ -731,9 +739,8 @@ describe('bundle-rantamuta codex tomo caretaker script', function () {
 
     await withNow(1000, () => onPlayerEnter.call(npc, player, null));
 
-    assert.ok(dispatchIntents.length >= 2);
+    assert.ok(dispatchIntents.length >= 1);
     assert.ok(dispatchIntents.some(intent => intent && intent.verb === 'say'));
-    assert.ok(dispatchIntents.some(intent => intent && intent.verb === 'setplayermetadata'));
     assert.strictEqual(directSpeechCalls.length, 0);
   });
 });
