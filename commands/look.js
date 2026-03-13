@@ -2,6 +2,7 @@
 'use strict';
 
 const { buildRoomViewLines } = require('../lib/helpers/room-view-helper');
+const { resolveInlineTags, buildSurfaceRef } = require('../lib/inline-tags/resolve-inline-tags');
 
 /**
  * @param {string} code
@@ -17,15 +18,27 @@ function fail(code, details) {
 
 /**
  * @param {*} target
+ * @param {{ actor?: *, room?: *, area?: *, world?: * } | undefined} context
  * @returns {string[]}
  */
-function buildDirectLookLines(target) {
+function buildDirectLookLines(target, context) {
   if (!target || typeof target !== 'object') {
     return ['You see nothing special.'];
   }
 
   if (typeof target.description === 'string' && target.description.trim().length > 0) {
-    return [target.description.trim()];
+    const description = resolveInlineTags(target.description, {
+      surfaceRef: buildSurfaceRef(target, 'look.description'),
+      renderContext: {
+        actor: context && Object.prototype.hasOwnProperty.call(context, 'actor') ? context.actor : null,
+        room: context && Object.prototype.hasOwnProperty.call(context, 'room') ? context.room : null,
+        area: context && Object.prototype.hasOwnProperty.call(context, 'area') ? context.area : null,
+        world: context && Object.prototype.hasOwnProperty.call(context, 'world') ? context.world : null,
+        source: 'look.description',
+        entity: target,
+      },
+    });
+    return [description.trim()];
   }
 
   return ['You see nothing special.'];
@@ -65,7 +78,12 @@ module.exports = {
           operations: [{ type: 'noop' }],
         },
         render: {
-          messages: buildDirectLookLines(resolution.directTarget),
+          messages: buildDirectLookLines(resolution.directTarget, {
+            actor: player,
+            room: player && player.room ? player.room : null,
+            area: player && player.room && player.room.area ? player.room.area : null,
+            world: state,
+          }),
         },
       };
     }

@@ -117,7 +117,7 @@
   title: "Predicate Test Room"
   description: "A deterministic benchmark room for predicate render measurements."
   metadata:
-    flags:
+    values:
       variantPrimary: true
       variantSecondary: false
       variantNever: false
@@ -147,3 +147,18 @@
   items:
     - id: test:labApple
     - id: test:labChest
+
+- id: inlineTags
+  title: "Inline Tags Room"
+  description: "Base says [bench_always_true:bright|dark]. [is_button_pushed:Button is pushed.]"
+  metadata:
+    descriptionVariants:
+      - when: bench_always_false
+        text: "Variant says [bench_always_true:bright|dark]."
+    descriptionFragments:
+      - when: bench_always_true
+        text: "Fragment says [bench_always_false:dark|bright]."
+  items:
+    - id: test:inlineLantern
+    - id: test:inlineButtonOn
+    - id: test:inlineButtonOff

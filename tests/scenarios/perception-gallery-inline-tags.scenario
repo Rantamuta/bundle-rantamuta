@@ -1,0 +1,11 @@
+# Perception Gallery inline-tag exhibit
+# Verifies phrase-level swaps as shard location changes.
+
+room: codex:perception_gallery
+seedInventory: codex:resonantShard
+
+command: look
+command: put resonant shard
+command: look
+command: take resonant shard
+command: look

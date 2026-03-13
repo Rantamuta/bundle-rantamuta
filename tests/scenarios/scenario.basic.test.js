@@ -217,6 +217,39 @@ test('scenario runner virtual-door scenario validates wrong-key failure and virt
   assert.match(result.stdout, /The south passage is visibly open\./);
 });
 
+test('scenario runner inline-tags scenario resolves room and direct-look tags', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/inline-tags.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Inline Tags Room/);
+  assert.match(result.stdout, /Base says bright\./);
+  assert.match(result.stdout, /Fragment says bright\./);
+  assert.match(result.stdout, /push enable button/);
+  assert.match(result.stdout, /Button toggled on\./);
+  assert.match(result.stdout, /push disable button/);
+  assert.match(result.stdout, /Button toggled off\./);
+  assert.equal((result.stdout.match(/Button is pushed\./g) || []).length, 1);
+  assert.match(result.stdout, /A lantern glows brightly\./);
+  assert.match(result.stdout, /The lantern is open\./);
+  assert.doesNotMatch(result.stdout, /\[(bench_always_(true|false)|is_button_pushed):/);
+});
+
+test('scenario runner codex gallery exhibit resolves inline tag swaps', () => {
+  const result = runScenario([
+    '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/perception-gallery-inline-tags.scenario',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Perception Gallery/);
+  assert.match(result.stdout, /put resonant shard/);
+  assert.match(result.stdout, /take resonant shard/);
+  assert.equal((result.stdout.match(/Shard resonance is in your hands, and the plinth is empty\./g) || []).length, 2);
+  assert.equal((result.stdout.match(/Shard resonance is in the gallery, and the plinth is occupied\./g) || []).length, 1);
+  assert.doesNotMatch(result.stdout, /\[(does_viewer_hold_resonant_shard|is_resonant_shard_in_gallery):/);
+});
+
 test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => {
   const result = runScenario([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/tomo-bell-courtyard.scenario',

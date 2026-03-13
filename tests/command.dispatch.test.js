@@ -1093,7 +1093,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('stops target/bubble/commit when canDirect vetoes', async function () {
+  it('stops target/reaction/commit when canDirect vetoes', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -1138,9 +1138,9 @@ describe('bundle-rantamuta command-dispatch', function () {
               },
             },
           },
-          bubble: () => [() => {
-            events.push('bubble');
-            return { render: { messages: ['bubble-line'] } };
+          reactions: () => [() => {
+            events.push('reaction');
+            return { render: { messages: ['reaction-line'] } };
           }],
         },
         execute: async () => {
@@ -1161,7 +1161,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.ok(messages.includes('The relic refuses you.'));
       assert.deepStrictEqual(events, []);
       assert.ok(!messages.includes('target-line'));
-      assert.ok(!messages.includes('bubble-line'));
+      assert.ok(!messages.includes('reaction-line'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
@@ -2070,7 +2070,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('ignores bubble renderPolicy.replaceSuccess and keeps command success render', async function () {
+  it('ignores reaction renderPolicy.replaceSuccess and keeps command success render', async function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
@@ -2110,7 +2110,7 @@ describe('bundle-rantamuta command-dispatch', function () {
                 replaceSuccess: true,
               },
               render: {
-                messages: ['bubble-line'],
+                messages: ['reaction-line'],
               },
             }),
           ],
@@ -2129,9 +2129,9 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const sequence = messages.filter(message =>
         message === 'target-line' ||
-        message === 'bubble-line'
+        message === 'reaction-line'
       );
-      assert.deepStrictEqual(sequence, ['target-line', 'bubble-line']);
+      assert.deepStrictEqual(sequence, ['target-line', 'reaction-line']);
       assert.ok(errors.some(message => message.includes('renderPolicy.replaceSuccess')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -2649,7 +2649,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects bubble operations and continues success path', async function () {
+  it('rejects reaction operations and continues success path', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2679,8 +2679,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       const player = asPlayer({
         name: 'Tester',
         room: {
-          title: 'Bubble Room',
-          description: 'Bubble description',
+          title: 'React Room',
+          description: 'React description',
         },
         socket: { writable: false },
       });
@@ -2708,10 +2708,10 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.strictEqual(bubbleInvoked, true);
       assert.deepStrictEqual(events, [
         'commit',
-        'render:<bold>Bubble Room</bold>',
-        'render:Bubble description',
+        'render:<bold>React Room</bold>',
+        'render:React description',
       ]);
-      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
+      assert.ok(errors.some(message => message.includes('React contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -2719,7 +2719,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('renders bubble-added lines after target render when commit succeeds', async function () {
+  it('renders reaction-added lines after target render when commit succeeds', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2740,7 +2740,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const player = asPlayer({
         name: 'Tester',
         room: {
-          title: 'Bubble Render Room',
+          title: 'React Render Room',
           description: 'Target render line',
         },
         socket: { writable: false },
@@ -2750,7 +2750,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { messages: ['Bubble line one', 'Bubble line two'] } }),
+            () => ({ render: { messages: ['React line one', 'React line two'] } }),
           ],
         },
         execute: wrapLegacyRenderCommand(lookDef.command({})),
@@ -2764,10 +2764,10 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       assert.deepStrictEqual(events, [
         'commit',
-        'render:<bold>Bubble Render Room</bold>',
+        'render:<bold>React Render Room</bold>',
         'render:Target render line',
-        'render:Bubble line one',
-        'render:Bubble line two',
+        'render:React line one',
+        'render:React line two',
       ]);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -2775,7 +2775,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects mixed bubble payload operations but keeps render additions', async function () {
+  it('rejects mixed reaction payload operations but keeps render additions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2816,7 +2816,7 @@ describe('bundle-rantamuta command-dispatch', function () {
           reactions: [
             () => ({
               operations: [{ type: 'noop' }],
-              render: { messages: ['Mixed bubble line'] },
+              render: { messages: ['Mixed reaction line'] },
             }),
           ],
         },
@@ -2833,9 +2833,9 @@ describe('bundle-rantamuta command-dispatch', function () {
         'commit',
         'render:<bold>Mixed Room</bold>',
         'render:Mixed target line',
-        'render:Mixed bubble line',
+        'render:Mixed reaction line',
       ]);
-      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
+      assert.ok(errors.some(message => message.includes('React contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
@@ -2843,7 +2843,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects bubble transferItem operations and keeps world state unchanged', async function () {
+  it('rejects reaction transferItem operations and keeps world state unchanged', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2921,14 +2921,14 @@ describe('bundle-rantamuta command-dispatch', function () {
         'A quiet sanctum.',
         'The spike hums.',
       ]);
-      assert.ok(errors.some(message => message.includes('Bubble contribution attempted to enqueue mutation operations')));
+      assert.ok(errors.some(message => message.includes('React contribution attempted to enqueue mutation operations')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Logger.error = originalLoggerError;
     }
   });
 
-  it('suppresses bubble render lines when commit fails', async function () {
+  it('suppresses reaction render lines when commit fails', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -2961,7 +2961,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { messages: ['Bubble line should not render'] } }),
+            () => ({ render: { messages: ['React line should not render'] } }),
           ],
         },
         execute: wrapLegacyRenderCommand(lookDef.command({})),
@@ -2973,7 +2973,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       await handleCommand(state, { player }, 'look');
 
-      assert.ok(!messages.includes('Bubble line should not render'));
+      assert.ok(!messages.includes('React line should not render'));
       assert.ok(messages.includes('Command failed.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -2982,7 +2982,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('renders bubble-added lines in deterministic reaction order', async function () {
+  it('renders reaction-added lines in deterministic reaction order', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -3011,8 +3011,8 @@ describe('bundle-rantamuta command-dispatch', function () {
         metadata: {
           ...lookDef.metadata,
           reactions: [
-            () => ({ render: { messages: ['bubble-a'] } }),
-            () => ({ render: { messages: ['bubble-b'] } }),
+            () => ({ render: { messages: ['reaction-a'] } }),
+            () => ({ render: { messages: ['reaction-b'] } }),
           ],
         },
         execute: wrapLegacyRenderCommand(lookDef.command({})),
@@ -3027,8 +3027,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.deepStrictEqual(messages, [
         '<bold>Order Room</bold>',
         'Order target line',
-        'bubble-a',
-        'bubble-b',
+        'reaction-a',
+        'reaction-b',
       ]);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -3121,7 +3121,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('dispatches target render instructions before bubble render instructions', async function () {
+  it('dispatches target render instructions before reaction render instructions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -3155,8 +3155,8 @@ describe('bundle-rantamuta command-dispatch', function () {
             () => ({
               render: {
                 messages: [
-                  { type: 'broadcast', audience: 'player', message: 'bubble-1' },
-                  { type: 'broadcast', audience: 'player', message: 'bubble-2' },
+                  { type: 'broadcast', audience: 'player', message: 'reaction-1' },
+                  { type: 'broadcast', audience: 'player', message: 'reaction-2' },
                 ],
               },
             }),
@@ -3183,8 +3183,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.deepStrictEqual(messages, [
         'target render',
         'target-post',
-        'bubble-1',
-        'bubble-2',
+        'reaction-1',
+        'reaction-2',
       ]);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -3192,7 +3192,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('preserves target/bubble message chronology across lines and instructions', async function () {
+  it('preserves target/reaction message chronology across lines and instructions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -3228,8 +3228,8 @@ describe('bundle-rantamuta command-dispatch', function () {
             () => ({
               render: {
                 messages: [
-                  'bubble-line',
-                  { type: 'broadcast', audience: 'player', message: 'bubble-broadcast' },
+                  'reaction-line',
+                  { type: 'broadcast', audience: 'player', message: 'reaction-broadcast' },
                 ],
               },
             }),
@@ -3261,8 +3261,8 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       assert.deepStrictEqual(messages, [
         'You haul down on the rope and the bell rings clear and loud.',
-        'bubble-line',
-        'bubble-broadcast',
+        'reaction-line',
+        'reaction-broadcast',
       ]);
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -3866,7 +3866,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('rejects unknown bubble render instruction types and continues remaining instructions', async function () {
+  it('rejects unknown reaction render instruction types and continues remaining instructions', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -3890,7 +3890,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const player = asPlayer({
         name: 'Tester',
         room: {
-          title: 'Bubble Render',
+          title: 'React Render',
           description: 'Room line',
           area: {},
           getBroadcastTargets: () => [],
@@ -3906,7 +3906,7 @@ describe('bundle-rantamuta command-dispatch', function () {
               render: {
                 messages: [
                   { type: 'mystery', audience: 'player', message: 'bad' },
-                  { type: 'broadcast', audience: 'player', message: 'bubble-good' },
+                  { type: 'broadcast', audience: 'player', message: 'reaction-good' },
                 ],
               },
             }),
@@ -3921,7 +3921,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       await handleCommand(state, { player }, 'look');
 
-      assert.ok(messages.includes('bubble-good'));
+      assert.ok(messages.includes('reaction-good'));
       assert.ok(errors.some(message => message.includes('RENDER_DISPATCH: Unsupported render instruction type')));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
@@ -3981,7 +3981,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('ignores non-operation bubble return values', async function () {
+  it('ignores non-operation reaction return values', async function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -4030,7 +4030,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('ignores legacy single-operation bubble shape and keeps target plan unchanged', async function () {
+  it('ignores legacy single-operation reaction shape and keeps target plan unchanged', async function () {
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;

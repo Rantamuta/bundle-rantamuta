@@ -30,6 +30,7 @@ function makeRoom(def = {}) {
     renderPredicates: def.renderPredicates || {},
     exits: def.exits || [],
     items: def.items || new Set(),
+    npcs: def.npcs || new Set(),
     area: def.area || null,
     describeForLook: def.describeForLook,
   };
@@ -304,5 +305,43 @@ describe('room view stateful rendering', function () {
 
     assert.strictEqual(evaluateRenderPredicate(room, 'missing', context), false);
     assert.strictEqual(evaluateRenderPredicate(room, 'boom', context), false);
+  });
+
+  it('resolves inline tags in room base/variant/fragment/item/npc render text', function () {
+    const room = makeRoom({
+      description: 'Base says [is_dark:dark|bright].',
+      metadata: {
+        descriptionVariants: [
+          { when: 'is_variant', text: 'Variant says [is_dark:dark|bright].' },
+        ],
+        descriptionFragments: [
+          { when: 'is_fragment', text: 'Fragment says [is_dark:dark|bright].' },
+        ],
+      },
+      items: new Set([
+        { entityReference: 'test:item', roomDesc: 'Item says [is_dark:dark|bright].' },
+      ]),
+      npcs: new Set([
+        { entityReference: 'test:npc', roomDesc: 'NPC says [is_dark:dark|bright].' },
+      ]),
+    });
+
+    const lines = buildRoomViewLines(room, {
+      world: {
+        PredicateRuntime: createPredicateRuntimeStub({
+          is_variant: () => true,
+          is_fragment: () => true,
+          is_dark: () => false,
+        }),
+      },
+    });
+
+    assert.deepStrictEqual(lines, [
+      '<bold>Stateful Room</bold>',
+      'Variant says bright.',
+      'Fragment says bright.',
+      'Item says bright.',
+      'NPC says bright.',
+    ]);
   });
 });

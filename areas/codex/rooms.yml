@@ -65,8 +65,21 @@
   title: "Perception Gallery"
   description: "An arc of polished stone mirrors catches every footfall."
   metadata:
-    flags:
+    values:
       mirrorsAwake: true
+    details:
+      - name: "mirrors"
+        keywords: [ "mirror", "mirrors", "glass" ]
+        description: "Each mirror is polished to a near-metal sheen, and each reflection arrives with a faint, delayed shimmer."
+      - name: "plinth"
+        keywords: [ "plinth", "pedestal", "stone plinth", "central plinth" ]
+        description: "The plinth is worn smooth where many hands have set down and lifted offerings over the years."
+      - name: "sigils"
+        keywords: [ "sigil", "sigils", "glyph", "glyphs", "hairline sigils" ]
+        description: "Fine sigils run along the mirror frames in tight arcs, like notation for a song written in stone."
+      - name: "socket"
+        keywords: [ "socket", "empty socket", "recess", "slot" ]
+        description: "A shard-shaped socket is set into the plinth, precise enough that even a small mismatch would not fit."
     descriptionVariants:
       - when: is_gallery_harmonic
         text: "The mirrors resonate in clear tones, reflecting your movement a heartbeat before you make it."
@@ -74,7 +87,7 @@
         text: "The mirrors stand dim and uncertain, as if waiting for the tower's song to settle."
     descriptionFragments:
       - when: is_gallery_feature_enabled
-        text: "A brass plaque reads: \"Truth is a pattern seen from many angles.\""
+        text: "A brass plaque reads: \"Shard resonance is [does_viewer_hold_resonant_shard:in your hands|in the gallery], and the plinth is [is_resonant_shard_in_gallery:occupied|empty].\""
       - when: is_gallery_mirrors_awake
         text: "Hairline sigils glow faintly at the edges of each mirror."
       - when: does_viewer_hold_resonant_shard

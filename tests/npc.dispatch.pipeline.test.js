@@ -53,7 +53,7 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
     EntityResolution.resolveEntityContext = originalResolveEntityContext;
   });
 
-  it('routes npc dispatch through capture plan bubble commit render in order', async function () {
+  it('routes npc dispatch through capture plan reaction commit render in order', async function () {
     const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
     const mutator = require(mutatorPath);
     const phaseTrace = [];
@@ -113,10 +113,10 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
         ],
         reactions: [
           () => {
-            phaseTrace.push('bubble');
+            phaseTrace.push('reaction');
             return {
               render: {
-                messages: ['bubble-line'],
+                messages: ['reaction-line'],
               },
             };
           },
@@ -148,16 +148,16 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
       'capture',
       'plan',
       'planDirect',
-      'bubble',
+      'reaction',
       'commit',
       'render:command-line',
       'render:plan-direct-line',
-      'render:bubble-line',
+      'render:reaction-line',
     ]);
     assert.deepStrictEqual(deliveries, [
       'command-line',
       'plan-direct-line',
-      'bubble-line',
+      'reaction-line',
     ]);
   });
 

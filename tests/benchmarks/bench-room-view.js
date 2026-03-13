@@ -30,7 +30,7 @@ function buildFixture(scenario) {
     bundle: 'bundle-rantamuta',
     name: 'test',
     metadata: {
-      flags: {
+      values: {
         benchmarkEnabled: true,
       },
     },
@@ -42,7 +42,7 @@ function buildFixture(scenario) {
     description: 'A deterministic benchmark room for predicate render measurements.',
     area,
     metadata: {
-      flags: {
+      values: {
         variantPrimary: true,
         variantSecondary: false,
       },
