@@ -20,32 +20,38 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'look');
     assert.strictEqual(result.canonicalInput, 'look');
     assert.strictEqual(result.normalizedInput, 'look');
+    assert.deepStrictEqual(result.tokens, ['look']);
     assert.strictEqual(result.intentToken, 'look');
+    assert.deepStrictEqual(result.bodyTokens, []);
     assert.strictEqual(result.primaryTargetSpan, undefined);
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
 
-  it('parses relation-form input into primary/relation/secondary spans', function () {
+  it('keeps post-verb input as one token stream instead of relation-form spans', function () {
     const result = parseInput('put rusty sword in old chest');
 
     assert.strictEqual(result.actorInput, 'put rusty sword in old chest');
     assert.strictEqual(result.canonicalInput, 'put rusty sword in old chest');
     assert.strictEqual(result.normalizedInput, 'put rusty sword in old chest');
+    assert.deepStrictEqual(result.tokens, ['put', 'rusty', 'sword', 'in', 'old', 'chest']);
     assert.strictEqual(result.intentToken, 'put');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
-    assert.strictEqual(result.relationToken, 'in');
-    assert.deepStrictEqual(result.secondaryTargetSpan, ['old', 'chest']);
+    assert.deepStrictEqual(result.bodyTokens, ['rusty', 'sword', 'in', 'old', 'chest']);
+    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
 
-  it('parses malformed relation form shape without semantic classification', function () {
+  it('does not perform relation-word structural inference for malformed relation text', function () {
     const result = parseInput('put in old chest');
 
     assert.strictEqual(result.canonicalInput, 'put in old chest');
+    assert.deepStrictEqual(result.tokens, ['put', 'in', 'old', 'chest']);
     assert.strictEqual(result.intentToken, 'put');
-    assert.deepStrictEqual(result.primaryTargetSpan, []);
-    assert.strictEqual(result.relationToken, 'in');
-    assert.deepStrictEqual(result.secondaryTargetSpan, ['old', 'chest']);
+    assert.deepStrictEqual(result.bodyTokens, ['in', 'old', 'chest']);
+    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.strictEqual(result.relationToken, undefined);
+    assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
 
   it('returns raw and normalized input for empty command text', function () {
@@ -54,7 +60,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, '   ');
     assert.strictEqual(result.canonicalInput, '   ');
     assert.strictEqual(result.normalizedInput, '');
+    assert.deepStrictEqual(result.tokens, []);
     assert.strictEqual(result.intentToken, undefined);
+    assert.strictEqual(result.bodyTokens, undefined);
     assert.strictEqual(result.primaryTargetSpan, undefined);
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
@@ -66,8 +74,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'n');
     assert.strictEqual(result.canonicalInput, 'go north');
     assert.strictEqual(result.normalizedInput, 'go north');
+    assert.deepStrictEqual(result.tokens, ['go', 'north']);
     assert.strictEqual(result.intentToken, 'go');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['north']);
+    assert.deepStrictEqual(result.bodyTokens, ['north']);
   });
 
   it('canonicalizes look shorthand before parsing', function () {
@@ -76,8 +85,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'l');
     assert.strictEqual(result.canonicalInput, 'look');
     assert.strictEqual(result.normalizedInput, 'look');
+    assert.deepStrictEqual(result.tokens, ['look']);
     assert.strictEqual(result.intentToken, 'look');
-    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.deepStrictEqual(result.bodyTokens, []);
   });
 
   it('canonicalizes x <thing> shorthand before parsing', function () {
@@ -86,8 +96,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'x rusty sword');
     assert.strictEqual(result.canonicalInput, 'look rusty sword');
     assert.strictEqual(result.normalizedInput, 'look rusty sword');
+    assert.deepStrictEqual(result.tokens, ['look', 'rusty', 'sword']);
     assert.strictEqual(result.intentToken, 'look');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
+    assert.deepStrictEqual(result.bodyTokens, ['rusty', 'sword']);
   });
 
   it('canonicalizes look at <thing> before parsing', function () {
@@ -96,8 +107,9 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'look at rusty sword');
     assert.strictEqual(result.canonicalInput, 'look rusty sword');
     assert.strictEqual(result.normalizedInput, 'look rusty sword');
+    assert.deepStrictEqual(result.tokens, ['look', 'rusty', 'sword']);
     assert.strictEqual(result.intentToken, 'look');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['rusty', 'sword']);
+    assert.deepStrictEqual(result.bodyTokens, ['rusty', 'sword']);
   });
 
   it('canonicalizes look at with no target to intransitive look', function () {
@@ -106,15 +118,17 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.actorInput, 'look at');
     assert.strictEqual(result.canonicalInput, 'look');
     assert.strictEqual(result.normalizedInput, 'look');
+    assert.deepStrictEqual(result.tokens, ['look']);
     assert.strictEqual(result.intentToken, 'look');
-    assert.strictEqual(result.primaryTargetSpan, undefined);
+    assert.deepStrictEqual(result.bodyTokens, []);
   });
 
-  it('parses go down as direct movement text, not as relation form', function () {
+  it('keeps go down as plain post-verb tokens', function () {
     const result = parseInput('go down');
 
+    assert.deepStrictEqual(result.tokens, ['go', 'down']);
     assert.strictEqual(result.intentToken, 'go');
-    assert.deepStrictEqual(result.primaryTargetSpan, ['down']);
+    assert.deepStrictEqual(result.bodyTokens, ['down']);
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
