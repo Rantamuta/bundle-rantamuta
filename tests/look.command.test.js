@@ -15,6 +15,8 @@ function createPlayer(def = {}) {
 describe('bundle-rantamuta look command', function () {
   it('declares intransitive + direct entity-resolution rule metadata', function () {
     assert.ok(lookCommand.metadata);
+    assert.deepStrictEqual(lookCommand.metadata.syntaxRules, ['(empty)', 'ENTITY']);
+    assert.ok(Array.isArray(lookCommand.metadata.compiledRules));
     assert.ok(lookCommand.metadata.entityResolution);
     assert.deepStrictEqual(lookCommand.metadata.entityResolution.rules, {
       intransitive: {},
