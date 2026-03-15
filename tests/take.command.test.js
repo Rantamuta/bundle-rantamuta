@@ -215,10 +215,12 @@ describe('bundle-rantamuta take command', function () {
   });
 
   it('takes an item from the explicitly matched indirect source', function () {
+    const room = createRoom();
     const chest = {
       uuid: 'chest-1',
       name: 'old chest',
       keywords: ['old', 'chest'],
+      room,
       closed: false,
       addItem() { },
       removeItem() { },
@@ -229,7 +231,7 @@ describe('bundle-rantamuta take command', function () {
       keywords: ['gold', 'coin'],
       carriedBy: chest,
     });
-    const player = createPlayer({ room: createRoom() });
+    const player = createPlayer({ room });
     const execute = takeCommand.command({});
 
     const result = execute('', player, null, {

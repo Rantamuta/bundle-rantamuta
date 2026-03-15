@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const path = require('path');
+const { parseInput } = require('../lib/parse-input');
 const { handleCommand } = require('../lib/session/command-dispatch');
 
 /** @typedef {import('ranvier/types/GameState')} GameState */
@@ -134,12 +135,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     assert.strictEqual(args[0], '');
     assert.strictEqual(args[1], player);
     assert.strictEqual(args[2], null);
-    assert.deepStrictEqual(args[3] && args[3].parsedInput, {
-      actorInput: 'l',
-      canonicalInput: 'look',
-      normalizedInput: 'look',
-      intentToken: 'look',
-    });
+    assert.deepStrictEqual(args[3] && args[3].parsedInput, parseInput('l'));
     assert.strictEqual(args[3] && args[3].rawInput, 'l');
   });
 

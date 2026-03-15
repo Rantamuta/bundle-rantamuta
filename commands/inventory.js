@@ -1,6 +1,8 @@
 // @ts-check
 'use strict';
 
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+
 /**
  * @param {string} code
  * @param {Record<string, *>} [details]
@@ -76,7 +78,8 @@ function inventoryLines(player) {
 
 module.exports = {
   aliases: ['i'],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('inventory', {
+    syntaxRules: ['(empty)'],
     entityResolution: {
       rules: {
         intransitive: {},
@@ -85,7 +88,7 @@ module.exports = {
     errorMessages: {
       INVENTORY_NO_PLAYER: 'You are nowhere.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
     if (!resolution || resolution.ruleKey !== 'intransitive') {

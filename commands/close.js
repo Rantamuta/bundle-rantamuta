@@ -2,6 +2,7 @@
 'use strict';
 
 const { resolveDoorActionContext } = require('../lib/doors/door-command-helper');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -18,7 +19,8 @@ function fail(code, details, message) {
 
 module.exports = {
   aliases: [],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('close', {
+    syntaxRules: ['ENTITY'],
     entityResolution: {
       rules: {
         direct: {
@@ -41,7 +43,7 @@ module.exports = {
       GO_DESTINATION_MISSING: 'You can\'t go that way.',
       DOOR_ALREADY_CLOSED: 'The door is already closed.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     void args;
     void alias;

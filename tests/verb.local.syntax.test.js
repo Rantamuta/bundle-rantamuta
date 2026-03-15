@@ -33,24 +33,38 @@ describe('bundle-rantamuta verb-local syntax', function () {
   it('compiles syntax strings into ordered atom patterns', function () {
     const compiled = Syntax.compileSyntaxRules('say', ['TEXT to LIVING', 'TEXT']);
 
-    assert.deepStrictEqual(compiled, [
-      {
-        ruleText: 'TEXT to LIVING',
-        compiledRuleId: 'say:0',
-        atoms: [
-          { type: 'slot', kind: 'TEXT' },
-          { type: 'literal', value: 'to' },
-          { type: 'slot', kind: 'LIVING' },
-        ],
-      },
-      {
-        ruleText: 'TEXT',
-        compiledRuleId: 'say:1',
-        atoms: [
-          { type: 'slot', kind: 'TEXT' },
-        ],
-      },
+    assert.strictEqual(compiled.length, 2);
+    assert.strictEqual(compiled[0].ruleText, 'TEXT to LIVING');
+    assert.strictEqual(compiled[0].compiledRuleId, 'say:0');
+    assert.deepStrictEqual(compiled[0].atoms, [
+      { type: 'slot', kind: 'TEXT' },
+      { type: 'literal', value: 'to' },
+      { type: 'slot', kind: 'LIVING' },
     ]);
+    assert.strictEqual(compiled[0].canonicalRelationToken, 'to');
+
+    assert.strictEqual(compiled[1].ruleText, 'TEXT');
+    assert.strictEqual(compiled[1].compiledRuleId, 'say:1');
+    assert.deepStrictEqual(compiled[1].atoms, [
+      { type: 'slot', kind: 'TEXT' },
+    ]);
+  });
+
+  it('precompiles syntax metadata for command modules at load time', function () {
+    const metadata = Syntax.compileCommandSyntaxMetadata('look', {
+      syntaxRules: ['(empty)', 'ENTITY'],
+      errorMessages: {
+        LOOK_NO_ROOM: 'You are nowhere.',
+      },
+    });
+
+    assert.deepStrictEqual(metadata.syntaxRules, ['(empty)', 'ENTITY']);
+    assert.ok(Array.isArray(metadata.compiledRules));
+    assert.strictEqual(metadata.compiledRules.length, 2);
+    assert.strictEqual(metadata.compiledRules[0].compiledRuleId, 'look:0');
+    assert.deepStrictEqual(metadata.errorMessages, {
+      LOOK_NO_ROOM: 'You are nowhere.',
+    });
   });
 
   it('resolves syntaxRules declarations through the linked interpretation step', function () {

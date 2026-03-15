@@ -18,6 +18,7 @@ describe('bundle-rantamuta say command', function () {
     assert.deepStrictEqual(sayCommand.metadata.syntaxRules, [
       'TEXT to LIVING',
       'TEXT',
+      '(empty)',
     ]);
     assert.ok(Array.isArray(sayCommand.metadata.compiledRules));
   });

@@ -2,6 +2,7 @@
 'use strict';
 
 const { ItemType } = require('ranvier');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -165,12 +166,20 @@ function displayLabel(span, entity, fallback) {
 
 module.exports = {
   aliases: ['get'],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('take', {
+    syntaxRules: ['ENTITY from ENTITY', 'ENTITY'],
     entityResolution: {
       rules: {
         direct: {
           scopeProfile: {
             direct: [{ source: 'room.items', nested: true }, 'room.details', { source: 'player.inventory', nested: true }],
+          },
+        },
+        directIndirect: {
+          acceptedRelations: ['from'],
+          scopeProfile: {
+            direct: [{ source: 'room.items', nested: true }, 'room.details', { source: 'player.inventory', nested: true }],
+            indirect: ['room.items', 'player.inventory'],
           },
         },
       },
@@ -209,10 +218,10 @@ module.exports = {
         return { ok: true };
       },
     ],
-  },
+  }),
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
-    if (!resolution || resolution.ruleKey !== 'direct') {
+    if (!resolution || (resolution.ruleKey !== 'direct' && resolution.ruleKey !== 'directIndirect')) {
       return fail('FORM_NOT_SUPPORTED');
     }
 
@@ -234,9 +243,17 @@ module.exports = {
       return fail('TAKE_INVALID_SOURCE');
     }
 
+    if (resolution.ruleKey === 'directIndirect' && source !== resolution.indirectTarget) {
+      return fail('TAKE_NOT_REACHABLE');
+    }
+
     if (!isTransferContainer(player)) {
       return fail('TAKE_INVALID_TARGET');
     }
+
+    const template = resolution.ruleKey === 'directIndirect'
+      ? '{actor.You} {verb:take} {object.direct} from {object.indirect}.'
+      : '{actor.You} {verb:take} {object.direct}.';
 
     return {
       ok: true,
@@ -254,13 +271,16 @@ module.exports = {
         messages: [
           {
             type: 'semanticEvent',
-            template: '{actor.You} {verb:take} {object.direct}.',
+            template,
             audiencePolicy: 'self_and_others',
             participants: {
               actor: { selector: 'currentPlayer' },
             },
             objectText: {
               direct: `the ${displayLabel(resolution.directSpan, item, 'item')}`,
+              ...(resolution.ruleKey === 'directIndirect'
+                ? { indirect: `the ${displayLabel(resolution.indirectSpan, resolution.indirectTarget, 'container')}` }
+                : {}),
             },
           },
         ],

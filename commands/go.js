@@ -1,6 +1,8 @@
 // @ts-check
 'use strict';
 
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+
 /**
  * @param {string} code
  * @param {Record<string, *>} [details]
@@ -14,7 +16,8 @@ function fail(code, details) {
 }
 
 module.exports = {
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('go', {
+    syntaxRules: ['EXIT'],
     entityResolution: {
       rules: {
         direct: {
@@ -33,7 +36,7 @@ module.exports = {
       GO_EXIT_LOCKED: 'The way is locked.',
       GO_DESTINATION_MISSING: 'You can\'t go that way.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
     if (!resolution || resolution.ruleKey !== 'direct') {

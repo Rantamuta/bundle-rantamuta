@@ -744,7 +744,13 @@ describe('bundle-rantamuta entity-resolution', function () {
     }
 
     assert.strictEqual(result.error.code, 'AMBIGUOUS_TARGET');
-    assert.deepStrictEqual(result.error.details, { role: 'direct' });
+    assert.strictEqual(result.error.details.role, 'direct');
+    assert.strictEqual(result.error.details.compiledRuleId, 'take:0');
+    assert.strictEqual(result.error.details.matchedRuleText, 'ENTITY');
+    assert.ok(Array.isArray(result.error.details.ambiguity));
+    assert.strictEqual(result.error.details.ambiguity.length, 1);
+    assert.strictEqual(result.error.details.ambiguity[0].role, 'direct');
+    assert.strictEqual(result.error.details.ambiguity[0].surface, 'envelope');
   });
 
   it('auto-picks deterministically for indistinguishable matches', function () {
