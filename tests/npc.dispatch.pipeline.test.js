@@ -2,11 +2,21 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const path = require('path');
 const ranvier = require('ranvier');
 const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
 const EntityResolution = require('../lib/session/entity-resolution');
 const { parseInput } = require('../lib/parse-input');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 /**
  * @param {*} value
@@ -142,7 +152,11 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
       input: 'inspect relic',
     });
 
-    assert.deepStrictEqual(result, { ok: true });
+    assert.deepStrictEqual(
+      result,
+      { ok: true },
+      `expected npc dispatch pipeline text intent to succeed, got: ${formatActual(result)}`
+    );
     assert.deepStrictEqual(phaseTrace, [
       'capture',
       'plan',

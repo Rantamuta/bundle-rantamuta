@@ -2,7 +2,17 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const putCommand = require('../commands/put');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 function createItem(def = {}) {
   return {
@@ -103,11 +113,15 @@ function executePutDirect(player, directTarget, directSpan = []) {
 
 describe('bundle-rantamuta put command', function () {
   it('declares ordered syntax rules for direct and container-target put forms', function () {
-    assert.deepStrictEqual(putCommand.metadata.syntaxRules, [
-      'ENTITY in ENTITY',
-      'ENTITY on ENTITY',
-      'ENTITY',
-    ]);
+    assert.deepStrictEqual(
+      putCommand.metadata.syntaxRules,
+      [
+        'ENTITY in ENTITY',
+        'ENTITY on ENTITY',
+        'ENTITY',
+      ],
+      `expected put syntaxRules to include only the declared ordered forms, got: ${formatActual(putCommand.metadata.syntaxRules)}`
+    );
     assert.ok(Array.isArray(putCommand.metadata.compiledRules));
   });
 

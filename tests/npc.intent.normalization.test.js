@@ -2,8 +2,18 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const { dispatchNpcIntent } = require('../lib/session/command-dispatch');
 const { parseInput } = require('../lib/parse-input');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 /**
  * @param {*} value
@@ -67,7 +77,11 @@ describe('bundle-rantamuta npc intent normalization', function () {
       input: 'l',
     });
 
-    assert.deepStrictEqual(result, { ok: true });
+    assert.deepStrictEqual(
+      result,
+      { ok: true },
+      `expected text intent normalization to succeed, got: ${formatActual(result)}`
+    );
     assert.deepStrictEqual(seenParsedInput, parseInput('l'));
   });
 

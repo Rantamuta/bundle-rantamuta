@@ -2,8 +2,18 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const ranvier = require('ranvier');
 const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 /**
  * @param {*} state
@@ -100,7 +110,7 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
           allowedActorKinds: ['player'],
         },
       },
-    });
+    }, `expected npc dispatch to fail actor-kind gating, got: ${formatActual(result)}`);
     assert.strictEqual(canDirectCalls, 0);
     assert.strictEqual(executeCalled, false);
   });
@@ -169,7 +179,10 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
 
     assert.strictEqual(canDirectCalls, 0);
     assert.strictEqual(executeCalled, false);
-    assert.ok(outputs.includes('Only NPCs may perform that action.'));
+    assert.ok(
+      outputs.includes('Only NPCs may perform that action.'),
+      `expected outputs to include "Only NPCs may perform that action.", got: ${formatActual(outputs)}`
+    );
   });
 
   it('lets canActor deny before metadata gate, entity policy, and planner', async function () {
@@ -251,7 +264,7 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
           verbId: 'inspect',
         },
       },
-    });
+    }, `expected canActor veto to surface ACTOR_KIND_FORBIDDEN, got: ${formatActual(result)}`);
     assert.strictEqual(canDirectCalls, 0);
     assert.strictEqual(executeCalled, false);
   });
