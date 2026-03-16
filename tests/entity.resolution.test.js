@@ -135,9 +135,12 @@ describe('bundle-rantamuta entity-resolution', function () {
     assertResultDeepEqual(result, {
       ok: false,
       error: {
-        code: 'FORM_MISSING_DIRECT',
+        code: 'TARGET_NOT_FOUND',
+        details: {
+          role: 'direct',
+        },
       },
-    }, 'expected missing direct error for directIndirect form without a direct span');
+    }, 'expected direct target lookup failure for directIndirect form without a direct span');
   });
 
   it('normalizes relation token into canonical relation token', function () {
