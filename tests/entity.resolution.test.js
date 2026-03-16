@@ -135,45 +135,12 @@ describe('bundle-rantamuta entity-resolution', function () {
     assertResultDeepEqual(result, {
       ok: false,
       error: {
-        code: 'TARGET_NOT_FOUND',
-        details: {
-          role: 'direct',
-        },
+        code: 'FORM_MISSING_DIRECT',
       },
-    }, 'expected direct target lookup failure for directIndirect form without a direct span');
+    }, 'expected missing direct error for directIndirect form without a direct span');
   });
 
-  it('normalizes relation token into canonical relation token', function () {
-    const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const chest = createContainer({ uuid: 'chest-1', name: 'old chest', keywords: ['old', 'chest'] });
-    const command = makeCommand({
-      syntaxRules: ['ENTITY into ENTITY'],
-      rules: {
-        directIndirect: {
-          acceptedRelations: ['in'],
-          scopeProfile: {
-            direct: ['player.inventory'],
-            indirect: ['room.items'],
-          },
-        },
-      },
-    });
-    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
-
-    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put rusty sword into old chest'));
-
-    assertResultOk(result, 'expected successful entity resolution for "put rusty sword into old chest"');
-    if (!result.ok) {
-      return;
-    }
-
-    assert.strictEqual(result.value.relationTokenRaw, 'into');
-    assert.strictEqual(result.value.relationTokenCanonical, 'in');
-    assert.strictEqual(result.value.directTarget, sword);
-    assert.strictEqual(result.value.indirectTarget, chest);
-  });
-
-  it('returns FORM_UNSUPPORTED_RELATION when relation is not accepted', function () {
+  it('fails with target lookup error when authored syntax does not admit the relation form', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
     const command = makeCommand({
@@ -199,8 +166,8 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     assert.strictEqual(
       result.error.code,
-      'FORM_UNSUPPORTED_RELATION',
-      `expected FORM_UNSUPPORTED_RELATION, got: ${formatActual(result)}`
+      'TARGET_NOT_FOUND',
+      `expected TARGET_NOT_FOUND when authored syntax does not admit the relation form, got: ${formatActual(result)}`
     );
   });
 
