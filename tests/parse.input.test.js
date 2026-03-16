@@ -132,4 +132,13 @@ describe('bundle-rantamuta parse-input', function () {
     assert.strictEqual(result.relationToken, undefined);
     assert.strictEqual(result.secondaryTargetSpan, undefined);
   });
+
+  it('preserves post-verb token casing while normalizing the intent token', function () {
+    const result = parseInput('SaY Hello THERE');
+
+    assert.strictEqual(result.normalizedInput, 'say Hello THERE');
+    assert.deepStrictEqual(result.tokens, ['say', 'Hello', 'THERE']);
+    assert.strictEqual(result.intentToken, 'say');
+    assert.deepStrictEqual(result.bodyTokens, ['Hello', 'THERE']);
+  });
 });
