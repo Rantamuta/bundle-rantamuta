@@ -1,6 +1,8 @@
 // @ts-check
 'use strict';
 
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+
 const MAX_SAY_LENGTH = 256;
 
 /**
@@ -55,12 +57,29 @@ function extractRawSpeechFromParsedInput(parsedInput) {
   return normalizedInput.slice(firstSpaceIndex + 1);
 }
 
+/**
+ * @param {*} context
+ * @returns {string}
+ */
+function extractSpeechFromContext(context) {
+  const slots = context && context.entityResolution && Array.isArray(context.entityResolution.slots)
+    ? context.entityResolution.slots
+    : [];
+  const textSlot = slots.find(slot => slot && slot.kind === 'TEXT' && typeof slot.surface === 'string');
+  if (textSlot) {
+    return textSlot.surface;
+  }
+
+  return extractRawSpeechFromParsedInput(context && context.parsedInput);
+}
+
 module.exports = {
   aliases: [],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('say', {
+    syntaxRules: ['TEXT to LIVING', 'TEXT', '(empty)'],
     captureChecks: [
       context => {
-        const text = sanitizeSpeech(extractRawSpeechFromParsedInput(context && context.parsedInput));
+        const text = sanitizeSpeech(extractSpeechFromContext(context));
         if (!text) {
           return {
             ok: false,
@@ -80,14 +99,13 @@ module.exports = {
       SAY_EMPTY: 'Say what?',
       SAY_TOO_LONG: 'That is too much to say at once.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     void state;
     void player;
     void alias;
-    void context;
 
-    const text = sanitizeSpeech(args);
+    const text = sanitizeSpeech(extractSpeechFromContext(context) || args);
     if (!text) {
       return fail('SAY_EMPTY');
     }

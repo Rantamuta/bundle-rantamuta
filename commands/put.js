@@ -2,6 +2,7 @@
 'use strict';
 
 const { ItemType } = require('ranvier');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -84,7 +85,8 @@ function displayLabel(span, entity, fallback) {
 
 module.exports = {
   aliases: ['place', 'drop'],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('put', {
+    syntaxRules: ['ENTITY in ENTITY', 'ENTITY into ENTITY', 'ENTITY on ENTITY', 'ENTITY onto ENTITY', 'ENTITY'],
     entityResolution: {
       rules: {
         direct: {
@@ -93,7 +95,7 @@ module.exports = {
           },
         },
         directIndirect: {
-          acceptedRelations: ['in', 'into'],
+          acceptedRelations: ['in', 'into', 'on', 'onto'],
           scopeProfile: {
             direct: ['player.inventory'],
             indirect: ['player.inventory', 'room.items'],
@@ -120,7 +122,7 @@ module.exports = {
       PUT_INVALID_SOURCE: 'You cannot move that right now.',
       PUT_INVALID_TARGET: 'You cannot put that there.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
     if (!resolution || (resolution.ruleKey !== 'direct' && resolution.ruleKey !== 'directIndirect')) {
@@ -191,6 +193,8 @@ module.exports = {
       return fail('PUT_INVALID_TARGET');
     }
 
+    const relationToken = resolution.relationTokenCanonical === 'on' ? 'on' : 'in';
+
     return {
       ok: true,
       plan: {
@@ -207,7 +211,7 @@ module.exports = {
         messages: [
           {
             type: 'semanticEvent',
-            template: '{actor.You} {verb:put} {object.direct} in {object.indirect}.',
+            template: `{actor.You} {verb:put} {object.direct} ${relationToken} {object.indirect}.`,
             audiencePolicy: 'self_and_others',
             participants: {
               actor: { selector: 'currentPlayer' },

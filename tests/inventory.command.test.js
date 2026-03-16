@@ -15,6 +15,8 @@ function createPlayer(def = {}) {
 describe('bundle-rantamuta inventory command', function () {
   it('declares intransitive entity-resolution rule metadata', function () {
     assert.ok(inventoryCommand.metadata);
+    assert.deepStrictEqual(inventoryCommand.metadata.syntaxRules, ['(empty)']);
+    assert.ok(Array.isArray(inventoryCommand.metadata.compiledRules));
     assert.ok(inventoryCommand.metadata.entityResolution);
     assert.deepStrictEqual(inventoryCommand.metadata.entityResolution.rules, {
       intransitive: {},

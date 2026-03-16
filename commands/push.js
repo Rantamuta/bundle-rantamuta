@@ -2,6 +2,7 @@
 'use strict';
 
 const { Logger } = require('ranvier');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -113,7 +114,8 @@ function createPushReactions(context) {
 
 module.exports = {
   aliases: [],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('push', {
+    syntaxRules: ['ENTITY'],
     entityResolution: {
       rules: {
         direct: {
@@ -134,7 +136,7 @@ module.exports = {
       },
       PUSH_NOT_PUSHABLE: 'Nothing happens.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     void state;
     void args;

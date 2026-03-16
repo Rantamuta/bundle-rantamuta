@@ -75,6 +75,13 @@ function execute(commandModule, state, player, resolution) {
 }
 
 describe('bundle-rantamuta door command surfaces', function () {
+  it('declares ordered syntax rules for door commands', function () {
+    assert.deepStrictEqual(openCommand.metadata.syntaxRules, ['ENTITY with ENTITY', 'ENTITY']);
+    assert.deepStrictEqual(closeCommand.metadata.syntaxRules, ['ENTITY']);
+    assert.deepStrictEqual(lockCommand.metadata.syntaxRules, ['ENTITY with ENTITY', 'ENTITY']);
+    assert.deepStrictEqual(unlockCommand.metadata.syntaxRules, ['ENTITY with ENTITY', 'ENTITY']);
+  });
+
   it('declares allowUnresolvedIndirect for open/lock/unlock directIndirect rules', function () {
     assert.strictEqual(openCommand.metadata.entityResolution.rules.directIndirect.allowUnresolvedIndirect, true);
     assert.strictEqual(lockCommand.metadata.entityResolution.rules.directIndirect.allowUnresolvedIndirect, true);

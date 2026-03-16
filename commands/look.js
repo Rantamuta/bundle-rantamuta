@@ -3,6 +3,7 @@
 
 const { buildRoomViewLines } = require('../lib/helpers/room-view-helper');
 const { resolveInlineTags, buildSurfaceRef } = require('../lib/inline-tags/resolve-inline-tags');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -46,7 +47,8 @@ function buildDirectLookLines(target, context) {
 
 module.exports = {
   aliases: ['l'],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('look', {
+    syntaxRules: ['(empty)', 'ENTITY'],
     entityResolution: {
       rules: {
         intransitive: {},
@@ -60,7 +62,7 @@ module.exports = {
     errorMessages: {
       LOOK_NO_ROOM: 'You are nowhere.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     const resolution = context && context.entityResolution;
     if (!resolution || (resolution.ruleKey !== 'intransitive' && resolution.ruleKey !== 'direct')) {

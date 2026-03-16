@@ -9,6 +9,7 @@ const {
   selectExplicitKeyCandidate,
   selectAutoKeyCandidate,
 } = require('../lib/doors/door-command-helper');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -63,7 +64,8 @@ function resolveOpenKey(player, resolution, door) {
 
 module.exports = {
   aliases: [],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('open', {
+    syntaxRules: ['ENTITY with ENTITY', 'ENTITY'],
     entityResolution: {
       rules: createDoorCommandEntityResolutionRules(),
     },
@@ -85,7 +87,7 @@ module.exports = {
       DOOR_ALREADY_OPEN: 'The door is already open.',
       DOOR_OPEN_LOCKED: 'You cannot open the door; it is locked.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     void args;
     void alias;

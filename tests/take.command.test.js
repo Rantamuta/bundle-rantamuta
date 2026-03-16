@@ -65,6 +65,14 @@ function executeTake(player, directTarget) {
 }
 
 describe('bundle-rantamuta take command', function () {
+  it('declares direct and from-source syntax rules', function () {
+    assert.deepStrictEqual(takeCommand.metadata.syntaxRules, [
+      'ENTITY from ENTITY',
+      'ENTITY',
+    ]);
+    assert.ok(Array.isArray(takeCommand.metadata.compiledRules));
+  });
+
   it('declares direct scope order including room.details and nested player.inventory', function () {
     assert.deepStrictEqual(takeCommand.metadata.entityResolution.rules.direct.scopeProfile.direct, [
       { source: 'room.items', nested: true },
@@ -204,5 +212,55 @@ describe('bundle-rantamuta take command', function () {
       ok: false,
       error: { code: 'TAKE_INVALID_TARGET', details: undefined },
     });
+  });
+
+  it('takes an item from the explicitly matched indirect source', function () {
+    const room = createRoom();
+    const chest = {
+      uuid: 'chest-1',
+      name: 'old chest',
+      keywords: ['old', 'chest'],
+      room,
+      closed: false,
+      addItem() { },
+      removeItem() { },
+    };
+    const coin = createItem({
+      uuid: 'coin-from-1',
+      name: 'gold coin',
+      keywords: ['gold', 'coin'],
+      carriedBy: chest,
+    });
+    const player = createPlayer({ room });
+    const execute = takeCommand.command({});
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'directIndirect',
+        directTarget: coin,
+        indirectTarget: chest,
+        directSpan: ['gold', 'coin'],
+        indirectSpan: ['old', 'chest'],
+        relationTokenRaw: 'from',
+        relationTokenCanonical: 'from',
+      },
+    });
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.deepStrictEqual(result.plan, {
+      operations: [
+        {
+          type: 'transferItem',
+          item: coin,
+          from: chest,
+          to: player,
+        },
+      ],
+    });
+    assert.match(result.render.messages[0].template, / from /);
   });
 });

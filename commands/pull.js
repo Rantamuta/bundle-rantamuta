@@ -2,6 +2,7 @@
 'use strict';
 
 const { Logger } = require('ranvier');
+const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
 
 /**
  * @param {string} code
@@ -92,7 +93,8 @@ function resolvePullSuccessMessages(directTarget, payload) {
 
 module.exports = {
   aliases: [],
-  metadata: {
+  metadata: compileCommandSyntaxMetadata('pull', {
+    syntaxRules: ['ENTITY'],
     entityResolution: {
       rules: {
         direct: {
@@ -112,7 +114,7 @@ module.exports = {
       },
       PULL_NOT_PULLABLE: 'Nothing happens.',
     },
-  },
+  }),
   command: state => (args, player, alias, context) => {
     void state;
     void args;

@@ -2,14 +2,66 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const { parseInput } = require('../lib/parse-input');
 const EntityResolution = require('../lib/session/entity-resolution');
 
-function makeCommand(entityResolutionDeclaration) {
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
+
+function assertResultOk(result, description) {
+  assert.ok(
+    result && result.ok,
+    `${description}\nactual result: ${formatActual(result)}`
+  );
+}
+
+function assertResultDeepEqual(result, expected, description) {
+  assert.deepStrictEqual(
+    result,
+    expected,
+    `${description}\nactual result: ${formatActual(result)}`
+  );
+}
+
+function assertErrorCode(result, expectedCode, description) {
+  assert.strictEqual(
+    result && result.ok,
+    false,
+    `${description}\nexpected failure result, got: ${formatActual(result)}`
+  );
+  if (result.ok) {
+    return;
+  }
+
+  assert.strictEqual(
+    result.error && result.error.code,
+    expectedCode,
+    `${description}\nactual result: ${formatActual(result)}`
+  );
+}
+
+function makeCommand(def) {
+  const metadata = {};
+
+  if (Array.isArray(def && def.syntaxRules)) {
+    metadata.syntaxRules = def.syntaxRules;
+  }
+
+  if (def && def.rules && typeof def.rules === 'object') {
+    metadata.entityResolution = {
+      rules: def.rules,
+    };
+  }
+
   return {
-    metadata: {
-      entityResolution: entityResolutionDeclaration,
-    },
+    metadata,
   };
 }
 
@@ -65,6 +117,7 @@ function createPlayer(def = {}) {
 describe('bundle-rantamuta entity-resolution', function () {
   it('returns FORM_MISSING_DIRECT for directIndirect command form without direct span', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in', 'into'],
@@ -79,47 +132,19 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put in old chest'));
 
-    assert.deepStrictEqual(result, {
+    assertResultDeepEqual(result, {
       ok: false,
       error: {
         code: 'FORM_MISSING_DIRECT',
       },
-    });
+    }, 'expected missing direct error for directIndirect form without a direct span');
   });
 
-  it('normalizes relation token into canonical relation token', function () {
-    const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
-    const chest = createContainer({ uuid: 'chest-1', name: 'old chest', keywords: ['old', 'chest'] });
-    const command = makeCommand({
-      rules: {
-        directIndirect: {
-          acceptedRelations: ['in'],
-          scopeProfile: {
-            direct: ['player.inventory'],
-            indirect: ['room.items'],
-          },
-        },
-      },
-    });
-    const player = createPlayer({ inventoryItems: [sword], roomItems: [chest] });
-
-    const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put rusty sword into old chest'));
-
-    assert.strictEqual(result.ok, true);
-    if (!result.ok) {
-      return;
-    }
-
-    assert.strictEqual(result.value.relationTokenRaw, 'into');
-    assert.strictEqual(result.value.relationTokenCanonical, 'in');
-    assert.strictEqual(result.value.directTarget, sword);
-    assert.strictEqual(result.value.indirectTarget, chest);
-  });
-
-  it('returns FORM_UNSUPPORTED_RELATION when relation is not accepted', function () {
+  it('fails with target lookup error when authored syntax does not admit the relation form', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in'],
@@ -134,17 +159,22 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put rusty sword on old chest'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected unsupported relation failure, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'FORM_UNSUPPORTED_RELATION');
+    assert.strictEqual(
+      result.error.code,
+      'TARGET_NOT_FOUND',
+      `expected TARGET_NOT_FOUND when authored syntax does not admit the relation form, got: ${formatActual(result)}`
+    );
   });
 
   it('allows unresolved indirect binding when rule opts in via allowUnresolvedIndirect', function () {
     const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY with ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['with'],
@@ -160,7 +190,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('unlock rusty sword with missing key'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected unresolved indirect binding to be preserved when allowUnresolvedIndirect is enabled');
     if (!result.ok) {
       return;
     }
@@ -174,6 +204,7 @@ describe('bundle-rantamuta entity-resolution', function () {
   it('keeps failing unresolved indirect binding when allowUnresolvedIndirect is not enabled', function () {
     const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY with ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['with'],
@@ -188,16 +219,21 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('unlock rusty sword with missing key'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected unresolved indirect binding failure, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'TARGET_NOT_FOUND');
+    assert.strictEqual(
+      result.error.code,
+      'TARGET_NOT_FOUND',
+      `expected TARGET_NOT_FOUND for unresolved indirect binding, got: ${formatActual(result)}`
+    );
   });
 
   it('supports intransitive offramp with empty bindings', function () {
     const command = makeCommand({
+      syntaxRules: ['(empty)'],
       rules: {
         intransitive: {},
       },
@@ -206,7 +242,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('sing'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected intransitive offramp to succeed with empty bindings');
     if (!result.ok) {
       return;
     }
@@ -218,6 +254,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('returns FORM_MISSING_DIRECT for intransitive input when verb declares direct rule', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -230,16 +267,17 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take'));
 
-    assert.deepStrictEqual(result, {
+    assertResultDeepEqual(result, {
       ok: false,
       error: {
         code: 'FORM_MISSING_DIRECT',
       },
-    });
+    }, 'expected missing direct error for intransitive input against a direct rule');
   });
 
   it('returns FORM_MISSING_DIRECT for intransitive input when verb declares directIndirect rule', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in'],
@@ -254,16 +292,17 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('put'));
 
-    assert.deepStrictEqual(result, {
+    assertResultDeepEqual(result, {
       ok: false,
       error: {
         code: 'FORM_MISSING_DIRECT',
       },
-    });
+    }, 'expected missing direct error for intransitive input against a directIndirect rule');
   });
 
   it('returns FORM_MISSING_RELATION for intransitive input when verb declares indirect rule', function () {
     const command = makeCommand({
+      syntaxRules: ['to ENTITY'],
       rules: {
         indirect: {
           acceptedRelations: ['to'],
@@ -277,16 +316,17 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('sing'));
 
-    assert.deepStrictEqual(result, {
+    assertResultDeepEqual(result, {
       ok: false,
       error: {
         code: 'FORM_MISSING_RELATION',
       },
-    });
+    }, 'expected missing relation error for intransitive input against an indirect rule');
   });
 
   it('returns FORM_MISSING_RELATION for intransitive input when verb declares relationOnly rule', function () {
     const command = makeCommand({
+      syntaxRules: ['off'],
       rules: {
         relationOnly: {
           acceptedRelations: ['off'],
@@ -297,12 +337,12 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('keep'));
 
-    assert.deepStrictEqual(result, {
+    assertResultDeepEqual(result, {
       ok: false,
       error: {
         code: 'FORM_MISSING_RELATION',
       },
-    });
+    }, 'expected missing relation error for intransitive input against a relationOnly rule');
   });
 
   it('returns FORM_NOT_SUPPORTED for intransitive input when no compatible rule exists', function () {
@@ -313,16 +353,21 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('foo'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected unsupported form failure, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'FORM_NOT_SUPPORTED');
+    assert.strictEqual(
+      result.error.code,
+      'FORM_NOT_SUPPORTED',
+      `expected FORM_NOT_SUPPORTED, got: ${formatActual(result)}`
+    );
   });
 
   it('supports relationOnly rule shape with relation canonicalization', function () {
     const command = makeCommand({
+      syntaxRules: ['off'],
       rules: {
         relationOnly: {
           acceptedRelations: ['off'],
@@ -333,7 +378,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('keep off'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected relationOnly rule shape to resolve successfully');
     if (!result.ok) {
       return;
     }
@@ -348,6 +393,7 @@ describe('bundle-rantamuta entity-resolution', function () {
   it('supports indirect rule shape (relation + indirect target, no direct target)', function () {
     const baby = createItem({ uuid: 'baby-1', name: 'baby', keywords: ['baby'] });
     const command = makeCommand({
+      syntaxRules: ['to ENTITY'],
       rules: {
         indirect: {
           acceptedRelations: ['to'],
@@ -361,7 +407,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('sing to baby'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected indirect rule shape to resolve successfully');
     if (!result.ok) {
       return;
     }
@@ -383,12 +429,16 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('keep off'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected invalid acceptedRelations failure, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'FORM_NOT_SUPPORTED');
+    assert.strictEqual(
+      result.error.code,
+      'FORM_NOT_SUPPORTED',
+      `expected FORM_NOT_SUPPORTED for invalid acceptedRelations, got: ${formatActual(result)}`
+    );
     assert.deepStrictEqual(result.error.details, {
       reason: 'INVALID_ACCEPTED_RELATIONS',
       ruleKey: 'relationOnly',
@@ -399,6 +449,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const fromInventory = createItem({ uuid: 'inv-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const fromRoom = createItem({ uuid: 'room-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -414,7 +465,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take rusty sword'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected direct target resolution by declared scope order to succeed');
     if (!result.ok) {
       return;
     }
@@ -430,6 +481,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'The weathered shrine is veined with old cracks.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -449,7 +501,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look shrine'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected room.details direct target resolution to succeed');
     if (!result.ok) {
       return;
     }
@@ -468,6 +520,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'A carved sword motif is set into the wall.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -487,7 +540,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look sword'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected room items to win over room details when declared first');
     if (!result.ok) {
       return;
     }
@@ -504,6 +557,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'An engraved sword appears on the stone relief.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -526,7 +580,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look sword'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected room details to win over inventory when declared first');
     if (!result.ok) {
       return;
     }
@@ -537,6 +591,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('resolves go direction via room.exits scope', function () {
     const command = makeCommand({
+      syntaxRules: ['EXIT'],
       rules: {
         direct: {
           scopeProfile: {
@@ -556,7 +611,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('go east'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected room.exits direction resolution to succeed');
     if (!result.ok) {
       return;
     }
@@ -575,6 +630,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       isNpc: true,
     };
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -592,7 +648,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('look tomo'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected room.npcs direct target resolution to succeed');
     if (!result.ok) {
       return;
     }
@@ -602,6 +658,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('uses exact direction matching for room.exits scope', function () {
     const command = makeCommand({
+      syntaxRules: ['EXIT'],
       rules: {
         direct: {
           scopeProfile: {
@@ -618,12 +675,16 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('go e'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected exact room.exits match failure for shorthand direction, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'TARGET_NOT_FOUND');
+    assert.strictEqual(
+      result.error.code,
+      'TARGET_NOT_FOUND',
+      `expected TARGET_NOT_FOUND for shorthand exit direction, got: ${formatActual(result)}`
+    );
     assert.deepStrictEqual(result.error.details, { role: 'direct' });
   });
 
@@ -634,6 +695,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const player = createPlayer({ roomItems: [outer] });
 
     const shallowCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -643,6 +705,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       },
     });
     const deepCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -653,13 +716,17 @@ describe('bundle-rantamuta entity-resolution', function () {
     });
 
     const shallowResult = EntityResolution.resolveEntityContext({}, shallowCommand, player, parseInput('take coin'));
-    assert.strictEqual(shallowResult.ok, false);
+    assert.strictEqual(shallowResult.ok, false, `expected shallow traversal to fail, got: ${formatActual(shallowResult)}`);
     if (!shallowResult.ok) {
-      assert.strictEqual(shallowResult.error.code, 'TARGET_NOT_FOUND');
+      assert.strictEqual(
+        shallowResult.error.code,
+        'TARGET_NOT_FOUND',
+        `expected TARGET_NOT_FOUND for shallow traversal miss, got: ${formatActual(shallowResult)}`
+      );
     }
 
     const deepResult = EntityResolution.resolveEntityContext({}, deepCommand, player, parseInput('take coin'));
-    assert.strictEqual(deepResult.ok, true);
+    assertResultOk(deepResult, 'expected deep traversal to resolve the nested target');
     if (!deepResult.ok) {
       return;
     }
@@ -678,6 +745,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const player = createPlayer({ inventoryItems: [satchel] });
 
     const flatCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -687,6 +755,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       },
     });
     const nestedCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -697,13 +766,17 @@ describe('bundle-rantamuta entity-resolution', function () {
     });
 
     const flatResult = EntityResolution.resolveEntityContext({}, flatCommand, player, parseInput('take coin'));
-    assert.strictEqual(flatResult.ok, false);
+    assert.strictEqual(flatResult.ok, false, `expected flat inventory traversal to fail, got: ${formatActual(flatResult)}`);
     if (!flatResult.ok) {
-      assert.strictEqual(flatResult.error.code, 'TARGET_NOT_FOUND');
+      assert.strictEqual(
+        flatResult.error.code,
+        'TARGET_NOT_FOUND',
+        `expected TARGET_NOT_FOUND for flat inventory traversal miss, got: ${formatActual(flatResult)}`
+      );
     }
 
     const nestedResult = EntityResolution.resolveEntityContext({}, nestedCommand, player, parseInput('take coin'));
-    assert.strictEqual(nestedResult.ok, true);
+    assertResultOk(nestedResult, 'expected nested inventory traversal to resolve the target');
     if (!nestedResult.ok) {
       return;
     }
@@ -726,6 +799,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     });
 
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -738,19 +812,30 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take envelope'));
 
-    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.ok, false, `expected ambiguous target failure, got: ${formatActual(result)}`);
     if (result.ok) {
       return;
     }
 
-    assert.strictEqual(result.error.code, 'AMBIGUOUS_TARGET');
-    assert.deepStrictEqual(result.error.details, { role: 'direct' });
+    assert.strictEqual(
+      result.error.code,
+      'AMBIGUOUS_TARGET',
+      `expected AMBIGUOUS_TARGET, got: ${formatActual(result)}`
+    );
+    assert.strictEqual(result.error.details.role, 'direct');
+    assert.strictEqual(result.error.details.compiledRuleId, 'take:0');
+    assert.strictEqual(result.error.details.matchedRuleText, 'ENTITY');
+    assert.ok(Array.isArray(result.error.details.ambiguity));
+    assert.strictEqual(result.error.details.ambiguity.length, 1);
+    assert.strictEqual(result.error.details.ambiguity[0].role, 'direct');
+    assert.strictEqual(result.error.details.ambiguity[0].surface, 'envelope');
   });
 
   it('auto-picks deterministically for indistinguishable matches', function () {
     const appleOne = createItem({ uuid: 'apple-2', name: 'apple', keywords: ['apple'] });
     const appleTwo = createItem({ uuid: 'apple-1', name: 'apple', keywords: ['apple'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -763,7 +848,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take apple'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected deterministic auto-pick for indistinguishable matches');
     if (!result.ok) {
       return;
     }
@@ -776,6 +861,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const calls = [];
     const coin = createItem({ uuid: 'coin-1', name: 'coin', keywords: ['coin'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -791,7 +877,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
     const result = EntityResolution.resolveEntityContext({}, command, player, parseInput('take coin'));
 
-    assert.strictEqual(result.ok, true);
+    assertResultOk(result, 'expected entity resolution to succeed without mutating containers or emitting output');
     assert.deepStrictEqual(calls, []);
     assert.deepStrictEqual(player.sendCalls, []);
   });

@@ -32,6 +32,8 @@ function createPlayer(def = {}) {
 describe('bundle-rantamuta go command', function () {
   it('declares direct entity-resolution rule metadata using room.exits scope', function () {
     assert.ok(goCommand.metadata);
+    assert.deepStrictEqual(goCommand.metadata.syntaxRules, ['EXIT']);
+    assert.ok(Array.isArray(goCommand.metadata.compiledRules));
     assert.ok(goCommand.metadata.entityResolution);
     assert.deepStrictEqual(goCommand.metadata.entityResolution.rules, {
       direct: {

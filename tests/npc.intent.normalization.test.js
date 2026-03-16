@@ -2,8 +2,18 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const { dispatchNpcIntent } = require('../lib/session/command-dispatch');
 const { parseInput } = require('../lib/parse-input');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 /**
  * @param {*} value
@@ -41,6 +51,7 @@ describe('bundle-rantamuta npc intent normalization', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['(empty)'],
         entityResolution: {
           rules: {
             intransitive: {},
@@ -67,7 +78,11 @@ describe('bundle-rantamuta npc intent normalization', function () {
       input: 'l',
     });
 
-    assert.deepStrictEqual(result, { ok: true });
+    assert.deepStrictEqual(
+      result,
+      { ok: true },
+      `expected text intent normalization to succeed, got: ${formatActual(result)}`
+    );
     assert.deepStrictEqual(seenParsedInput, parseInput('l'));
   });
 
@@ -183,6 +198,46 @@ describe('bundle-rantamuta npc intent normalization', function () {
         code: 'NPC_INTENT_FORBIDDEN_FIELD',
         details: {
           field: 'entityResolution',
+        },
+      },
+    });
+    assert.strictEqual(executed, false);
+  });
+
+  it('rejects structured relation tokens that are not a single token', async function () {
+    let executed = false;
+    const actor = asActor({
+      name: 'Tomo',
+      isNpc: true,
+      room: { getBroadcastTargets: () => [actor] },
+      socket: { writable: false },
+    });
+    const state = withPlayerManager({
+      CommandManager: {
+        get: () => ({
+          execute: async () => {
+            executed = true;
+            return { ok: true, plan: { operations: [{ type: 'noop' }] }, render: { messages: [] } };
+          },
+        }),
+      },
+    }, actor);
+
+    const result = await dispatchNpcIntent(state, actor, {
+      kind: 'structured',
+      verb: 'put',
+      direct: ['apple'],
+      relationToken: 'in to',
+      indirect: ['chest'],
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'NPC_INTENT_INVALID',
+        details: {
+          reason: 'INVALID_RELATION_TOKEN',
+          field: 'relationToken',
         },
       },
     });

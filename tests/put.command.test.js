@@ -2,7 +2,17 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 const putCommand = require('../commands/put');
+
+function formatActual(value) {
+  return inspect(value, {
+    depth: null,
+    colors: false,
+    compact: false,
+    sorted: true,
+  });
+}
 
 function createItem(def = {}) {
   return {
@@ -102,6 +112,21 @@ function executePutDirect(player, directTarget, directSpan = []) {
 }
 
 describe('bundle-rantamuta put command', function () {
+  it('declares ordered syntax rules for direct and container-target put forms', function () {
+    assert.deepStrictEqual(
+      putCommand.metadata.syntaxRules,
+      [
+        'ENTITY in ENTITY',
+        'ENTITY into ENTITY',
+        'ENTITY on ENTITY',
+        'ENTITY onto ENTITY',
+        'ENTITY',
+      ],
+      `expected put syntaxRules to include only the declared ordered forms, got: ${formatActual(putCommand.metadata.syntaxRules)}`
+    );
+    assert.ok(Array.isArray(putCommand.metadata.compiledRules));
+  });
+
   it('returns transferItem plan and does not mutate directly', function () {
     const sword = createItem({
       uuid: 'sword-1',
@@ -247,6 +272,43 @@ describe('bundle-rantamuta put command', function () {
         },
       ],
     });
+  });
+
+  it('renders the matched relation token for on-target put forms', function () {
+    const apple = createItem({
+      uuid: 'apple-on-1',
+      name: 'practice apple',
+      keywords: ['practice', 'apple'],
+      type: 'OBJECT',
+    });
+    const table = createContainer({
+      uuid: 'table-1',
+      name: 'table',
+      keywords: ['table'],
+      maxItems: 4,
+    });
+    const player = createPlayer({ inventoryItems: [apple], roomItems: [table] });
+    const execute = putCommand.command({});
+
+    const result = execute('', player, null, {
+      entityResolution: {
+        ruleKey: 'directIndirect',
+        directTarget: apple,
+        indirectTarget: table,
+        directSpan: ['apple'],
+        indirectSpan: ['table'],
+        relationTokenRaw: 'on',
+        relationTokenCanonical: 'on',
+      },
+    });
+
+    assert.strictEqual(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+
+    assert.match(result.render.messages[0].template, / on /);
+    assert.strictEqual(result.render.messages[0].objectText.indirect, 'the table');
   });
 
   it('returns FORM_NOT_SUPPORTED when resolution context is missing', function () {
