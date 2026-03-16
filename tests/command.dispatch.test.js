@@ -5086,7 +5086,10 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       await handleCommand(state, { player }, 'go east');
 
-      assert.ok(messages.includes('You can\'t go that way.'));
+      assert.ok(
+        messages.includes('You can\'t go that way.'),
+        `expected messages to include "You can't go that way.", got: ${JSON.stringify(messages)}`
+      );
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
