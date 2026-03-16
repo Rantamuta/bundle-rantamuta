@@ -197,6 +197,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       const wrapped = new Command('bundle-rantamuta', 'look', {
         aliases: ['l'],
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -448,6 +449,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -680,6 +682,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY in ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -762,6 +765,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         });
         const command = {
           metadata: {
+            syntaxRules: ['ENTITY'],
             entityResolution: {
               rules: {
                 direct: {
@@ -833,6 +837,7 @@ describe('bundle-rantamuta command-dispatch', function () {
         });
         const command = {
           metadata: {
+            syntaxRules: ['ENTITY'],
             errorMessages: {
               FORBIDDEN_BLOCKED: 'blocked-by-candirect',
             },
@@ -896,6 +901,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -971,6 +977,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           errorMessages: {
             WARD_LOCKED: 'The relic remains locked.',
           },
@@ -1056,6 +1063,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1125,6 +1133,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1204,6 +1213,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1265,6 +1275,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1324,6 +1335,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1388,6 +1400,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1446,6 +1459,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -1519,6 +1533,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -1587,6 +1602,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1676,6 +1692,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -1780,6 +1797,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -1863,6 +1881,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -1931,6 +1950,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -2023,6 +2043,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -2105,6 +2126,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -2182,6 +2204,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -2257,6 +2280,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -2319,6 +2343,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -2414,6 +2439,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           errorMessages: {
             PLAN_INDIRECT_DENIED: 'The target refuses this arrangement.',
           },
@@ -2486,6 +2512,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           errorMessages: {
             PLAN_ACTOR_DENIED: 'The actor refuses this approach.',
           },
@@ -2555,6 +2582,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -2624,6 +2652,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       });
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -2696,6 +2725,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY into ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -2772,6 +2802,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY in ENTITY'],
           entityResolution: {
             rules: {
               directIndirect: {
@@ -2847,6 +2878,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -2905,6 +2937,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -3651,6 +3684,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -3724,6 +3758,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -3795,6 +3830,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -3883,6 +3919,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -3970,6 +4007,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['ENTITY'],
           entityResolution: {
             rules: {
               direct: {
@@ -4054,6 +4092,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -4125,6 +4164,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
@@ -6546,6 +6586,7 @@ describe('bundle-rantamuta command-dispatch', function () {
 
       const command = {
         metadata: {
+          syntaxRules: ['(empty)'],
           entityResolution: {
             rules: {
               intransitive: {},
