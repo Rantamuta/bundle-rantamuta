@@ -29,6 +29,7 @@ module.exports = {
     },
     errorMessages: {
       FORM_MISSING_DIRECT: 'Go where?',
+      FORM_NOT_SUPPORTED: 'You can\'t go that way.',
       TARGET_NOT_FOUND: {
         direct: 'You can\'t go that way.',
       },
