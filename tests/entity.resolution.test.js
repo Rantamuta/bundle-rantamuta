@@ -47,11 +47,21 @@ function assertErrorCode(result, expectedCode, description) {
   );
 }
 
-function makeCommand(entityResolutionDeclaration) {
+function makeCommand(def) {
+  const metadata = {};
+
+  if (Array.isArray(def && def.syntaxRules)) {
+    metadata.syntaxRules = def.syntaxRules;
+  }
+
+  if (def && def.rules && typeof def.rules === 'object') {
+    metadata.entityResolution = {
+      rules: def.rules,
+    };
+  }
+
   return {
-    metadata: {
-      entityResolution: entityResolutionDeclaration,
-    },
+    metadata,
   };
 }
 
@@ -107,6 +117,7 @@ function createPlayer(def = {}) {
 describe('bundle-rantamuta entity-resolution', function () {
   it('returns FORM_MISSING_DIRECT for directIndirect command form without direct span', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in', 'into'],
@@ -133,6 +144,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const chest = createContainer({ uuid: 'chest-1', name: 'old chest', keywords: ['old', 'chest'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY into ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in'],
@@ -162,6 +174,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const sword = createItem({ name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const chest = createContainer({ name: 'old chest', keywords: ['old', 'chest'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in'],
@@ -191,6 +204,7 @@ describe('bundle-rantamuta entity-resolution', function () {
   it('allows unresolved indirect binding when rule opts in via allowUnresolvedIndirect', function () {
     const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY with ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['with'],
@@ -220,6 +234,7 @@ describe('bundle-rantamuta entity-resolution', function () {
   it('keeps failing unresolved indirect binding when allowUnresolvedIndirect is not enabled', function () {
     const sword = createItem({ uuid: 'sword-1', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY with ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['with'],
@@ -248,6 +263,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('supports intransitive offramp with empty bindings', function () {
     const command = makeCommand({
+      syntaxRules: ['(empty)'],
       rules: {
         intransitive: {},
       },
@@ -268,6 +284,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('returns FORM_MISSING_DIRECT for intransitive input when verb declares direct rule', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -290,6 +307,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('returns FORM_MISSING_DIRECT for intransitive input when verb declares directIndirect rule', function () {
     const command = makeCommand({
+      syntaxRules: ['ENTITY in ENTITY'],
       rules: {
         directIndirect: {
           acceptedRelations: ['in'],
@@ -314,6 +332,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('returns FORM_MISSING_RELATION for intransitive input when verb declares indirect rule', function () {
     const command = makeCommand({
+      syntaxRules: ['to ENTITY'],
       rules: {
         indirect: {
           acceptedRelations: ['to'],
@@ -337,6 +356,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('returns FORM_MISSING_RELATION for intransitive input when verb declares relationOnly rule', function () {
     const command = makeCommand({
+      syntaxRules: ['off'],
       rules: {
         relationOnly: {
           acceptedRelations: ['off'],
@@ -377,6 +397,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('supports relationOnly rule shape with relation canonicalization', function () {
     const command = makeCommand({
+      syntaxRules: ['off'],
       rules: {
         relationOnly: {
           acceptedRelations: ['off'],
@@ -402,6 +423,7 @@ describe('bundle-rantamuta entity-resolution', function () {
   it('supports indirect rule shape (relation + indirect target, no direct target)', function () {
     const baby = createItem({ uuid: 'baby-1', name: 'baby', keywords: ['baby'] });
     const command = makeCommand({
+      syntaxRules: ['to ENTITY'],
       rules: {
         indirect: {
           acceptedRelations: ['to'],
@@ -457,6 +479,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const fromInventory = createItem({ uuid: 'inv-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const fromRoom = createItem({ uuid: 'room-sword', name: 'rusty sword', keywords: ['rusty', 'sword'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -488,6 +511,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'The weathered shrine is veined with old cracks.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -526,6 +550,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'A carved sword motif is set into the wall.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -562,6 +587,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       description: 'An engraved sword appears on the stone relief.',
     });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -595,6 +621,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('resolves go direction via room.exits scope', function () {
     const command = makeCommand({
+      syntaxRules: ['EXIT'],
       rules: {
         direct: {
           scopeProfile: {
@@ -633,6 +660,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       isNpc: true,
     };
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -660,6 +688,7 @@ describe('bundle-rantamuta entity-resolution', function () {
 
   it('uses exact direction matching for room.exits scope', function () {
     const command = makeCommand({
+      syntaxRules: ['EXIT'],
       rules: {
         direct: {
           scopeProfile: {
@@ -696,6 +725,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const player = createPlayer({ roomItems: [outer] });
 
     const shallowCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -705,6 +735,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       },
     });
     const deepCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -744,6 +775,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const player = createPlayer({ inventoryItems: [satchel] });
 
     const flatCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -753,6 +785,7 @@ describe('bundle-rantamuta entity-resolution', function () {
       },
     });
     const nestedCommand = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -796,6 +829,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     });
 
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -831,6 +865,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const appleOne = createItem({ uuid: 'apple-2', name: 'apple', keywords: ['apple'] });
     const appleTwo = createItem({ uuid: 'apple-1', name: 'apple', keywords: ['apple'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {
@@ -856,6 +891,7 @@ describe('bundle-rantamuta entity-resolution', function () {
     const calls = [];
     const coin = createItem({ uuid: 'coin-1', name: 'coin', keywords: ['coin'] });
     const command = makeCommand({
+      syntaxRules: ['ENTITY'],
       rules: {
         direct: {
           scopeProfile: {

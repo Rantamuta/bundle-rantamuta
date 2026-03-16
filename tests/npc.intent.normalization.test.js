@@ -51,6 +51,7 @@ describe('bundle-rantamuta npc intent normalization', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['(empty)'],
         entityResolution: {
           rules: {
             intransitive: {},

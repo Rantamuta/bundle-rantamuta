@@ -69,6 +69,7 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['ENTITY'],
         actorKindsAllowed: ['player'],
         entityResolution: {
           rules: {
@@ -145,6 +146,7 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['ENTITY'],
         actorKindsAllowed: ['npc'],
         entityResolution: {
           rules: {
@@ -221,6 +223,7 @@ describe('bundle-rantamuta actor-kind capture gating', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['ENTITY'],
         actorKindsAllowed: ['npc'],
         entityResolution: {
           rules: {

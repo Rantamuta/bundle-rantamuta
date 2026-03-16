@@ -105,6 +105,7 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
 
     const command = {
       metadata: {
+        syntaxRules: ['ENTITY'],
         entityResolution: {
           rules: {
             direct: {
