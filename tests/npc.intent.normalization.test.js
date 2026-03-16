@@ -203,4 +203,44 @@ describe('bundle-rantamuta npc intent normalization', function () {
     });
     assert.strictEqual(executed, false);
   });
+
+  it('rejects structured relation tokens that are not a single token', async function () {
+    let executed = false;
+    const actor = asActor({
+      name: 'Tomo',
+      isNpc: true,
+      room: { getBroadcastTargets: () => [actor] },
+      socket: { writable: false },
+    });
+    const state = withPlayerManager({
+      CommandManager: {
+        get: () => ({
+          execute: async () => {
+            executed = true;
+            return { ok: true, plan: { operations: [{ type: 'noop' }] }, render: { messages: [] } };
+          },
+        }),
+      },
+    }, actor);
+
+    const result = await dispatchNpcIntent(state, actor, {
+      kind: 'structured',
+      verb: 'put',
+      direct: ['apple'],
+      relationToken: 'in to',
+      indirect: ['chest'],
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: {
+        code: 'NPC_INTENT_INVALID',
+        details: {
+          reason: 'INVALID_RELATION_TOKEN',
+          field: 'relationToken',
+        },
+      },
+    });
+    assert.strictEqual(executed, false);
+  });
 });
