@@ -86,7 +86,7 @@ function displayLabel(span, entity, fallback) {
 module.exports = {
   aliases: ['place', 'drop'],
   metadata: compileCommandSyntaxMetadata('put', {
-    syntaxRules: ['ENTITY in ENTITY', 'ENTITY on ENTITY', 'ENTITY'],
+    syntaxRules: ['ENTITY in ENTITY', 'ENTITY into ENTITY', 'ENTITY on ENTITY', 'ENTITY onto ENTITY', 'ENTITY'],
     entityResolution: {
       rules: {
         direct: {
