@@ -117,7 +117,9 @@ describe('bundle-rantamuta put command', function () {
       putCommand.metadata.syntaxRules,
       [
         'ENTITY in ENTITY',
+        'ENTITY into ENTITY',
         'ENTITY on ENTITY',
+        'ENTITY onto ENTITY',
         'ENTITY',
       ],
       `expected put syntaxRules to include only the declared ordered forms, got: ${formatActual(putCommand.metadata.syntaxRules)}`
