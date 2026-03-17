@@ -9,7 +9,8 @@ const assert = require('node:assert/strict');
 const { spawnSync } = require('child_process');
 const { createScenarioHarness } = require('../../../../util/scenario-test-harness');
 
-function runScenario(args) {
+// These cases intentionally keep the full CLI/process boundary.
+function runScenarioCliSmoke(args) {
   return spawnSync(process.execPath, ['util/scenario-runner.js', ...args], {
     cwd: process.cwd(),
     encoding: 'utf8',
@@ -52,7 +53,7 @@ function stripAnsi(text) {
 }
 
 test('scenario runner help exits successfully', () => {
-  const result = runScenario(['--help']);
+  const result = runScenarioCliSmoke(['--help']);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Usage:/);
@@ -62,7 +63,7 @@ test('scenario runner help exits successfully', () => {
 });
 
 test('scenario runner executes command lines in order and continues on unknown commands', () => {
-  const result = runScenario(['--command', 'unknown-first', '--command', 'unknown-second', '--failOnUnknown']);
+  const result = runScenarioCliSmoke(['--command', 'unknown-first', '--command', 'unknown-second', '--failOnUnknown']);
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /unknown-first/);
@@ -80,7 +81,7 @@ test('scenario runner .scenario file parses directives and ignores comments/blan
     'utf8'
   );
 
-  const result = runScenario(['--scenario', scenarioPath, '--failOnUnknown']);
+  const result = runScenarioCliSmoke(['--scenario', scenarioPath, '--failOnUnknown']);
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /unknown-alpha/);
@@ -89,28 +90,28 @@ test('scenario runner .scenario file parses directives and ignores comments/blan
 });
 
 test('scenario runner reports error for missing --scenario value', () => {
-  const result = runScenario(['--scenario']);
+  const result = runScenarioCliSmoke(['--scenario']);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing value for --scenario/);
 });
 
 test('scenario runner reports error for missing --command value', () => {
-  const result = runScenario(['--command']);
+  const result = runScenarioCliSmoke(['--command']);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing value for --command/);
 });
 
 test('scenario runner reports error for missing --seedInventory value', () => {
-  const result = runScenario(['--seedInventory']);
+  const result = runScenarioCliSmoke(['--seedInventory']);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing value for --seedInventory/);
 });
 
 test('scenario runner reports error for missing --seedRoomItem value', () => {
-  const result = runScenario(['--seedRoomItem']);
+  const result = runScenarioCliSmoke(['--seedRoomItem']);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Missing value for --seedRoomItem/);
@@ -121,21 +122,21 @@ test('scenario runner reports error for unknown .scenario directive', () => {
   const scenarioPath = path.join(tmpDir, 'invalid.scenario');
   fs.writeFileSync(scenarioPath, 'unknownDirective: value\n', 'utf8');
 
-  const result = runScenario(['--scenario', scenarioPath]);
+  const result = runScenarioCliSmoke(['--scenario', scenarioPath]);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Unknown scenario directive "unknownDirective"/);
 });
 
 test('scenario runner rejects legacy --commandsFile flag', () => {
-  const result = runScenario(['--commandsFile', 'legacy.commands']);
+  const result = runScenarioCliSmoke(['--commandsFile', 'legacy.commands']);
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /--commandsFile is not supported\. Use --scenario <path>\./);
 });
 
 test('scenario runner legacy --command/--args fallback builds one command line', () => {
-  const result = runScenario(['--command', 'legacy-unknown', '--args', 'abc def']);
+  const result = runScenarioCliSmoke(['--command', 'legacy-unknown', '--args', 'abc def']);
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /legacy-unknown abc def/);
@@ -143,7 +144,7 @@ test('scenario runner legacy --command/--args fallback builds one command line',
 });
 
 test('scenario runner executes via input events and reports unknown text commands', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--room', 'test:room',
     '--command', 'look',
     '--command', 'eastward',
@@ -209,7 +210,7 @@ test('scenario runner canonicalizes n to go north', async () => {
 });
 
 test('scenario runner door-lock scenario validates open travel and re-locked block', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/door-lock.scenario',
   ]);
 
@@ -229,7 +230,7 @@ test('scenario runner door-lock scenario validates open travel and re-locked blo
 });
 
 test('scenario runner virtual-door scenario validates wrong-key failure and virtualized movement flow', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/virtual-door.scenario',
   ]);
 
@@ -246,7 +247,7 @@ test('scenario runner virtual-door scenario validates wrong-key failure and virt
 });
 
 test('scenario runner inline-tags scenario resolves room and direct-look tags', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/inline-tags.scenario',
   ]);
 
@@ -265,7 +266,7 @@ test('scenario runner inline-tags scenario resolves room and direct-look tags', 
 });
 
 test('scenario runner codex gallery exhibit resolves inline tag swaps', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/perception-gallery-inline-tags.scenario',
   ]);
 
@@ -279,7 +280,7 @@ test('scenario runner codex gallery exhibit resolves inline tag swaps', () => {
 });
 
 test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--scenario', 'bundles/bundle-rantamuta/tests/scenarios/tomo-bell-courtyard.scenario',
   ]);
 
@@ -346,7 +347,7 @@ test('scenario runner traverses lab loop with go and returns to Test Lab', async
 });
 
 test('scenario runner get apple narrates successful take', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--room', 'test:lab',
     '--command', 'get apple',
   ]);
@@ -357,7 +358,7 @@ test('scenario runner get apple narrates successful take', () => {
 });
 
 test('scenario runner put apple in chest narrates successful put', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--room', 'test:lab',
     '--command', 'get apple',
     '--command', 'put apple in chest',
@@ -404,7 +405,7 @@ test('scenario runner non-json output echoes commands and omits diagnostic [run]
 });
 
 test('scenario runner --json run event includes parse fields and lookup-based outcome', () => {
-  const result = runScenario([
+  const result = runScenarioCliSmoke([
     '--json',
     '--room', 'test:room',
     '--command', 'l',
@@ -481,7 +482,7 @@ test('scenario runner seeds inventory and room items before command execution', 
     'utf8'
   );
 
-  const result = runScenario(['--json', '--scenario', scenarioPath]);
+  const result = runScenarioCliSmoke(['--json', '--scenario', scenarioPath]);
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const payload = JSON.parse(result.stdout);
