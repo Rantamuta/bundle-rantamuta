@@ -18,20 +18,13 @@ function runScenarioCliSmoke(args) {
 }
 
 let sharedHarnessPromise = null;
-let sharedHarnessQueue = Promise.resolve();
 
 function runHarnessScenario(args) {
   if (!sharedHarnessPromise) {
     sharedHarnessPromise = Promise.resolve(createScenarioHarness());
   }
 
-  const scheduled = sharedHarnessQueue.then(async () => {
-    const harness = await sharedHarnessPromise;
-    return harness.runScenario(args);
-  });
-
-  sharedHarnessQueue = scheduled.catch(() => undefined);
-  return scheduled;
+  return sharedHarnessPromise.then(harness => harness.runScenario(args));
 }
 
 test.after(async () => {
@@ -39,7 +32,6 @@ test.after(async () => {
     return;
   }
 
-  await sharedHarnessQueue.catch(() => undefined);
   const harness = await sharedHarnessPromise;
   await harness.close();
 });
@@ -378,6 +370,38 @@ test('scenario runner inventory shorthand "i" renders inventory output', async (
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /i/);
   assert.match(result.stdout, /You have nothing\./);
+});
+
+test('scenario runner harness-backed runs clean up seeded inventory and room placement between runs', async () => {
+  const firstInventory = await runHarnessScenario([
+    '--room', 'test:room',
+    '--seedInventory', 'test:rustySword',
+    '--command', 'i',
+  ]);
+  const secondInventory = await runHarnessScenario([
+    '--room', 'test:room',
+    '--seedInventory', 'test:rustySword',
+    '--command', 'i',
+  ]);
+  const firstRoom = await runHarnessScenario([
+    '--room', 'test:room',
+    '--seedRoomItem', 'test:oldChest',
+    '--command', 'look',
+  ]);
+  const secondRoom = await runHarnessScenario([
+    '--room', 'test:room',
+    '--seedRoomItem', 'test:oldChest',
+    '--command', 'look',
+  ]);
+
+  for (const result of [firstInventory, secondInventory, firstRoom, secondRoom]) {
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  }
+
+  assert.equal((firstInventory.stdout.match(/- rusty sword/g) || []).length, 1);
+  assert.equal((secondInventory.stdout.match(/- rusty sword/g) || []).length, 1);
+  assert.equal((firstRoom.stdout.match(/An old chest sits here\./g) || []).length, 1);
+  assert.equal((secondRoom.stdout.match(/An old chest sits here\./g) || []).length, 1);
 });
 
 test('scenario runner routes malformed put relation text to put validation', async () => {
