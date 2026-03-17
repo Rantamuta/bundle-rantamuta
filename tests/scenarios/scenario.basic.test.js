@@ -7,6 +7,7 @@ const path = require('path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('child_process');
+const { createScenarioHarness } = require('../../../../util/scenario-test-harness');
 
 function runScenario(args) {
   return spawnSync(process.execPath, ['util/scenario-runner.js', ...args], {
@@ -14,6 +15,33 @@ function runScenario(args) {
     encoding: 'utf8',
   });
 }
+
+let sharedHarnessPromise = null;
+let sharedHarnessQueue = Promise.resolve();
+
+function runHarnessScenario(args) {
+  if (!sharedHarnessPromise) {
+    sharedHarnessPromise = Promise.resolve(createScenarioHarness());
+  }
+
+  const scheduled = sharedHarnessQueue.then(async () => {
+    const harness = await sharedHarnessPromise;
+    return harness.runScenario(args);
+  });
+
+  sharedHarnessQueue = scheduled.catch(() => undefined);
+  return scheduled;
+}
+
+test.after(async () => {
+  if (!sharedHarnessPromise) {
+    return;
+  }
+
+  await sharedHarnessQueue.catch(() => undefined);
+  const harness = await sharedHarnessPromise;
+  await harness.close();
+});
 
 function stripAnsi(text) {
   return String(text).replace(
@@ -129,8 +157,8 @@ test('scenario runner executes via input events and reports unknown text command
   assert.match(result.stdout, /What\?/);
 });
 
-test('scenario runner can look in test:lab', () => {
-  const result = runScenario([
+test('scenario runner can look in test:lab', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'look',
   ]);
@@ -143,8 +171,8 @@ test('scenario runner can look in test:lab', () => {
   assert.match(result.stdout, /A practice chest waits here\./);
 });
 
-test('scenario runner canonicalizes l to look', () => {
-  const result = runScenario([
+test('scenario runner canonicalizes l to look', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'l',
   ]);
@@ -156,8 +184,8 @@ test('scenario runner canonicalizes l to look', () => {
   assert.match(result.stdout, /A practice chest waits here\./);
 });
 
-test('scenario runner canonicalizes east to go east', () => {
-  const result = runScenario([
+test('scenario runner canonicalizes east to go east', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:labWest',
     '--command', 'east',
     '--command', 'look',
@@ -169,8 +197,8 @@ test('scenario runner canonicalizes east to go east', () => {
   assert.match(result.stdout, /Test Lab/);
 });
 
-test('scenario runner canonicalizes n to go north', () => {
-  const result = runScenario([
+test('scenario runner canonicalizes n to go north', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'n',
   ]);
@@ -265,8 +293,8 @@ test('scenario runner codex Tomo scenario shows caretaker guidance flow', () => 
   assert.equal(introMatches.length, 1, 'expected Tomo intro line exactly once');
 });
 
-test('scenario runner shows asymmetry note in north room when south->north door is closed', () => {
-  const result = runScenario([
+test('scenario runner shows asymmetry note in north room when south->north door is closed', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:northDoorRoom',
     '--command', 'look',
   ]);
@@ -276,8 +304,8 @@ test('scenario runner shows asymmetry note in north room when south->north door 
   assert.match(result.stdout, /The south doorway still looks push-through from here, even while the lock holds from the other side\./);
 });
 
-test('scenario runner canonicalizes x <thing> to look <thing>', () => {
-  const result = runScenario([
+test('scenario runner canonicalizes x <thing> to look <thing>', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'x chest',
   ]);
@@ -287,8 +315,8 @@ test('scenario runner canonicalizes x <thing> to look <thing>', () => {
   assert.match(result.stdout, /A lightweight chest meant for put\/take testing\./);
 });
 
-test('scenario runner canonicalizes look at <thing> to look <thing>', () => {
-  const result = runScenario([
+test('scenario runner canonicalizes look at <thing> to look <thing>', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'look at chest',
   ]);
@@ -298,8 +326,8 @@ test('scenario runner canonicalizes look at <thing> to look <thing>', () => {
   assert.match(result.stdout, /A lightweight chest meant for put\/take testing\./);
 });
 
-test('scenario runner traverses lab loop with go and returns to Test Lab', () => {
-  const result = runScenario([
+test('scenario runner traverses lab loop with go and returns to Test Lab', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'go north',
     '--command', 'go west',
@@ -340,8 +368,8 @@ test('scenario runner put apple in chest narrates successful put', () => {
   assert.match(result.stdout, /You put the apple in the chest\./);
 });
 
-test('scenario runner inventory shorthand "i" renders inventory output', () => {
-  const result = runScenario([
+test('scenario runner inventory shorthand "i" renders inventory output', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'i',
   ]);
@@ -351,8 +379,8 @@ test('scenario runner inventory shorthand "i" renders inventory output', () => {
   assert.match(result.stdout, /You have nothing\./);
 });
 
-test('scenario runner routes malformed put relation text to put validation', () => {
-  const result = runScenario([
+test('scenario runner routes malformed put relation text to put validation', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:room',
     '--command', 'put in old chest',
     '--failOnUnknown',
@@ -363,8 +391,8 @@ test('scenario runner routes malformed put relation text to put validation', () 
   assert.match(result.stdout, /Put what\?/);
 });
 
-test('scenario runner non-json output echoes commands and omits diagnostic [run]/[info] lines', () => {
-  const result = runScenario([
+test('scenario runner non-json output echoes commands and omits diagnostic [run]/[info] lines', async () => {
+  const result = await runHarnessScenario([
     '--room', 'test:lab',
     '--command', 'look',
   ]);
@@ -406,8 +434,8 @@ test('scenario runner --json run event includes parse fields and lookup-based ou
   assert.equal(runEvents[2].outcome.phase, 'lookup');
 });
 
-test('scenario runner --json filters blank and ANSI-only output lines by default', () => {
-  const result = runScenario([
+test('scenario runner --json filters blank and ANSI-only output lines by default', async () => {
+  const result = await runHarnessScenario([
     '--json',
     '--room', 'test:room',
     '--command', 'look',
@@ -423,8 +451,8 @@ test('scenario runner --json filters blank and ANSI-only output lines by default
   }
 });
 
-test('scenario runner --json --whitespace keeps blank and ANSI-only output lines', () => {
-  const result = runScenario([
+test('scenario runner --json --whitespace keeps blank and ANSI-only output lines', async () => {
+  const result = await runHarnessScenario([
     '--json',
     '--whitespace',
     '--room', 'test:room',
