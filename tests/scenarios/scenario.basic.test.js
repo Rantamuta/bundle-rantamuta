@@ -410,6 +410,83 @@ test('scenario runner harness-backed runs clean up seeded inventory and room pla
   assert.equal((secondRoom.stdout.match(/An old chest sits here\./g) || []).length, 1);
 });
 
+test('scenario runner harness-backed --json preserves shorthand canonicalization metadata', async () => {
+  const eastResult = await runHarnessScenario([
+    '--json',
+    '--room', 'test:labWest',
+    '--command', 'east',
+  ]);
+  const examineResult = await runHarnessScenario([
+    '--json',
+    '--room', 'test:lab',
+    '--command', 'x chest',
+  ]);
+
+  assert.equal(eastResult.status, 0, eastResult.stderr || eastResult.stdout);
+  assert.equal(examineResult.status, 0, examineResult.stderr || examineResult.stdout);
+
+  const eastPayload = JSON.parse(eastResult.stdout);
+  const eastRunEvent = eastPayload.events.find(event => event.type === 'run');
+  assert.ok(eastRunEvent);
+  assert.equal(eastRunEvent.parse.intentToken, 'go');
+  assert.equal(eastRunEvent.parse.canonicalInput, 'go east');
+  assert.equal(eastRunEvent.lookup.commandFound, true);
+  assert.equal(eastRunEvent.lookup.commandName, 'go');
+  assert.equal(eastRunEvent.outcome.code, 'OK');
+
+  const examinePayload = JSON.parse(examineResult.stdout);
+  const examineRunEvent = examinePayload.events.find(event => event.type === 'run');
+  assert.ok(examineRunEvent);
+  assert.equal(examineRunEvent.parse.intentToken, 'look');
+  assert.equal(examineRunEvent.parse.canonicalInput, 'look chest');
+  assert.equal(examineRunEvent.lookup.commandFound, true);
+  assert.equal(examineRunEvent.lookup.commandName, 'look');
+  assert.equal(examineRunEvent.outcome.code, 'OK');
+});
+
+test('scenario runner harness-backed --failOnUnknown does not misclassify shorthand commands', async () => {
+  const result = await runHarnessScenario([
+    '--room', 'test:labWest',
+    '--command', 'east',
+    '--failOnUnknown',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Test Lab/);
+});
+
+test('scenario runner harness-backed --json matches CLI shorthand parse and lookup semantics', async () => {
+  const cliResult = runScenarioCliSmoke([
+    '--json',
+    '--room', 'test:labWest',
+    '--command', 'east',
+  ]);
+  const harnessResult = await runHarnessScenario([
+    '--json',
+    '--room', 'test:labWest',
+    '--command', 'east',
+  ]);
+
+  assert.equal(cliResult.status, 0, cliResult.stderr || cliResult.stdout);
+  assert.equal(harnessResult.status, 0, harnessResult.stderr || harnessResult.stdout);
+
+  const cliRunEvent = JSON.parse(cliResult.stdout).events.find(event => event.type === 'run');
+  const harnessRunEvent = JSON.parse(harnessResult.stdout).events.find(event => event.type === 'run');
+
+  assert.deepEqual(
+    {
+      parse: cliRunEvent.parse,
+      lookup: cliRunEvent.lookup,
+      outcome: cliRunEvent.outcome,
+    },
+    {
+      parse: harnessRunEvent.parse,
+      lookup: harnessRunEvent.lookup,
+      outcome: harnessRunEvent.outcome,
+    }
+  );
+});
+
 test('scenario runner routes malformed put relation text to put validation', async () => {
   const result = await runHarnessScenario([
     '--room', 'test:room',
