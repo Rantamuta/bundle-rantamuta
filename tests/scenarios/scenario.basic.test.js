@@ -4,10 +4,16 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const test = require('node:test');
+const { after, describe, it } = require('mocha');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('child_process');
 const { createScenarioHarness } = require('../../../../util/scenario-test-harness');
+
+const test = it;
+test.after = after;
+
+describe('scenario runner', function () {
+  this.timeout(30000);
 
 // These cases intentionally keep the full CLI/process boundary.
 function runScenarioCliSmoke(args) {
@@ -526,4 +532,5 @@ test('scenario runner seeds inventory and room items before command execution', 
     itemName: 'old chest',
     room: 'test:room',
   });
+});
 });
