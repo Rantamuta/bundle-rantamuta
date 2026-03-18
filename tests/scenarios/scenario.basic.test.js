@@ -33,6 +33,15 @@ function runHarnessScenario(args) {
   return sharedHarnessPromise.then(harness => harness.runScenario(args));
 }
 
+async function runIsolatedHarnessScenario(args) {
+  const harness = createScenarioHarness({ isolated: true });
+  try {
+    return await harness.runScenario(args);
+  } finally {
+    await harness.close();
+  }
+}
+
 test.after(async () => {
   if (!sharedHarnessPromise) {
     return;
@@ -408,6 +417,22 @@ test('scenario runner harness-backed runs clean up seeded inventory and room pla
   assert.equal((secondInventory.stdout.match(/- rusty sword/g) || []).length, 1);
   assert.equal((firstRoom.stdout.match(/An old chest sits here\./g) || []).length, 1);
   assert.equal((secondRoom.stdout.match(/An old chest sits here\./g) || []).length, 1);
+});
+
+test('scenario runner isolated harness reruns mutating scenarios from a fresh runtime', async () => {
+  const firstResult = await runIsolatedHarnessScenario([
+    '--room', 'test:lab',
+    '--command', 'get apple',
+  ]);
+  const secondResult = await runIsolatedHarnessScenario([
+    '--room', 'test:lab',
+    '--command', 'get apple',
+  ]);
+
+  for (const result of [firstResult, secondResult]) {
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /You take the apple\./);
+  }
 });
 
 test('scenario runner harness-backed --json preserves shorthand canonicalization metadata', async () => {
