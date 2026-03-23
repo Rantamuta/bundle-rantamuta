@@ -66,6 +66,22 @@ describe('bundle-rantamuta conversation definition service', function () {
     disposeConversationDefinitionService(state);
   });
 
+  it('uses grammatical fallback no-response text for unnamed NPCs', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const state = createState(tempRoot);
+    const service = ensureConversationDefinitionService(state);
+
+    const outcome = service.resolveConversationBinding(
+      { id: 'actorPlanner', metadata: { conversation: path.resolve(tempRoot, 'outside.conversation.yml') } },
+      { bundle: 'bundle-test', name: 'test' }
+    );
+
+    assert.strictEqual(outcome.status, 'broken');
+    assert.strictEqual(outcome.error.playerMessage, 'They have nothing to say.');
+
+    disposeConversationDefinitionService(state);
+  });
+
   it('rejects metadata.conversation traversal outside the NPC area directory', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
     const state = createState(tempRoot);
