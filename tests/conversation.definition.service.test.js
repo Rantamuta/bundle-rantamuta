@@ -55,7 +55,7 @@ describe('bundle-rantamuta conversation definition service', function () {
     const service = ensureConversationDefinitionService(state);
 
     const outcome = service.resolveConversationBinding(
-      { id: 'actorPlanner', metadata: { conversation: path.resolve(tempRoot, 'outside.conversation.yml') } },
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: path.resolve(tempRoot, 'outside.conversation.yml') } },
       { bundle: 'bundle-test', name: 'test' }
     );
 

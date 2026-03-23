@@ -61,7 +61,6 @@ describe('bundle-rantamuta conversation definition validation', function () {
       initial: 'greeting',
       states: {
         greeting: {
-          auto: [{ target: 'missing_auto' }],
           events: {
             continue: {
               target: 'missing_event',
@@ -76,15 +75,18 @@ describe('bundle-rantamuta conversation definition validation', function () {
             },
           },
         },
+        routing_only: {
+          auto: [{ target: 'missing_auto' }],
+        },
       },
     }, 'test:missingTargets');
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'CONVERSATION_AUTO_TARGET_MISSING',
       'CONVERSATION_EVENT_TARGET_MISSING',
       'CONVERSATION_TRANSITION_TARGET_MISSING',
       'CONVERSATION_DEFAULT_TARGET_MISSING',
+      'CONVERSATION_AUTO_TARGET_MISSING',
     ]);
   });
 
