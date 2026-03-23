@@ -9,6 +9,7 @@ describe('test area actor hook data wiring', function () {
   const testAreaPath = path.resolve(__dirname, '../areas/test');
   const npcsPath = path.join(testAreaPath, 'npcs.yml');
   const roomsPath = path.join(testAreaPath, 'rooms.yml');
+  const conversationPath = path.join(testAreaPath, 'conversations', 'actorPlanner.conversation.yml');
 
   it('defines actor-hook harness NPCs in test npcs.yml', function () {
     assert.ok(fs.existsSync(npcsPath), 'expected test npcs.yml to exist');
@@ -17,6 +18,7 @@ describe('test area actor hook data wiring', function () {
     assert.match(npcsText, /^-\s*id:\s*actorPlanner\b/m);
     assert.match(npcsText, /^-\s*id:\s*actorGatekeeper\b/m);
     assert.match(npcsText, /^\s*script:\s*actorHookHarness\b/m);
+    assert.match(npcsText, /^\s*conversation:\s*conversations\/actorPlanner\.conversation\.yml\b/m);
   });
 
   it('spawns the actor-hook harness NPCs in the test actorHooks room', function () {
@@ -29,5 +31,13 @@ describe('test area actor hook data wiring', function () {
     assert.match(blockText, /^\s*npcs:\s*$/m);
     assert.match(blockText, /^\s*-\s*test:actorPlanner\s*$/m);
     assert.match(blockText, /^\s*-\s*test:actorGatekeeper\s*$/m);
+  });
+
+  it('includes the actor planner authored conversation fixture in the test area', function () {
+    assert.ok(fs.existsSync(conversationPath), 'expected actor planner conversation fixture to exist');
+
+    const conversationText = fs.readFileSync(conversationPath, 'utf8');
+    assert.match(conversationText, /^id:\s*actor_planner\b/m);
+    assert.match(conversationText, /^initial:\s*greeting\b/m);
   });
 });
