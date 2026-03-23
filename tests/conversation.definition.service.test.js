@@ -245,4 +245,39 @@ describe('bundle-rantamuta conversation definition service', function () {
 
     disposeConversationDefinitionService(state);
   });
+
+  it('recomputes cached broken player messages for each NPC lookup', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const logger = {
+      errors: [],
+      error(message) {
+        this.errors.push(String(message));
+      },
+    };
+    const state = {
+      ...createState(tempRoot),
+      Logger: logger,
+    };
+    const service = ensureConversationDefinitionService(state);
+    const area = { bundle: 'bundle-test', name: 'test' };
+
+    const first = service.getConversationDefinitionForNpc(
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: 'conversations/shared-missing.conversation.yml' } },
+      area
+    );
+    const second = service.getConversationDefinitionForNpc(
+      { id: 'actorGatekeeper', name: 'actor gatekeeper', metadata: { conversation: 'conversations/shared-missing.conversation.yml' } },
+      area
+    );
+
+    assert.strictEqual(first.status, 'broken');
+    assert.strictEqual(second.status, 'broken');
+    assert.strictEqual(first.error.code, 'CONVERSATION_FILE_MISSING');
+    assert.strictEqual(second.error.code, 'CONVERSATION_FILE_MISSING');
+    assert.strictEqual(first.error.playerMessage, 'actor planner has nothing to say.');
+    assert.strictEqual(second.error.playerMessage, 'actor gatekeeper has nothing to say.');
+    assert.strictEqual(logger.errors.length, 1);
+
+    disposeConversationDefinitionService(state);
+  });
 });
