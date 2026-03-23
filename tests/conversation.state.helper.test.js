@@ -84,6 +84,18 @@ describe('bundle-rantamuta conversation state helper', function () {
     }, /must not be undefined/);
   });
 
+  it('rejects non-string conversation state writes so persisted state remains a state id', function () {
+    const player = { metadata: {} };
+
+    assert.throws(() => {
+      createSetConversationStateInstruction(player, 'codex:tomo', { state: 'greeting' });
+    }, /must be a string/);
+
+    assert.throws(() => {
+      createSetConversationStateInstruction(player, 'codex:tomo', ['greeting']);
+    }, /must be a string/);
+  });
+
   it('preserves the per-npc object root for future sibling fields when applying the instruction', function () {
     const player = { metadata: {} };
     const instruction = createSetConversationStateInstruction(player, 'codex:tomo', 'greeting');
