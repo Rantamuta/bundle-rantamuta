@@ -76,6 +76,14 @@ describe('bundle-rantamuta conversation state helper', function () {
     });
   });
 
+  it('rejects undefined conversation state writes so absence is not persisted ambiguously', function () {
+    const player = { metadata: {} };
+
+    assert.throws(() => {
+      createSetConversationStateInstruction(player, 'codex:tomo', undefined);
+    }, /must not be undefined/);
+  });
+
   it('preserves the per-npc object root for future sibling fields when applying the instruction', function () {
     const player = { metadata: {} };
     const instruction = createSetConversationStateInstruction(player, 'codex:tomo', 'greeting');
