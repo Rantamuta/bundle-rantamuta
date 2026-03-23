@@ -24,6 +24,12 @@ describe('bundle-rantamuta conversation state helper', function () {
     assert.strictEqual(getConversationStatePath('codex:tomo'), 'conversations.codex.tomo.state');
   });
 
+  it('keeps same-named NPC ids in different areas on different persistence paths', function () {
+    assert.strictEqual(getConversationStatePath('forest:tomo'), 'conversations.forest.tomo.state');
+    assert.strictEqual(getConversationStatePath('rantamuta:tomo'), 'conversations.rantamuta.tomo.state');
+    assert.notStrictEqual(getConversationStatePath('forest:tomo'), getConversationStatePath('rantamuta:tomo'));
+  });
+
   it('reads stored conversation state without mutating metadata', function () {
     const player = {
       metadata: {
@@ -85,5 +91,29 @@ describe('bundle-rantamuta conversation state helper', function () {
         },
       },
     });
+  });
+
+  it('keeps persisted state for same-named NPC ids independent across areas', function () {
+    const player = { metadata: {} };
+
+    applyMutationInstruction({}, createSetConversationStateInstruction(player, 'forest:tomo', 'warning'));
+    applyMutationInstruction({}, createSetConversationStateInstruction(player, 'rantamuta:tomo', 'greeting'));
+
+    assert.strictEqual(getConversationState(player, 'forest:tomo'), 'warning');
+    assert.strictEqual(getConversationState(player, 'rantamuta:tomo'), 'greeting');
+  });
+
+  it('rejects npcRef values that do not have exactly one separator', function () {
+    assert.throws(() => getConversationNpcIdentity('tomo'), /<areaId>:<npcId>/);
+    assert.throws(() => getConversationNpcIdentity('codex:tomo:extra'), /<areaId>:<npcId>/);
+  });
+
+  it('rejects npcRef values that would produce unsafe metadata path segments', function () {
+    assert.throws(() => getConversationNpcIdentity('codex:__proto__'), /safe metadata path segments/);
+    assert.throws(() => getConversationNpcIdentity('__proto__:tomo'), /safe metadata path segments/);
+  });
+
+  it('does not fall back to display name or runtime uuid objects when npcRef is invalid', function () {
+    assert.throws(() => getConversationNpcIdentity({ entityReference: 'codex:tomo', name: 'Tomo', uuid: 'npc-123' }), /must be a string/);
   });
 });
