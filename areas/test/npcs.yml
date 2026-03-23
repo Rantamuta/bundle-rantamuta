@@ -4,6 +4,7 @@
   description: "A patient harness NPC calibrated to contribute extra plan output."
   script: actorHookHarness
   metadata:
+    conversation: conversations/actorPlanner.conversation.yml
     actorHarness:
       planVerb: say
       planMessage: "actor-plan-fired"

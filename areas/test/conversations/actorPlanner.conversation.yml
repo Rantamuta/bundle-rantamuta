@@ -1,0 +1,11 @@
+id: actor_planner
+initial: greeting
+
+states:
+  greeting:
+    events:
+      continue:
+        target: done
+
+  done:
+    final: true
