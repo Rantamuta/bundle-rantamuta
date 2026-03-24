@@ -66,4 +66,22 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.strictEqual(frozen.payload, value.payload);
     assert.strictEqual(frozen.typed, value.typed);
   });
+
+  it('throws on Map values because they are unsupported', function () {
+    assert.throws(
+      function () {
+        deepFreeze({ mapping: new Map([['k', { count: 1 }]]) });
+      },
+      /does not support Map or Set values/
+    );
+  });
+
+  it('throws on Set values because they are unsupported', function () {
+    assert.throws(
+      function () {
+        deepFreeze({ values: new Set(['x']) });
+      },
+      /does not support Map or Set values/
+    );
+  });
 });
