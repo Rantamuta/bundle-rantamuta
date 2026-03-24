@@ -53,4 +53,17 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.strictEqual(calls, 0);
     assert.ok(Object.isFrozen(value));
   });
+
+  it('does not throw when object graph includes Buffer or TypedArray values', function () {
+    const value = {
+      payload: Buffer.from([1, 2, 3]),
+      typed: new Uint16Array([7, 8]),
+    };
+
+    const frozen = deepFreeze(value);
+
+    assert.ok(Object.isFrozen(frozen));
+    assert.strictEqual(frozen.payload, value.payload);
+    assert.strictEqual(frozen.typed, value.typed);
+  });
 });
