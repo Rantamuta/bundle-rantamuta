@@ -153,6 +153,42 @@ describe('bundle-rantamuta conversation runtime', function () {
     assert.strictEqual(calls[0].context.q, q);
   });
 
+  it('exposes only the shared q.* surface and standard evaluation context fields to conditions', function () {
+    const calls = [];
+    const q = { actorHasItem: () => true };
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states: {
+          greeting: {
+            events: {
+              continue: {
+                condition: { allow: 'show-continue' },
+                target: 'done',
+              },
+            },
+          },
+          done: { final: true },
+        },
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      q,
+      conditionEvaluator: createConditionEvaluator(['show-continue'], q, calls),
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(Object.keys(calls[0].context).sort(), [
+      'definition',
+      'eventId',
+      'index',
+      'npcRef',
+      'phase',
+      'player',
+      'q',
+      'stateId',
+    ]);
+  });
+
   it('treats player input as read-only for evaluation purposes', function () {
     const player = createPlayer({ conversations: { test: { actorPlanner: { state: 'greeting' } } } });
     Object.freeze(player.metadata.conversations.test.actorPlanner);
@@ -798,6 +834,39 @@ describe('bundle-rantamuta conversation runtime', function () {
     assert.deepStrictEqual(result.stateEntryEffects, [{ type: 'setPlayerMetadata', key: 'x', value: 'y' }]);
   });
 
+  it('does not execute returned transition effects', function () {
+    let effectExecuted = false;
+    const transitionEffect = {
+      type: 'emitMessage',
+      execute() {
+        effectExecuted = true;
+      },
+    };
+
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states: {
+          greeting: {
+            events: {
+              continue: {
+                effects: [transitionEffect],
+                target: 'done',
+              },
+            },
+          },
+          done: { final: true },
+        },
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      eventId: 'continue',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(effectExecuted, false);
+    assert.deepStrictEqual(result.transitionEffects, [transitionEffect]);
+  });
+
   it('keeps transition effects and state-entry effects separately identifiable in the result or trace', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
@@ -941,6 +1010,47 @@ describe('bundle-rantamuta conversation runtime', function () {
     assert.strictEqual(result.trace.settledState, 'done');
   });
 
+  it('records the important evaluation steps in a stable trace shape for successful event settling', function () {
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states: {
+          greeting: {
+            events: {
+              continue: { target: 'routing' },
+            },
+          },
+          routing: {
+            auto: [{ target: 'done' }],
+          },
+          done: { final: true },
+        },
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      eventId: 'continue',
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(result.trace, {
+      mode: 'event',
+      inputEventId: 'continue',
+      sourceState: 'greeting',
+      selectedEvent: { eventId: 'continue', source: 'event' },
+      selectedTransition: { source: 'event', target: 'routing', index: null },
+      destinationState: 'routing',
+      settledState: 'done',
+      final: true,
+      visibleEventIds: [],
+      enteredStates: ['routing', 'done'],
+      autoVisitedStates: ['routing', 'done'],
+      conditionChecks: [
+        { phase: 'event', stateId: 'greeting', eventId: 'continue', index: null, passed: true },
+        { phase: 'auto', stateId: 'routing', eventId: null, index: 0, passed: true },
+      ],
+      errors: [],
+    });
+  });
+
   it('fails explicitly when one auto chain revisits a state', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
@@ -965,6 +1075,40 @@ describe('bundle-rantamuta conversation runtime', function () {
 
     assert.strictEqual(result.ok, false);
     assert.strictEqual(result.code, 'CONVERSATION_RUNTIME_AUTO_LOOP');
+  });
+
+  it('records visited states and loop failure reason in the trace when auto routing loops', function () {
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states: {
+          greeting: {
+            events: {
+              continue: { target: 'loop_a' },
+            },
+          },
+          loop_a: {
+            auto: [{ target: 'loop_b' }],
+          },
+          loop_b: {
+            auto: [{ target: 'loop_a' }],
+          },
+        },
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      eventId: 'continue',
+    });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'CONVERSATION_RUNTIME_AUTO_LOOP');
+    assert.deepStrictEqual(result.trace.autoVisitedStates, ['loop_a', 'loop_b']);
+    assert.deepStrictEqual(result.trace.enteredStates, ['loop_a', 'loop_b']);
+    assert.deepStrictEqual(result.trace.errors, [
+      {
+        code: 'CONVERSATION_RUNTIME_AUTO_LOOP',
+        message: 'Conversation auto routing revisited state "loop_a".',
+      },
+    ]);
   });
 
   it('fails explicitly when one auto chain exceeds the 32-hop hard cap', function () {
@@ -996,6 +1140,48 @@ describe('bundle-rantamuta conversation runtime', function () {
 
     assert.strictEqual(result.ok, false);
     assert.strictEqual(result.code, 'CONVERSATION_RUNTIME_AUTO_HOP_LIMIT');
+  });
+
+  it('records visited states and hop-limit failure reason in the trace when auto routing exceeds the cap', function () {
+    /** @type {Record<string, *>} */
+    const states = {
+      greeting: {
+        events: {
+          continue: { target: 'step_0' },
+        },
+      },
+    };
+
+    for (let i = 0; i <= AUTO_HOP_LIMIT; i += 1) {
+      states[`step_${i}`] = {
+        auto: [{ target: `step_${i + 1}` }],
+      };
+    }
+
+    states[`step_${AUTO_HOP_LIMIT + 1}`] = {
+      final: true,
+    };
+
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states,
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      eventId: 'continue',
+    });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'CONVERSATION_RUNTIME_AUTO_HOP_LIMIT');
+    assert.strictEqual(result.trace.autoVisitedStates.length, AUTO_HOP_LIMIT + 1);
+    assert.strictEqual(result.trace.autoVisitedStates[0], 'step_0');
+    assert.strictEqual(result.trace.autoVisitedStates[AUTO_HOP_LIMIT], `step_${AUTO_HOP_LIMIT}`);
+    assert.deepStrictEqual(result.trace.errors, [
+      {
+        code: 'CONVERSATION_RUNTIME_AUTO_HOP_LIMIT',
+        message: `Conversation auto routing exceeded the ${AUTO_HOP_LIMIT}-hop limit.`,
+      },
+    ]);
   });
 
   it('marks final states clearly in the evaluator result', function () {

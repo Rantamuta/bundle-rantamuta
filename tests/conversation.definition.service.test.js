@@ -382,4 +382,73 @@ describe('bundle-rantamuta conversation definition service', function () {
     assert.deepStrictEqual(findings, []);
     disposeConversationDefinitionService(state);
   });
+
+  it('surfaces evaluator-readiness failures during bundle validation', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const areaRoot = path.join(tempRoot, 'bundle-test', 'areas', 'test');
+    const conversationPath = path.join(areaRoot, 'conversations', 'actorPlanner.conversation.yml');
+    fs.mkdirSync(path.dirname(conversationPath), { recursive: true });
+    fs.writeFileSync(conversationPath, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting: malformed',
+      '  done:',
+      '    final: true',
+      '',
+    ].join('\n'), 'utf8');
+
+    const state = createValidatorState(tempRoot, [
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: 'conversations/actorPlanner.conversation.yml' } },
+    ]);
+
+    const findings = _validateConversationDefinitions(state);
+
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0].level, 'error');
+    assert.strictEqual(findings[0].code, 'CONVERSATION_RUNTIME_STATE_MISSING');
+    assert.strictEqual(findings[0].bundle, 'bundle-test');
+    assert.strictEqual(findings[0].area, 'test');
+    assert.strictEqual(findings[0].path, 'conversations/actorPlanner.conversation.yml');
+
+    disposeConversationDefinitionService(state);
+  });
+
+  it('uses the same conversation loading path as runtime use during bundle validation', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const areaRoot = path.join(tempRoot, 'bundle-test', 'areas', 'test');
+    const conversationPath = path.join(areaRoot, 'conversations', 'actorPlanner.conversation.yml');
+    fs.mkdirSync(path.dirname(conversationPath), { recursive: true });
+    fs.writeFileSync(conversationPath, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        target: done',
+      '  done:',
+      '    final: true',
+      '',
+    ].join('\n'), 'utf8');
+
+    const state = createValidatorState(tempRoot, [
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: 'conversations/actorPlanner.conversation.yml' } },
+    ]);
+    const service = ensureConversationDefinitionService(state);
+    const originalGetConversationDefinitionForNpc = service.getConversationDefinitionForNpc.bind(service);
+    let callCount = 0;
+
+    service.getConversationDefinitionForNpc = function wrappedGetConversationDefinitionForNpc(npc, area) {
+      callCount += 1;
+      return originalGetConversationDefinitionForNpc(npc, area);
+    };
+
+    const findings = _validateConversationDefinitions(state);
+
+    assert.deepStrictEqual(findings, []);
+    assert.strictEqual(callCount, 1);
+
+    disposeConversationDefinitionService(state);
+  });
 });

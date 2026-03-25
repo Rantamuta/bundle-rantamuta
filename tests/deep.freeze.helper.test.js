@@ -130,6 +130,20 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.strictEqual(deepFreeze(undefined), undefined);
   });
 
+  it('supports the branded DeepFrozen typedef expected by evaluator-facing APIs', function () {
+    /** @type {import('../lib/helpers/deep-freeze').DeepFrozen<{ actor: { id: string }, tags: string[] }>} */
+    const frozen = deepFreeze({
+      actor: { id: 'tomo' },
+      tags: ['keeper'],
+    });
+
+    assert.strictEqual(frozen.actor.id, 'tomo');
+    assert.deepStrictEqual(frozen.tags, ['keeper']);
+    assert.strictEqual(Object.isFrozen(frozen), true);
+    assert.strictEqual(Object.isFrozen(frozen.actor), true);
+    assert.strictEqual(Object.isFrozen(frozen.tags), true);
+  });
+
   it('freezes cloned own "__proto__" key as data, not as prototype mutation', function () {
     const source = JSON.parse('{"__proto__":{"polluted":true},"safe":1}');
 
