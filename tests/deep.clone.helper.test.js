@@ -107,6 +107,22 @@ describe('bundle-rantamuta deep-clone helper', function () {
     assert.strictEqual(getterCalls, 0);
   });
 
+  it('does not invoke array index getters while inspecting array input', function () {
+    const source = [];
+    let getterCalls = 0;
+
+    Object.defineProperty(source, '0', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error('getter should not run');
+      },
+    });
+
+    assert.throws(() => deepClone(source), /enumerable data properties/i);
+    assert.strictEqual(getterCalls, 0);
+  });
+
   it('returns primitive values unchanged', function () {
     assert.strictEqual(deepClone(1), 1);
     assert.strictEqual(deepClone('x'), 'x');

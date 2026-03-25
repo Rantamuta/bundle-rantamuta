@@ -91,6 +91,22 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.deepStrictEqual(Array.from(typed), [1, 2, 3]);
   });
 
+  it('does not invoke array index getters while cloning before freeze', function () {
+    const source = [];
+    let getterCalls = 0;
+
+    Object.defineProperty(source, '0', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error('getter should not run');
+      },
+    });
+
+    assert.throws(() => deepFreeze(source), /enumerable data properties/i);
+    assert.strictEqual(getterCalls, 0);
+  });
+
   it('returns primitive values unchanged', function () {
     assert.strictEqual(deepFreeze(1), 1);
     assert.strictEqual(deepFreeze('x'), 'x');
