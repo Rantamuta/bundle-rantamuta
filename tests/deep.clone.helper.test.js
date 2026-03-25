@@ -114,4 +114,26 @@ describe('bundle-rantamuta deep-clone helper', function () {
     assert.strictEqual(deepClone(null), null);
     assert.strictEqual(deepClone(undefined), undefined);
   });
+
+  it('copies own "__proto__" as a plain key without mutating clone prototype', function () {
+    const source = JSON.parse('{"__proto__":{"polluted":true},"safe":1}');
+
+    const clone = deepClone(source);
+
+    assert.deepStrictEqual(Object.keys(clone).sort(), ['__proto__', 'safe']);
+    assert.deepStrictEqual(clone.__proto__, { polluted: true });
+    assert.strictEqual(Object.getPrototypeOf(clone), Object.prototype);
+    assert.strictEqual(clone.polluted, undefined);
+  });
+
+  it('preserves null-prototype objects', function () {
+    const source = Object.create(null);
+    source.id = 'n0';
+
+    const clone = deepClone(source);
+
+    assert.strictEqual(Object.getPrototypeOf(clone), null);
+    assert.deepStrictEqual(Object.keys(clone), ['id']);
+    assert.strictEqual(clone.id, 'n0');
+  });
 });

@@ -98,4 +98,16 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.strictEqual(deepFreeze(null), null);
     assert.strictEqual(deepFreeze(undefined), undefined);
   });
+
+  it('freezes cloned own "__proto__" key as data, not as prototype mutation', function () {
+    const source = JSON.parse('{"__proto__":{"polluted":true},"safe":1}');
+
+    const frozen = deepFreeze(source);
+
+    assert.deepStrictEqual(Object.keys(frozen).sort(), ['__proto__', 'safe']);
+    assert.deepStrictEqual(frozen.__proto__, { polluted: true });
+    assert.strictEqual(Object.getPrototypeOf(frozen), Object.prototype);
+    assert.strictEqual(frozen.polluted, undefined);
+    assert.strictEqual(Object.isFrozen(frozen.__proto__), true);
+  });
 });
