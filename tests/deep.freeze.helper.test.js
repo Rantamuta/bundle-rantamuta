@@ -43,6 +43,21 @@ describe('bundle-rantamuta deep-freeze helper', function () {
     assert.deepStrictEqual(frozen, source);
   });
 
+  it('deeply freezes enumerable non-index array properties on the clone', function () {
+    const source = [{ id: 'a' }];
+    source.meta = { zone: 'atrium' };
+
+    const frozen = deepFreeze(source);
+
+    assert.notStrictEqual(frozen, source);
+    assert.notStrictEqual(frozen.meta, source.meta);
+    assert.strictEqual(Object.isFrozen(frozen), true);
+    assert.strictEqual(Object.isFrozen(frozen[0]), true);
+    assert.strictEqual(Object.isFrozen(frozen.meta), true);
+    assert.strictEqual(Object.isFrozen(source.meta), false);
+    assert.deepStrictEqual(frozen.meta, { zone: 'atrium' });
+  });
+
   it('rejects unsupported Map input without changing source', function () {
     const map = new Map([['a', 1]]);
 
