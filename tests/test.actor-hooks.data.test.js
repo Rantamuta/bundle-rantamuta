@@ -10,6 +10,10 @@ describe('test area actor hook data wiring', function () {
   const npcsPath = path.join(testAreaPath, 'npcs.yml');
   const roomsPath = path.join(testAreaPath, 'rooms.yml');
   const conversationPath = path.join(testAreaPath, 'conversations', 'actorPlanner.conversation.yml');
+  const runtimeOrderingPath = path.join(testAreaPath, 'conversations', 'runtimeOrdering.conversation.yml');
+  const runtimeDefaultPath = path.join(testAreaPath, 'conversations', 'runtimeDefault.conversation.yml');
+  const runtimeAutoPath = path.join(testAreaPath, 'conversations', 'runtimeAuto.conversation.yml');
+  const runtimeFinalPath = path.join(testAreaPath, 'conversations', 'runtimeFinal.conversation.yml');
 
   it('defines actor-hook harness NPCs in test npcs.yml', function () {
     assert.ok(fs.existsSync(npcsPath), 'expected test npcs.yml to exist');
@@ -39,5 +43,12 @@ describe('test area actor hook data wiring', function () {
     const conversationText = fs.readFileSync(conversationPath, 'utf8');
     assert.match(conversationText, /^id:\s*actor_planner\b/m);
     assert.match(conversationText, /^initial:\s*greeting\b/m);
+  });
+
+  it('includes runtime conversation fixtures for ordering, default, auto, and final-state behavior', function () {
+    assert.ok(fs.existsSync(runtimeOrderingPath), 'expected runtime ordering fixture to exist');
+    assert.ok(fs.existsSync(runtimeDefaultPath), 'expected runtime default fixture to exist');
+    assert.ok(fs.existsSync(runtimeAutoPath), 'expected runtime auto fixture to exist');
+    assert.ok(fs.existsSync(runtimeFinalPath), 'expected runtime final fixture to exist');
   });
 });

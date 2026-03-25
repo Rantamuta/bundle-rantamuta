@@ -1,0 +1,25 @@
+id: runtime_auto
+initial: greeting
+
+states:
+  greeting:
+    events:
+      continue:
+        target: routing
+
+  routing:
+    onEntry:
+      effects:
+        - type: note
+          value: entering-routing
+    auto:
+      - condition:
+          allow: take-first
+        target: first
+      - target: second
+
+  first:
+    final: true
+
+  second:
+    final: true

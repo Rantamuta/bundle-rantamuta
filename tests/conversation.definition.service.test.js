@@ -9,12 +9,36 @@ const path = require('path');
 const {
   ensureConversationDefinitionService,
   disposeConversationDefinitionService,
+  _validateConversationDefinitions,
 } = require('../lib/session/conversation-definition-service');
 
 function createState(tempRoot) {
   return {
     BundleManager: {
       bundlesPath: `${tempRoot}${path.sep}`,
+    },
+  };
+}
+
+function createValidatorState(tempRoot, npcs, areaName = 'test') {
+  return {
+    ...createState(tempRoot),
+    AreaFactory: {
+      getDefinition(name) {
+        if (name !== areaName) {
+          return null;
+        }
+
+        return {
+          bundle: 'bundle-test',
+          name,
+        };
+      },
+    },
+    MobFactory: {
+      entities: new Map(
+        npcs.map((npc) => [`${areaName}:${npc.id}`, npc])
+      ),
     },
   };
 }
@@ -294,6 +318,68 @@ describe('bundle-rantamuta conversation definition service', function () {
     assert.strictEqual(second.error.playerMessage, 'actor gatekeeper has nothing to say.');
     assert.strictEqual(logger.errors.length, 1);
 
+    disposeConversationDefinitionService(state);
+  });
+
+  it('returns no conversation validation findings for bundles with no conversation bindings', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const state = createValidatorState(tempRoot, [
+      { id: 'actorPlanner', name: 'actor planner', metadata: {} },
+    ]);
+
+    const findings = _validateConversationDefinitions(state);
+
+    assert.deepStrictEqual(findings, []);
+    disposeConversationDefinitionService(state);
+  });
+
+  it('surfaces maintainer-facing findings for broken conversation bindings during bundle validation', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const areaRoot = path.join(tempRoot, 'bundle-test', 'areas', 'test');
+    fs.mkdirSync(areaRoot, { recursive: true });
+
+    const state = createValidatorState(tempRoot, [
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: 'conversations/missing.conversation.yml' } },
+    ]);
+
+    const findings = _validateConversationDefinitions(state);
+
+    assert.strictEqual(findings.length, 1);
+    assert.strictEqual(findings[0].level, 'error');
+    assert.strictEqual(findings[0].code, 'CONVERSATION_FILE_MISSING');
+    assert.strictEqual(findings[0].bundle, 'bundle-test');
+    assert.strictEqual(findings[0].area, 'test');
+    assert.strictEqual(findings[0].path, 'conversations/missing.conversation.yml');
+    assert.strictEqual(findings[0].detail.npcRef, 'test:actorPlanner');
+
+    disposeConversationDefinitionService(state);
+  });
+
+  it('runs an evaluator-readiness pass for loaded conversation definitions during bundle validation', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
+    const areaRoot = path.join(tempRoot, 'bundle-test', 'areas', 'test');
+    const conversationPath = path.join(areaRoot, 'conversations', 'actorPlanner.conversation.yml');
+    fs.mkdirSync(path.dirname(conversationPath), { recursive: true });
+    fs.writeFileSync(conversationPath, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        target: done',
+      '  done:',
+      '    final: true',
+      '',
+    ].join('\n'), 'utf8');
+
+    const state = createValidatorState(tempRoot, [
+      { id: 'actorPlanner', name: 'actor planner', metadata: { conversation: 'conversations/actorPlanner.conversation.yml' } },
+    ]);
+
+    const findings = _validateConversationDefinitions(state);
+
+    assert.deepStrictEqual(findings, []);
     disposeConversationDefinitionService(state);
   });
 });

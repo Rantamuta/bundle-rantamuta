@@ -122,4 +122,54 @@ describe('bundle-rantamuta conversation definition validation', function () {
       'CONVERSATION_AUTO_STATE_IS_FINAL',
     ]);
   });
+
+  it('rejects malformed event shape', function () {
+    const result = validateConversationDefinition({
+      id: 'actor_planner',
+      initial: 'greeting',
+      states: {
+        greeting: {
+          events: {
+            invalid_mix: {
+              target: 'done',
+              transitions: [
+                { target: 'done' },
+              ],
+            },
+            invalid_empty: {},
+            invalid_transition_target: {
+              transitions: [
+                {},
+              ],
+            },
+          },
+        },
+        done: { final: true },
+      },
+    }, 'test:malformedEvent');
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'CONVERSATION_EVENT_SHAPE_CONFLICT',
+      'CONVERSATION_EVENT_TARGET_REQUIRED',
+      'CONVERSATION_TRANSITION_TARGET_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed auto shape', function () {
+    const result = validateConversationDefinition({
+      id: 'actor_planner',
+      initial: 'routing',
+      states: {
+        routing: {
+          auto: [{}],
+        },
+      },
+    }, 'test:malformedAuto');
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'CONVERSATION_AUTO_TARGET_REQUIRED',
+    ]);
+  });
 });

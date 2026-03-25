@@ -1,0 +1,20 @@
+id: runtime_default
+initial: greeting
+
+states:
+  greeting:
+    events:
+      continue:
+        condition:
+          allow: continue-now
+        target: done
+      default:
+        condition:
+          allow: allow-default
+        target: fallback
+
+  fallback:
+    final: true
+
+  done:
+    final: true

@@ -1,0 +1,15 @@
+id: runtime_final
+initial: greeting
+
+states:
+  greeting:
+    events:
+      continue:
+        target: done
+
+  done:
+    onEntry:
+      effects:
+        - type: note
+          value: final-entry
+    final: true

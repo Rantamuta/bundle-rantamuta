@@ -1,0 +1,26 @@
+id: runtime_ordering
+initial: greeting
+
+states:
+  greeting:
+    events:
+      first:
+        label: "First"
+        condition:
+          allow: show-first
+        target: done
+      second:
+        label: "Second"
+        condition:
+          allow: show-second
+        target: done
+      third:
+        label: "Third"
+        condition:
+          allow: show-third
+        target: done
+      default:
+        target: done
+
+  done:
+    final: true
