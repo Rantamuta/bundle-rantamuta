@@ -3,7 +3,7 @@
 
 const assert = require('assert');
 const { inspect } = require('util');
-const { dispatchNpcIntent } = require('../lib/session/command-dispatch');
+const { dispatchNpcIntent } = require('../lib/runtime/command/command-dispatch');
 const { parseInput } = require('../lib/parse-input');
 
 function formatActual(value) {

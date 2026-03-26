@@ -2,7 +2,7 @@
 'use strict';
 
 const assert = require('assert');
-const { inflectVerb, renderSemanticEvent } = require('../lib/session/semantic-message');
+const { inflectVerb, renderSemanticEvent } = require('../lib/runtime/command/semantic-message');
 
 describe('bundle-rantamuta semantic-message', function () {
   it('keeps base verb for subject viewer and inflects for non-subject viewer', function () {

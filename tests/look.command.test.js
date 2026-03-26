@@ -4,7 +4,7 @@
 const assert = require('assert');
 const lookCommand = require('../commands/look');
 const { parseInput } = require('../lib/parse-input');
-const EntityResolution = require('../lib/session/entity-resolution');
+const EntityResolution = require('../lib/runtime/command/entity-resolution');
 
 function createPlayer(def = {}) {
   return {

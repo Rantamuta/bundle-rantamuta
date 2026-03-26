@@ -1,7 +1,7 @@
 // @ts-check
 'use strict';
 
-const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+const { compileCommandSyntaxMetadata } = require('../lib/runtime/command/verb-local-syntax');
 
 const MAX_SAY_LENGTH = 256;
 

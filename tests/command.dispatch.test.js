@@ -3,7 +3,7 @@
 const assert = require('assert');
 const path = require('path');
 const { parseInput } = require('../lib/parse-input');
-const { handleCommand } = require('../lib/session/command-dispatch');
+const { handleCommand } = require('../lib/runtime/command/command-dispatch');
 
 /** @typedef {import('ranvier/types/GameState')} GameState */
 /** @typedef {import('ranvier/types/Player')} Player */
@@ -182,7 +182,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let sawContext = false;
@@ -260,7 +260,7 @@ describe('bundle-rantamuta command-dispatch', function () {
   });
 
   it('applies mutation plan when command returns { ok: true, plan }', async function () {
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     /** @type {{ stateArg: GameState, planArg: * } | null} */
@@ -302,7 +302,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const lookDef = require('../commands/look');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalApplyMutationPlan = mutator.applyMutationPlan;
@@ -388,7 +388,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalLoggerWarn = ranvier.Logger.warn;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let mutatorCalled = false;
@@ -495,7 +495,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -558,7 +558,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1102,7 +1102,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1180,7 +1180,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1308,7 +1308,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let planIndirectCalled = 0;
@@ -1370,7 +1370,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let planDirectCalled = 0;
@@ -1435,7 +1435,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let planActorCalled = 0;
@@ -1490,7 +1490,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let planIndirectCalled = 0;
@@ -1570,7 +1570,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1641,7 +1641,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1739,7 +1739,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1846,7 +1846,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1921,7 +1921,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -1986,7 +1986,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2090,7 +2090,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerWarn = ranvier.Logger.warn;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2165,7 +2165,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerWarn = ranvier.Logger.warn;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2244,7 +2244,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2320,7 +2320,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2391,7 +2391,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2482,7 +2482,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2550,7 +2550,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2622,7 +2622,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -2977,7 +2977,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const events = [];
@@ -3039,7 +3039,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let bubbleInvoked = false;
@@ -3108,7 +3108,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const events = [];
@@ -3165,7 +3165,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const events = [];
@@ -3318,7 +3318,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3371,7 +3371,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3425,7 +3425,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalSayAtExcept = ranvier.Broadcast.sayAtExcept;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const events = [];
@@ -3510,7 +3510,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3581,7 +3581,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3658,7 +3658,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3731,7 +3731,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3803,7 +3803,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -3875,7 +3875,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     /** @type {{ targetName: string, message: string }[]} */
@@ -3969,7 +3969,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     /** @type {{ targetName: string, message: string }[]} */
@@ -4058,7 +4058,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -4141,7 +4141,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -4208,7 +4208,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -4263,7 +4263,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -4326,7 +4326,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalLoggerError = ranvier.Logger.error;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -4377,7 +4377,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4422,7 +4422,7 @@ describe('bundle-rantamuta command-dispatch', function () {
   });
 
   it('ignores legacy single-operation reaction shape and keeps target plan unchanged', async function () {
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4470,7 +4470,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4547,7 +4547,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4616,7 +4616,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4775,7 +4775,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -4860,7 +4860,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const deliveries = [];
@@ -4972,7 +4972,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5102,7 +5102,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -5175,7 +5175,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -5244,7 +5244,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -5315,7 +5315,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5385,7 +5385,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5458,7 +5458,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5678,7 +5678,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5778,7 +5778,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5934,7 +5934,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -5991,7 +5991,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6056,7 +6056,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6129,7 +6129,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     let committedPlan = null;
@@ -6214,7 +6214,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6296,7 +6296,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6376,7 +6376,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6436,7 +6436,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];
@@ -6507,7 +6507,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     const ranvier = require(ranvierPath);
     const originalSayAt = ranvier.Broadcast.sayAt;
     const originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const originalApplyMutationPlan = mutator.applyMutationPlan;
     const messages = [];

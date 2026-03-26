@@ -3,7 +3,7 @@
 
 const { buildRoomViewLines } = require('../lib/helpers/room-view-helper');
 const { resolveInlineTags, buildSurfaceRef } = require('../lib/inline-tags/resolve-inline-tags');
-const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+const { compileCommandSyntaxMetadata } = require('../lib/runtime/command/verb-local-syntax');
 
 /**
  * @param {string} code

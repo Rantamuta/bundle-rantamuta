@@ -7,7 +7,7 @@ const {
   getConversationEngagement,
   replaceConversationEngagement,
   setConversationEngagement,
-} = require('../lib/session/conversation-engagement');
+} = require('../lib/runtime/conversation/conversation-engagement');
 
 describe('bundle-rantamuta conversation engagement helper', function () {
   it('stores and reads engagement by runtime owner identity', function () {

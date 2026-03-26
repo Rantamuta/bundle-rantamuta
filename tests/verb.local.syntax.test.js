@@ -4,8 +4,8 @@
 const assert = require('assert');
 
 const { parseInput } = require('../lib/parse-input');
-const EntityResolution = require('../lib/session/entity-resolution');
-const Syntax = require('../lib/session/verb-local-syntax');
+const EntityResolution = require('../lib/runtime/command/entity-resolution');
+const Syntax = require('../lib/runtime/command/verb-local-syntax');
 
 function createNpc(def = {}) {
   return {

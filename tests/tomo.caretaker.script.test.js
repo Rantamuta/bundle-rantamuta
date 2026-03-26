@@ -4,7 +4,7 @@
 const assert = require('assert');
 const ranvier = require('ranvier');
 const tomoScript = require('../areas/codex/scripts/npcs/tomoCaretaker');
-const CommandDispatch = require('../lib/session/command-dispatch');
+const CommandDispatch = require('../lib/runtime/command/command-dispatch');
 const sayDef = require('../commands/say');
 const goDef = require('../commands/go');
 

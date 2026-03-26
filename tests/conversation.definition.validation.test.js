@@ -2,7 +2,7 @@
 'use strict';
 
 const assert = require('assert');
-const { validateConversationDefinition } = require('../lib/session/conversation-definition-validation');
+const { validateConversationDefinition } = require('../lib/runtime/conversation/conversation-definition-validation');
 
 describe('bundle-rantamuta conversation definition validation', function () {
   it('accepts a valid minimal authored conversation definition', function () {

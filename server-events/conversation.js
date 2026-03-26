@@ -4,7 +4,7 @@ const {
   ensureConversationDefinitionService,
   disposeConversationDefinitionService,
   primeConversationDefinitions,
-} = require('../lib/session/conversation-definition-service');
+} = require('../lib/runtime/conversation/conversation-definition-service');
 
 module.exports = {
   listeners: {

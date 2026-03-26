@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 const ranvier = require('ranvier');
-const { getOrCreateWorldMetadataValuesRoot } = require('../lib/session/world-metadata-service');
+const { getOrCreateWorldMetadataValuesRoot } = require('../lib/runtime/mutation/world-metadata-service');
 
 describe('bundle-rantamuta world metadata service', function () {
   it('creates missing world metadata roots for write access', function () {

@@ -5,8 +5,8 @@ const assert = require('assert');
 const { inspect } = require('util');
 const path = require('path');
 const ranvier = require('ranvier');
-const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
-const EntityResolution = require('../lib/session/entity-resolution');
+const { handleCommand, dispatchNpcIntent } = require('../lib/runtime/command/command-dispatch');
+const EntityResolution = require('../lib/runtime/command/entity-resolution');
 const { parseInput } = require('../lib/parse-input');
 
 function formatActual(value) {
@@ -49,7 +49,7 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
   beforeEach(function () {
     originalSayAt = ranvier.Broadcast.sayAt;
     originalPrompt = ranvier.Broadcast.prompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     originalMutatorApply = require(mutatorPath).applyMutationPlan;
     originalResolveEntityContext = EntityResolution.resolveEntityContext;
   });
@@ -57,13 +57,13 @@ describe('bundle-rantamuta npc dispatch pipeline', function () {
   afterEach(function () {
     ranvier.Broadcast.sayAt = originalSayAt;
     ranvier.Broadcast.prompt = originalPrompt;
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     require(mutatorPath).applyMutationPlan = originalMutatorApply;
     EntityResolution.resolveEntityContext = originalResolveEntityContext;
   });
 
   it('routes npc dispatch through capture plan reaction commit render in order', async function () {
-    const mutatorPath = path.resolve(__dirname, '../lib/session/mutator.js');
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
     const mutator = require(mutatorPath);
     const phaseTrace = [];
     const deliveries = [];

@@ -2,7 +2,7 @@
 'use strict';
 
 const assert = require('assert');
-const { getPlayerMetadata } = require('../lib/session/player-metadata');
+const { getPlayerMetadata } = require('../lib/runtime/mutation/player-metadata');
 
 describe('bundle-rantamuta player metadata helper', function () {
   it('returns default when player is null', function () {

@@ -4,7 +4,7 @@
 const assert = require('assert');
 const { inspect } = require('util');
 const ranvier = require('ranvier');
-const { handleCommand, dispatchNpcIntent } = require('../lib/session/command-dispatch');
+const { handleCommand, dispatchNpcIntent } = require('../lib/runtime/command/command-dispatch');
 
 function formatActual(value) {
   return inspect(value, {

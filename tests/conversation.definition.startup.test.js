@@ -11,7 +11,7 @@ const {
   disposeConversationDefinitionService,
   getConversationDefinitionService,
   primeConversationDefinitions,
-} = require('../lib/session/conversation-definition-service');
+} = require('../lib/runtime/conversation/conversation-definition-service');
 const conversationServerEvent = require('../server-events/conversation');
 
 function createState(tempRoot, logger) {

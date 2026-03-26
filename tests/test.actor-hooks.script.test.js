@@ -4,7 +4,7 @@
 const assert = require('assert');
 const ranvier = require('ranvier');
 const actorHookHarness = require('../areas/test/scripts/npcs/actorHookHarness');
-const { dispatchNpcIntent } = require('../lib/session/command-dispatch');
+const { dispatchNpcIntent } = require('../lib/runtime/command/command-dispatch');
 const sayDef = require('../commands/say');
 
 /**
