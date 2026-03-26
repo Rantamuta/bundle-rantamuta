@@ -5,7 +5,7 @@ const { Broadcast } = require('ranvier');
 const io = require('../lib/session/io');
 const { handleGetName, handleGetPassword } = require('../lib/session/auth-flow');
 const { enterGame, quitGame } = require('../lib/session/player-lifecycle');
-const { handleCommand } = require('../lib/session/command-dispatch');
+const { handleCommand } = require('../lib/runtime/command/command-dispatch');
 
 module.exports = {
   event: state => async (session, inputData) => {

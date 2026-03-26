@@ -9,7 +9,7 @@ const { createPredicateRuntime } = require('../lib/helpers/predicate-runtime');
 const {
   applyMutationInstruction,
   applyMutationPlan,
-} = require('../lib/session/mutator');
+} = require('../lib/runtime/mutation/mutator');
 
 /**
  * @param {string} root

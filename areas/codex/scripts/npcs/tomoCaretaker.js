@@ -2,8 +2,8 @@
 'use strict';
 
 const { getRitualState, normalizeRef } = require('../helpers/ritualState');
-const CommandDispatch = require('../../../../lib/session/command-dispatch');
-const { getPlayerMetadata } = require('../../../../lib/session/player-metadata');
+const CommandDispatch = require('../../../../lib/runtime/command/command-dispatch');
+const { getPlayerMetadata } = require('../../../../lib/runtime/mutation/player-metadata');
 
 const DEFAULT_ROUTE = Object.freeze([
   'codex:bell_courtyard',

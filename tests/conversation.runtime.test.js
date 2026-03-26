@@ -4,8 +4,8 @@ const assert = require('assert');
 const path = require('path');
 
 const { deepFreeze } = require('../lib/helpers/deep-freeze');
-const { ensureConversationDefinitionService, disposeConversationDefinitionService } = require('../lib/session/conversation-definition-service');
-const { evaluateConversationRuntime, AUTO_HOP_LIMIT } = require('../lib/session/conversation-runtime');
+const { ensureConversationDefinitionService, disposeConversationDefinitionService } = require('../lib/runtime/conversation/conversation-definition-service');
+const { evaluateConversationRuntime, AUTO_HOP_LIMIT } = require('../lib/runtime/conversation/conversation-runtime');
 
 function createPlayer(metadata = {}) {
   return {

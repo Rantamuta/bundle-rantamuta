@@ -4,7 +4,7 @@
 const assert = require('assert');
 const goCommand = require('../commands/go');
 const { parseInput } = require('../lib/parse-input');
-const EntityResolution = require('../lib/session/entity-resolution');
+const EntityResolution = require('../lib/runtime/command/entity-resolution');
 
 function createRoom(def = {}) {
   return {

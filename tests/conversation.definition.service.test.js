@@ -10,7 +10,7 @@ const {
   ensureConversationDefinitionService,
   disposeConversationDefinitionService,
   _validateConversationDefinitions,
-} = require('../lib/session/conversation-definition-service');
+} = require('../lib/runtime/conversation/conversation-definition-service');
 
 function createState(tempRoot) {
   return {

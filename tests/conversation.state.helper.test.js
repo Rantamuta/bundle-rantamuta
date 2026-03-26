@@ -2,14 +2,14 @@
 'use strict';
 
 const assert = require('assert');
-const { applyMutationInstruction } = require('../lib/session/mutator');
+const { applyMutationInstruction } = require('../lib/runtime/mutation/mutator');
 const {
   createSetConversationStateInstruction,
   getConversationNpcPath,
   getConversationNpcIdentity,
   getConversationState,
   getConversationStatePath,
-} = require('../lib/session/conversation-state');
+} = require('../lib/runtime/conversation/conversation-state');
 
 describe('bundle-rantamuta conversation state helper', function () {
   it('derives area and npc identity from npcRef', function () {

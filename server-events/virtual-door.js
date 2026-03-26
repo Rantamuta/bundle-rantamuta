@@ -3,7 +3,7 @@
 const {
   ensureVirtualDoorService,
   disposeVirtualDoorService,
-} = require('../lib/doors/virtual-door-service');
+} = require('../lib/runtime/doors/virtual-door-service');
 
 module.exports = {
   listeners: {

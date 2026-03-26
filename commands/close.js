@@ -1,8 +1,8 @@
 // @ts-check
 'use strict';
 
-const { resolveDoorActionContext } = require('../lib/doors/door-command-helper');
-const { compileCommandSyntaxMetadata } = require('../lib/session/verb-local-syntax');
+const { resolveDoorActionContext } = require('../lib/runtime/doors/door-command-helper');
+const { compileCommandSyntaxMetadata } = require('../lib/runtime/command/verb-local-syntax');
 
 /**
  * @param {string} code
