@@ -8,7 +8,7 @@ const {
   resolveDoorActionContext,
   selectExplicitKeyCandidate,
   selectAutoKeyCandidate,
-} = require('../lib/doors/door-command-helper');
+} = require('../lib/runtime/doors/door-command-helper');
 const { compileCommandSyntaxMetadata } = require('../lib/runtime/command/verb-local-syntax');
 
 /**

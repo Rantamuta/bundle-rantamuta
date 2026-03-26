@@ -6,7 +6,7 @@ const {
   _validateVirtualDoorConfig,
   ensureVirtualDoorService,
   disposeVirtualDoorService,
-} = require('../lib/doors/virtual-door-service');
+} = require('../lib/runtime/doors/virtual-door-service');
 
 function createRoom(def) {
   const exits = Array.isArray(def.exits) ? def.exits : [];
