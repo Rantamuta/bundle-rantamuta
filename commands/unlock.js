@@ -161,7 +161,7 @@ module.exports = {
       plan: {
         operations: [
           {
-            type: 'doorMutation',
+            type: 'operateDoor',
             mutation: 'unlock',
             actor: player,
             direction: doorContext.direction,

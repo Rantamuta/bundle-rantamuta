@@ -5748,7 +5748,7 @@ describe('bundle-rantamuta command-dispatch', function () {
       assert.deepStrictEqual(committedPlan, {
         operations: [
           {
-            type: 'doorMutation',
+            type: 'operateDoor',
             mutation: 'unlockAndOpen',
             actor: player,
             direction: 'east',
