@@ -13,9 +13,8 @@
   type: "CONTAINER"
   maxItems: 2
   metadata:
-    permissions:
-      verbs:
-        take: "The chest is extremely heavy and attached to the floor."
+    verbs:
+      take: "The chest is extremely heavy and attached to the floor."
 
 - id: labApple
   name: "practice apple"
@@ -32,9 +31,8 @@
   type: "CONTAINER"
   maxItems: 4
   metadata:
-    permissions:
-      verbs:
-        take: "You cannot take the chest. It is extremely heavy."
+    verbs:
+      take: "You cannot take the chest. It is extremely heavy."
 
 - id: inlineLantern
   name: "inline lantern"
@@ -51,7 +49,8 @@
   type: "OBJECT"
   script: doorControlButton
   metadata:
-    pushable: true
+    verbs: 
+      push: true
     mutationInstruction:
       type: setRoomMetadata
       key: buttonPushed
@@ -67,7 +66,8 @@
   type: "OBJECT"
   script: doorControlButton
   metadata:
-    pushable: true
+    verbs: 
+      push: true
     mutationInstruction:
       type: setRoomMetadata
       key: buttonPushed
@@ -83,7 +83,8 @@
   type: "OBJECT"
   script: doorControlButton
   metadata:
-    pushable: true
+    verbs:
+      push: true
     mutationInstruction:
       type: operateDoor
       mutation: open
@@ -106,7 +107,8 @@
   type: "OBJECT"
   script: doorControlButton
   metadata:
-    pushable: true
+    verbs:
+      push: true
     mutationInstruction:
       type: operateDoor
       mutation: closeAndLock

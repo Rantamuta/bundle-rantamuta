@@ -17,6 +17,32 @@ function fail(code, details) {
 }
 
 /**
+ * @param {*} item
+ * @returns {*}
+ */
+function takeVerbPolicy(item) {
+  if (!item || typeof item !== 'object') {
+    return undefined;
+  }
+
+  const metadata = item.metadata && typeof item.metadata === 'object'
+    ? /** @type {Record<string, *>} */ (item.metadata)
+    : null;
+  if (!metadata) {
+    return undefined;
+  }
+
+  const verbs = metadata.verbs && typeof metadata.verbs === 'object'
+    ? /** @type {Record<string, *>} */ (metadata.verbs)
+    : null;
+  if (!verbs || !Object.prototype.hasOwnProperty.call(verbs, 'take')) {
+    return undefined;
+  }
+
+  return verbs.take;
+}
+
+/**
  * @param {*} value
  * @returns {boolean}
  */
@@ -54,7 +80,8 @@ function isAlreadyCarried(item, player) {
 }
 
 /**
- * Containers are non-takeable by default unless explicitly marked takeable.
+ * Containers are non-takeable by default unless explicitly allowed through
+ * `metadata.verbs.take === true`.
  *
  * @param {*} item
  * @returns {boolean}
@@ -64,11 +91,11 @@ function isTakeable(item) {
     return false;
   }
 
-  const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
-  if (metadata.takeable === true) {
+  const policy = takeVerbPolicy(item);
+  if (policy === true) {
     return true;
   }
-  if (metadata.takeable === false) {
+  if (policy === false || typeof policy === 'string') {
     return false;
   }
 

@@ -582,11 +582,9 @@ describe('bundle-rantamuta command-dispatch', function () {
         maxItems: 4,
         inventory: new Map(),
         metadata: {
-          permissions: {
-            verbs: {
-              put: {
-                indirect: 'The chest is extremely heavy and attached to the floor.',
-              },
+          verbs: {
+            put: {
+              indirect: 'The chest is extremely heavy and attached to the floor.',
             },
           },
         },
@@ -6050,7 +6048,7 @@ describe('bundle-rantamuta command-dispatch', function () {
     }
   });
 
-  it('uses metadata.permissions string veto message for take on direct target', async function () {
+  it('uses metadata.verbs string veto message for take on direct target', async function () {
     const takeDef = require('../commands/take');
     const ranvierPath = require.resolve('ranvier');
     const ranvier = require(ranvierPath);
@@ -6073,6 +6071,77 @@ describe('bundle-rantamuta command-dispatch', function () {
     try {
       const chest = {
         uuid: 'chest-nt-2',
+        name: 'old chest',
+        keywords: ['old', 'chest'],
+        type: 'CONTAINER',
+        metadata: {
+          verbs: {
+            take: 'The chest is extremely heavy and attached to the floor.',
+          },
+        },
+        room: null,
+        carriedBy: null,
+      };
+      const room = {
+        items: new Set([chest]),
+        addItem() { },
+        removeItem() { },
+      };
+      chest.room = room;
+
+      const player = asPlayer({
+        name: 'Tester',
+        inventory: new Map(),
+        room,
+        isInventoryFull: () => false,
+        addItem() { },
+        removeItem() { },
+        socket: { writable: false },
+      });
+
+      const command = {
+        metadata: takeDef.metadata,
+        execute: wrapLegacyRenderCommand(takeDef.command({})),
+      };
+      const state = withPlayerManager({
+        CommandManager: { find: () => ({ command, alias: 'take' }) },
+      }, player);
+
+      await handleCommand(state, { player }, 'take chest');
+
+      assert.strictEqual(mutatorCalled, false);
+      assert.ok(messages.includes('The chest is extremely heavy and attached to the floor.'));
+      assert.ok(!messages.includes('You can\'t take that.'));
+    } finally {
+      ranvier.Broadcast.sayAt = originalSayAt;
+      ranvier.Broadcast.prompt = originalPrompt;
+      mutator.applyMutationPlan = originalApplyMutationPlan;
+    }
+  });
+
+  it('ignores legacy metadata.permissions verb veto for take on direct target', async function () {
+    const takeDef = require('../commands/take');
+    const ranvierPath = require.resolve('ranvier');
+    const ranvier = require(ranvierPath);
+    const originalSayAt = ranvier.Broadcast.sayAt;
+    const originalPrompt = ranvier.Broadcast.prompt;
+    const mutatorPath = path.resolve(__dirname, '../lib/runtime/mutation/mutator.js');
+    const mutator = require(mutatorPath);
+    const originalApplyMutationPlan = mutator.applyMutationPlan;
+    const messages = [];
+    let mutatorCalled = false;
+
+    ranvier.Broadcast.sayAt = (target, message) => {
+      messages.push(String(message));
+    };
+    ranvier.Broadcast.prompt = () => { };
+    mutator.applyMutationPlan = () => {
+      mutatorCalled = true;
+    };
+
+    try {
+      const chest = {
+        uuid: 'chest-nt-legacy',
         name: 'old chest',
         keywords: ['old', 'chest'],
         type: 'CONTAINER',
@@ -6114,8 +6183,8 @@ describe('bundle-rantamuta command-dispatch', function () {
       await handleCommand(state, { player }, 'take chest');
 
       assert.strictEqual(mutatorCalled, false);
-      assert.ok(messages.includes('The chest is extremely heavy and attached to the floor.'));
-      assert.ok(!messages.includes('You can\'t take that.'));
+      assert.ok(messages.includes('You can\'t take that.'));
+      assert.ok(!messages.includes('The chest is extremely heavy and attached to the floor.'));
     } finally {
       ranvier.Broadcast.sayAt = originalSayAt;
       ranvier.Broadcast.prompt = originalPrompt;
