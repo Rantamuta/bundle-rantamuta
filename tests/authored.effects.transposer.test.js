@@ -39,4 +39,45 @@ describe('authored effects transposer', function () {
       'AUTHORED_EFFECT_FIELD_REQUIRED',
     ]);
   });
+
+  it('lowers authored transferItem effects through explicit scope resolution', function () {
+    const widget = { entityReference: 'test:widget' };
+    const inventory = {
+      addItem() {},
+      removeItem() {},
+    };
+    const player = {
+      addItem() {},
+      removeItem() {},
+    };
+
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          transferItem: {
+            item: 'widget',
+            from: 'inventory',
+            to: 'player',
+          },
+        },
+      ],
+      scope: createHarnessScope({
+        inventory,
+        player,
+        refs: { widget },
+      }),
+      expectSuccess: {
+        operations: [
+          {
+            type: 'transferItem',
+            item: widget,
+            from: inventory,
+            to: player,
+          },
+        ],
+        renderMessages: [],
+      },
+    });
+  });
 });
