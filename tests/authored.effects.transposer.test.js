@@ -115,4 +115,52 @@ describe('authored effects transposer', function () {
       },
     });
   });
+
+  it('lowers authored door effects with implicit actor and explicit targeting fields', function () {
+    const scope = createHarnessScope();
+
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          operateDoor: {
+            mutation: 'open',
+            direction: 'north',
+          },
+        },
+        {
+          openDoor: {
+            roomRef: 'start',
+          },
+        },
+        {
+          closeAndLockDoor: {
+            direction: 'east',
+          },
+        },
+      ],
+      scope,
+      expectSuccess: {
+        operations: [
+          {
+            type: 'operateDoor',
+            actor: scope.actor,
+            mutation: 'open',
+            direction: 'north',
+          },
+          {
+            type: 'openDoor',
+            actor: scope.actor,
+            roomRef: 'test:start',
+          },
+          {
+            type: 'closeAndLockDoor',
+            actor: scope.actor,
+            direction: 'east',
+          },
+        ],
+        renderMessages: [],
+      },
+    });
+  });
 });
