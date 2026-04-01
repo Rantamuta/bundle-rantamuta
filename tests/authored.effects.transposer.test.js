@@ -260,4 +260,60 @@ describe('authored effects transposer', function () {
       },
     });
   });
+
+  it('lowers authored render effects through the live broadcast and semanticEvent contracts', function () {
+    const scope = createHarnessScope();
+
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          broadcast: {
+            audience: 'areaExceptTargets',
+            message: 'Hello.',
+            targetSelector: 'roomByRef',
+            targetRoomRef: 'start',
+            exceptSelector: 'targetsByRoomRef',
+            exceptRoomRef: 'start',
+          },
+        },
+        {
+          semanticEvent: {
+            template: '{actor.You} nod{verb}.',
+            audiencePolicy: 'self',
+            participants: {
+              actor: {
+                selector: 'currentActor',
+              },
+            },
+          },
+        },
+      ],
+      scope,
+      expectSuccess: {
+        operations: [],
+        renderMessages: [
+          {
+            type: 'broadcast',
+            audience: 'areaExceptTargets',
+            message: 'Hello.',
+            targetSelector: 'roomByRef',
+            targetRoomRef: 'test:start',
+            exceptSelector: 'targetsByRoomRef',
+            exceptRoomRef: 'test:start',
+          },
+          {
+            type: 'semanticEvent',
+            template: '{actor.You} nod{verb}.',
+            audiencePolicy: 'self',
+            participants: {
+              actor: {
+                selector: 'currentActor',
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
 });
