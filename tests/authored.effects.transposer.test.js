@@ -164,6 +164,23 @@ describe('authored effects transposer', function () {
     });
   });
 
+  it('fails when a door effect uses an unresolved current-area-relative roomRef', function () {
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          openDoor: {
+            roomRef: 'missing',
+          },
+        },
+      ],
+      scope: createHarnessScope(),
+      expectFailure: {
+        code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+      },
+    });
+  });
+
   it('lowers authored metadata effects with implicit local targets and explicit overrides', function () {
     const scope = createHarnessScope();
 
@@ -313,6 +330,26 @@ describe('authored effects transposer', function () {
             },
           },
         ],
+      },
+    });
+  });
+
+  it('fails when broadcast room-target selectors reference an unresolved room', function () {
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          broadcast: {
+            audience: 'room',
+            message: 'Hello.',
+            targetSelector: 'roomByRef',
+            targetRoomRef: 'missing',
+          },
+        },
+      ],
+      scope: createHarnessScope(),
+      expectFailure: {
+        code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
       },
     });
   });
