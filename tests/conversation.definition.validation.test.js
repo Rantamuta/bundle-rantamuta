@@ -172,4 +172,52 @@ describe('bundle-rantamuta conversation definition validation', function () {
       'CONVERSATION_AUTO_TARGET_REQUIRED',
     ]);
   });
+
+  it('delegates authored effect validation for onEntry, event, default, and transition effects', function () {
+    const result = validateConversationDefinition({
+      id: 'actor_planner',
+      initial: 'greeting',
+      states: {
+        greeting: {
+          onEntry: {
+            effects: null,
+          },
+          events: {
+            continue: {
+              target: 'done',
+              effects: [
+                { messageRoom: 'Hello.' },
+              ],
+            },
+            branching: {
+              transitions: [
+                {
+                  target: 'done',
+                  effects: [
+                    { broadcast: { audience: 'nowhere', message: 'Hello.' } },
+                  ],
+                },
+              ],
+            },
+            default: {
+              target: 'done',
+              effects: [
+                { semanticEvent: { template: '', audiencePolicy: 'self', participants: {} } },
+              ],
+            },
+          },
+        },
+        done: { final: true },
+      },
+    }, 'test:effects');
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_EFFECTS_ARRAY_REQUIRED',
+      'AUTHORED_EFFECT_UNSUPPORTED',
+      'AUTHORED_EFFECT_FIELD_ENUM_INVALID',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+    ]);
+    assert.ok(result.errors.every(error => error.source === 'test:effects'));
+  });
 });
