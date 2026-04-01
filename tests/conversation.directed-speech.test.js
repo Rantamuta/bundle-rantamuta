@@ -169,7 +169,7 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  it('lowers messageRoom effects into command render instructions', function () {
+  it('lowers canonical authored effects into command operations and render instructions', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
       'id: actor_planner',
@@ -179,24 +179,45 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
       '    events:',
       '      continue:',
       '        effects:',
-      '          - messageRoom: "Transition line."',
+      '          - broadcast:',
+      '              audience: room',
+      '              message: "Transition line."',
+      '          - setWorldMetadata:',
+      '              key: world.phase',
+      '              value: 2',
       '        target: done',
       '  done:',
       '    onEntry:',
       '      effects:',
-      '        - messageRoom: "Entry line."',
+      '        - broadcast:',
+      '            audience: room',
+      '            message: "Entry line."',
     ]);
     const errors = [];
     const state = createState(tempRoot, errors);
     this.state = state;
+    const player = createPlayer();
 
     const result = tryDirectedConversation(
       state,
-      createPlayer(),
+      player,
       'continue',
       createNpc({ conversation: 'conversations/actorPlanner.conversation.yml' })
     );
 
+    assert.deepStrictEqual(result.plan.operations, [
+      {
+        type: 'setWorldMetadata',
+        key: 'world.phase',
+        value: 2,
+      },
+      {
+        type: 'setPlayerMetadata',
+        player,
+        key: 'conversations.test.actorPlanner.state',
+        value: 'done',
+      },
+    ]);
     assert.deepStrictEqual(result.render.messages, [
       {
         type: 'broadcast',
@@ -212,7 +233,7 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  it('logs and falls through when matched effects are not supported yet', function () {
+  it('logs and falls through when matched authored effects cannot be resolved at runtime', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
       'id: actor_planner',
@@ -222,9 +243,10 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
       '    events:',
       '      continue:',
       '        effects:',
-      '          - type: setPlayerMetadata',
-      '            key: story.phase',
-      '            value: 2',
+      '          - transferItem:',
+      '              item: widget',
+      '              from: inventory',
+      '              to: player',
       '        target: done',
       '  done:',
       '    final: true',
@@ -242,6 +264,6 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
 
     assert.strictEqual(result, null);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0], /CONVERSATION_DIRECTED_SPEECH CONVERSATION_DIRECTED_SPEECH_UNSUPPORTED_EFFECT/);
+    assert.match(errors[0], /CONVERSATION_DIRECTED_SPEECH AUTHORED_EFFECT_REFERENCE_UNRESOLVED/);
   });
 });
