@@ -163,4 +163,101 @@ describe('authored effects transposer', function () {
       },
     });
   });
+
+  it('lowers authored metadata effects with implicit local targets and explicit overrides', function () {
+    const scope = createHarnessScope();
+
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          setPlayerMetadata: {
+            key: 'story.phase',
+            value: 2,
+          },
+        },
+        {
+          setRoomMetadata: {
+            roomRef: 'start',
+            key: 'bells.rung',
+            value: true,
+          },
+        },
+        {
+          setAreaMetadata: {
+            key: 'story.phase',
+            value: 2,
+          },
+        },
+        {
+          setWorldMetadata: {
+            key: 'world.phase',
+            value: 2,
+          },
+        },
+        {
+          deleteRoomMetadata: {
+            key: 'bells.rung',
+            force: true,
+          },
+        },
+        {
+          deleteAreaMetadata: {
+            key: 'story.phase',
+          },
+        },
+        {
+          deleteWorldMetadata: {
+            key: 'world.phase',
+            force: true,
+          },
+        },
+      ],
+      scope,
+      expectSuccess: {
+        operations: [
+          {
+            type: 'setPlayerMetadata',
+            player: scope.player,
+            key: 'story.phase',
+            value: 2,
+          },
+          {
+            type: 'setRoomMetadata',
+            actor: { room: scope.room },
+            key: 'bells.rung',
+            value: true,
+          },
+          {
+            type: 'setAreaMetadata',
+            actor: scope.actor,
+            key: 'story.phase',
+            value: 2,
+          },
+          {
+            type: 'setWorldMetadata',
+            key: 'world.phase',
+            value: 2,
+          },
+          {
+            type: 'deleteRoomMetadata',
+            actor: scope.actor,
+            key: 'bells.rung',
+            force: true,
+          },
+          {
+            type: 'deleteAreaMetadata',
+            actor: scope.actor,
+            key: 'story.phase',
+          },
+          {
+            type: 'deleteWorldMetadata',
+            key: 'world.phase',
+            force: true,
+          },
+        ],
+        renderMessages: [],
+      },
+    });
+  });
 });
