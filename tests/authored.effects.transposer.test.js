@@ -80,4 +80,39 @@ describe('authored effects transposer', function () {
       },
     });
   });
+
+  it('lowers movePlayer with implicit player and current-area-relative room expansion', function () {
+    const destinationRoom = { entityReference: 'test:start' };
+    const scope = createHarnessScope({
+      state: {
+        RoomManager: {
+          getRoom(ref) {
+            return ref === 'test:start' ? destinationRoom : null;
+          },
+        },
+      },
+    });
+
+    runHarnessCase({
+      adapter: transposeAuthoredEffects,
+      effects: [
+        {
+          movePlayer: {
+            toRoom: 'start',
+          },
+        },
+      ],
+      scope,
+      expectSuccess: {
+        operations: [
+          {
+            type: 'movePlayer',
+            player: scope.player,
+            toRoom: destinationRoom,
+          },
+        ],
+        renderMessages: [],
+      },
+    });
+  });
 });
