@@ -9,6 +9,51 @@ const {
   runHarnessCase,
 } = require('./helpers/authored-effects-harness');
 
+function createRoom(entityReference) {
+  const [areaRef] = String(entityReference).split(':');
+  return {
+    entityReference,
+    area: {
+      name: `${areaRef} Area`,
+      entityReference: areaRef,
+    },
+  };
+}
+
+function createItem(entityReference) {
+  return { entityReference };
+}
+
+function createContainer(name) {
+  return {
+    name,
+    addItem() {},
+    removeItem() {},
+  };
+}
+
+function createScopeWithRooms(roomRefs, overrides = {}) {
+  const scope = createHarnessScope(overrides);
+  /** @type {Record<string, *>} */
+  const rooms = {
+    [scope.room.entityReference]: scope.room,
+  };
+
+  for (const roomRef of roomRefs) {
+    rooms[roomRef] = createRoom(roomRef);
+  }
+
+  scope.state = {
+    RoomManager: {
+      getRoom(ref) {
+        return Object.prototype.hasOwnProperty.call(rooms, ref) ? rooms[ref] : null;
+      },
+    },
+  };
+
+  return { scope, rooms };
+}
+
 describe('authored effects transposer', function () {
   it('returns a canonical empty success envelope for an empty authored-effects array', function () {
     runHarnessCase({
@@ -40,317 +85,1173 @@ describe('authored effects transposer', function () {
     ]);
   });
 
-  it('lowers authored transferItem effects through explicit scope resolution', function () {
-    const widget = { entityReference: 'test:widget' };
-    const inventory = {
-      addItem() {},
-      removeItem() {},
-    };
-    const player = {
-      addItem() {},
-      removeItem() {},
-    };
+  describe('transferItem', function () {
+    it('lowers a happy-path transferItem effect through explicit scope resolution', function () {
+      const widget = createItem('test:widget');
+      const inventory = createContainer('inventory');
+      const player = createContainer('player');
 
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          transferItem: {
-            item: 'widget',
-            from: 'inventory',
-            to: 'player',
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            transferItem: {
+              item: 'widget',
+              from: 'inventory',
+              to: 'player',
+            },
           },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+          refs: { widget },
+        }),
+        expectSuccess: {
+          operations: [
+            {
+              type: 'transferItem',
+              item: widget,
+              from: inventory,
+              to: player,
+            },
+          ],
+          renderMessages: [],
         },
-      ],
-      scope: createHarnessScope({
+      });
+    });
+
+    for (const field of ['item', 'from', 'to']) {
+      it(`fails when transferItem.${field} is unresolved`, function () {
+        runHarnessCase({
+          adapter: transposeAuthoredEffects,
+          effects: [
+            {
+              transferItem: {
+                item: field === 'item' ? 'missing' : 'widget',
+                from: field === 'from' ? 'missing' : 'inventory',
+                to: field === 'to' ? 'missing' : 'player',
+              },
+            },
+          ],
+          scope: createHarnessScope({
+            inventory: createContainer('inventory'),
+            player: createContainer('player'),
+            refs: { widget: createItem('test:widget') },
+          }),
+          expectFailure: {
+            code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          },
+        });
+      });
+    }
+  });
+
+  describe('movePlayer', function () {
+    it('lowers movePlayer with implicit current player', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'forge',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: scope.player,
+              toRoom: rooms['test:forge'],
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers movePlayer with an explicit player reference when provided', function () {
+      const explicitPlayer = {
+        name: 'Explicit Tester',
+        moveTo() {},
+      };
+      const { scope, rooms } = createScopeWithRooms(['test:forge'], {
+        refs: { explicitPlayer },
+      });
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              player: 'explicitPlayer',
+              toRoom: 'forge',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: explicitPlayer,
+              toRoom: rooms['test:forge'],
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('resolves current-area-relative toRoom references', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'forge',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: scope.player,
+              toRoom: rooms['test:forge'],
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('resolves fully qualified toRoom references', function () {
+      const { scope, rooms } = createScopeWithRooms(['codex:start']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'codex:start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: scope.player,
+              toRoom: rooms['codex:start'],
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('fails when movePlayer.toRoom cannot be resolved', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'missing',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+
+    it('preserves optional movePlayer.direction', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'forge',
+              direction: 'north',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: scope.player,
+              toRoom: rooms['test:forge'],
+              direction: 'north',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('preserves optional movePlayer.suppressRoomBroadcast', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            movePlayer: {
+              toRoom: 'forge',
+              suppressRoomBroadcast: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'movePlayer',
+              player: scope.player,
+              toRoom: rooms['test:forge'],
+              suppressRoomBroadcast: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+  });
+
+  describe('door ops', function () {
+    it('lowers operateDoor targeted by direction', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            operateDoor: {
+              mutation: 'open',
+              direction: 'north',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'operateDoor',
+              actor: scope.actor,
+              mutation: 'open',
+              direction: 'north',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers operateDoor targeted by roomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            operateDoor: {
+              mutation: 'close',
+              roomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'operateDoor',
+              actor: scope.actor,
+              mutation: 'close',
+              roomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('preserves operateDoor.fromRoomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            operateDoor: {
+              mutation: 'unlock',
+              roomRef: 'start',
+              fromRoomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'operateDoor',
+              actor: scope.actor,
+              mutation: 'unlock',
+              roomRef: 'test:start',
+              fromRoomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers openDoor targeted by direction', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            openDoor: {
+              direction: 'north',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'openDoor',
+              actor: scope.actor,
+              direction: 'north',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers openDoor targeted by roomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            openDoor: {
+              roomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'openDoor',
+              actor: scope.actor,
+              roomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('preserves openDoor.fromRoomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            openDoor: {
+              roomRef: 'start',
+              fromRoomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'openDoor',
+              actor: scope.actor,
+              roomRef: 'test:start',
+              fromRoomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers closeAndLockDoor targeted by direction', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            closeAndLockDoor: {
+              direction: 'east',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'closeAndLockDoor',
+              actor: scope.actor,
+              direction: 'east',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers closeAndLockDoor targeted by roomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            closeAndLockDoor: {
+              roomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'closeAndLockDoor',
+              actor: scope.actor,
+              roomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('preserves closeAndLockDoor.fromRoomRef', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            closeAndLockDoor: {
+              roomRef: 'start',
+              fromRoomRef: 'start',
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'closeAndLockDoor',
+              actor: scope.actor,
+              roomRef: 'test:start',
+              fromRoomRef: 'test:start',
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('fails when a door effect uses an unresolved current-area-relative roomRef', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            openDoor: {
+              roomRef: 'missing',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+
+    it('fails when a door effect uses an unresolved fromRoomRef', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            operateDoor: {
+              mutation: 'open',
+              roomRef: 'start',
+              fromRoomRef: 'missing',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+  });
+
+  describe('metadata ops', function () {
+    it('lowers setPlayerMetadata with implicit current player', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setPlayerMetadata: {
+              key: 'story.phase',
+              value: 2,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setPlayerMetadata',
+              player: scope.player,
+              key: 'story.phase',
+              value: 2,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers setRoomMetadata with implicit current room', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setRoomMetadata: {
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setRoomMetadata',
+              actor: scope.actor,
+              key: 'bells.rung',
+              value: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers setRoomMetadata with explicit roomRef', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setRoomMetadata: {
+              roomRef: 'forge',
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setRoomMetadata',
+              actor: { room: rooms['test:forge'] },
+              key: 'bells.rung',
+              value: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers setAreaMetadata with implicit current area', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setAreaMetadata: {
+              key: 'story.phase',
+              value: 2,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setAreaMetadata',
+              actor: scope.actor,
+              key: 'story.phase',
+              value: 2,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('lowers setWorldMetadata', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setWorldMetadata: {
+              key: 'world.phase',
+              value: 2,
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setWorldMetadata',
+              key: 'world.phase',
+              value: 2,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('preserves force across metadata delete ops', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            deleteRoomMetadata: {
+              key: 'bells.rung',
+              force: true,
+            },
+          },
+          {
+            deleteAreaMetadata: {
+              key: 'story.phase',
+              force: true,
+            },
+          },
+          {
+            deleteWorldMetadata: {
+              key: 'world.phase',
+              force: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'deleteRoomMetadata',
+              actor: scope.actor,
+              key: 'bells.rung',
+              force: true,
+            },
+            {
+              type: 'deleteAreaMetadata',
+              actor: scope.actor,
+              key: 'story.phase',
+              force: true,
+            },
+            {
+              type: 'deleteWorldMetadata',
+              key: 'world.phase',
+              force: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('fails when an explicit metadata room target cannot be resolved', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            setRoomMetadata: {
+              roomRef: 'missing',
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+  });
+
+  describe('broadcast', function () {
+    it('lowers a plain room broadcast', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            broadcast: {
+              audience: 'room',
+              message: 'Hello.',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'broadcast',
+              audience: 'room',
+              message: 'Hello.',
+            },
+          ],
+        },
+      });
+    });
+
+    it('lowers each currently supported broadcast audience', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          { broadcast: { audience: 'player', message: 'To player.' } },
+          { broadcast: { audience: 'room', message: 'To room.' } },
+          { broadcast: { audience: 'area', message: 'To area.' } },
+          { broadcast: { audience: 'areaExceptTargets', message: 'To area except targets.' } },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            { type: 'broadcast', audience: 'player', message: 'To player.' },
+            { type: 'broadcast', audience: 'room', message: 'To room.' },
+            { type: 'broadcast', audience: 'area', message: 'To area.' },
+            { type: 'broadcast', audience: 'areaExceptTargets', message: 'To area except targets.' },
+          ],
+        },
+      });
+    });
+
+    it('preserves optional broadcast targeting fields', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            broadcast: {
+              audience: 'areaExceptTargets',
+              message: 'Hello.',
+              targetSelector: 'roomByRef',
+              targetRoomRef: 'start',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'broadcast',
+              audience: 'areaExceptTargets',
+              message: 'Hello.',
+              targetSelector: 'roomByRef',
+              targetRoomRef: 'test:start',
+            },
+          ],
+        },
+      });
+    });
+
+    it('preserves optional broadcast exclusion fields', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            broadcast: {
+              audience: 'areaExceptTargets',
+              message: 'Hello.',
+              exceptSelector: 'targetsByRoomRef',
+              exceptRoomRef: 'start',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'broadcast',
+              audience: 'areaExceptTargets',
+              message: 'Hello.',
+              exceptSelector: 'targetsByRoomRef',
+              exceptRoomRef: 'test:start',
+            },
+          ],
+        },
+      });
+    });
+
+    it('fails when broadcast room-target selectors reference an unresolved targetRoomRef', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            broadcast: {
+              audience: 'room',
+              message: 'Hello.',
+              targetSelector: 'roomByRef',
+              targetRoomRef: 'missing',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+
+    it('fails when broadcast room-target selectors reference an unresolved exceptRoomRef', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            broadcast: {
+              audience: 'areaExceptTargets',
+              message: 'Hello.',
+              exceptSelector: 'targetsByRoomRef',
+              exceptRoomRef: 'missing',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+        },
+      });
+    });
+  });
+
+  describe('semanticEvent', function () {
+    it('lowers a minimal valid semanticEvent unchanged', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            semanticEvent: {
+              template: '{actor.You} nod{verb}.',
+              audiencePolicy: 'self',
+              participants: {
+                actor: {
+                  selector: 'currentActor',
+                },
+              },
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} nod{verb}.',
+              audiencePolicy: 'self',
+              participants: {
+                actor: {
+                  selector: 'currentActor',
+                },
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    it('lowers semanticEvent payloads with additional participants unchanged', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            semanticEvent: {
+              template: '{actor.You} hand{verb} {object.direct} to {target.you}.',
+              audiencePolicy: 'self_target_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+                target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+                direct: { selector: 'entityByContextRole', role: 'directTarget' },
+                indirect: { selector: 'entityByContextRole', role: 'indirectTarget' },
+              },
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} hand{verb} {object.direct} to {target.you}.',
+              audiencePolicy: 'self_target_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+                target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+                direct: { selector: 'entityByContextRole', role: 'directTarget' },
+                indirect: { selector: 'entityByContextRole', role: 'indirectTarget' },
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    it('lowers semanticEvent payloads with objectText unchanged', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            semanticEvent: {
+              template: '{actor.You} hand{verb} {object.direct}.',
+              audiencePolicy: 'self_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+              },
+              objectText: {
+                direct: 'the widget',
+              },
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} hand{verb} {object.direct}.',
+              audiencePolicy: 'self_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+              },
+              objectText: {
+                direct: 'the widget',
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    it('lowers semanticEvent payloads with alternate audience policies unchanged', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            semanticEvent: {
+              template: '{actor.You} glance{verb} at {target.you}.',
+              audiencePolicy: 'target_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+                target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+              },
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} glance{verb} at {target.you}.',
+              audiencePolicy: 'target_and_others',
+              participants: {
+                actor: { selector: 'currentActor' },
+                target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+              },
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe('mixed ordering', function () {
+    it('preserves authored order within operation and render buckets', function () {
+      const widget = createItem('test:widget');
+      const inventory = createContainer('inventory');
+      const player = createContainer('player');
+      const scope = createHarnessScope({
         inventory,
         player,
         refs: { widget },
-      }),
-      expectSuccess: {
-        operations: [
-          {
-            type: 'transferItem',
-            item: widget,
-            from: inventory,
-            to: player,
-          },
-        ],
-        renderMessages: [],
-      },
-    });
-  });
+      });
 
-  it('lowers movePlayer with implicit player and current-area-relative room expansion', function () {
-    const destinationRoom = { entityReference: 'test:start' };
-    const scope = createHarnessScope({
-      state: {
-        RoomManager: {
-          getRoom(ref) {
-            return ref === 'test:start' ? destinationRoom : null;
-          },
-        },
-      },
-    });
-
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          movePlayer: {
-            toRoom: 'start',
-          },
-        },
-      ],
-      scope,
-      expectSuccess: {
-        operations: [
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          { setWorldMetadata: { key: 'phase', value: 1 } },
+          { deleteWorldMetadata: { key: 'phase', force: true } },
+          { broadcast: { audience: 'room', message: 'First render.' } },
           {
-            type: 'movePlayer',
-            player: scope.player,
-            toRoom: destinationRoom,
-          },
-        ],
-        renderMessages: [],
-      },
-    });
-  });
-
-  it('lowers authored door effects with implicit actor and explicit targeting fields', function () {
-    const scope = createHarnessScope();
-
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          operateDoor: {
-            mutation: 'open',
-            direction: 'north',
-          },
-        },
-        {
-          openDoor: {
-            roomRef: 'start',
-          },
-        },
-        {
-          closeAndLockDoor: {
-            direction: 'east',
-          },
-        },
-      ],
-      scope,
-      expectSuccess: {
-        operations: [
-          {
-            type: 'operateDoor',
-            actor: scope.actor,
-            mutation: 'open',
-            direction: 'north',
-          },
-          {
-            type: 'openDoor',
-            actor: scope.actor,
-            roomRef: 'test:start',
-          },
-          {
-            type: 'closeAndLockDoor',
-            actor: scope.actor,
-            direction: 'east',
-          },
-        ],
-        renderMessages: [],
-      },
-    });
-  });
-
-  it('fails when a door effect uses an unresolved current-area-relative roomRef', function () {
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          openDoor: {
-            roomRef: 'missing',
-          },
-        },
-      ],
-      scope: createHarnessScope(),
-      expectFailure: {
-        code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
-      },
-    });
-  });
-
-  it('lowers authored metadata effects with implicit local targets and explicit overrides', function () {
-    const scope = createHarnessScope();
-
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          setPlayerMetadata: {
-            key: 'story.phase',
-            value: 2,
-          },
-        },
-        {
-          setRoomMetadata: {
-            roomRef: 'start',
-            key: 'bells.rung',
-            value: true,
-          },
-        },
-        {
-          setAreaMetadata: {
-            key: 'story.phase',
-            value: 2,
-          },
-        },
-        {
-          setWorldMetadata: {
-            key: 'world.phase',
-            value: 2,
-          },
-        },
-        {
-          deleteRoomMetadata: {
-            key: 'bells.rung',
-            force: true,
-          },
-        },
-        {
-          deleteAreaMetadata: {
-            key: 'story.phase',
-          },
-        },
-        {
-          deleteWorldMetadata: {
-            key: 'world.phase',
-            force: true,
-          },
-        },
-      ],
-      scope,
-      expectSuccess: {
-        operations: [
-          {
-            type: 'setPlayerMetadata',
-            player: scope.player,
-            key: 'story.phase',
-            value: 2,
-          },
-          {
-            type: 'setRoomMetadata',
-            actor: { room: scope.room },
-            key: 'bells.rung',
-            value: true,
-          },
-          {
-            type: 'setAreaMetadata',
-            actor: scope.actor,
-            key: 'story.phase',
-            value: 2,
-          },
-          {
-            type: 'setWorldMetadata',
-            key: 'world.phase',
-            value: 2,
-          },
-          {
-            type: 'deleteRoomMetadata',
-            actor: scope.actor,
-            key: 'bells.rung',
-            force: true,
-          },
-          {
-            type: 'deleteAreaMetadata',
-            actor: scope.actor,
-            key: 'story.phase',
-          },
-          {
-            type: 'deleteWorldMetadata',
-            key: 'world.phase',
-            force: true,
-          },
-        ],
-        renderMessages: [],
-      },
-    });
-  });
-
-  it('lowers authored render effects through the live broadcast and semanticEvent contracts', function () {
-    const scope = createHarnessScope();
-
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          broadcast: {
-            audience: 'areaExceptTargets',
-            message: 'Hello.',
-            targetSelector: 'roomByRef',
-            targetRoomRef: 'start',
-            exceptSelector: 'targetsByRoomRef',
-            exceptRoomRef: 'start',
-          },
-        },
-        {
-          semanticEvent: {
-            template: '{actor.You} nod{verb}.',
-            audiencePolicy: 'self',
-            participants: {
-              actor: {
-                selector: 'currentActor',
+            semanticEvent: {
+              template: '{actor.You} nod{verb}.',
+              audiencePolicy: 'self',
+              participants: {
+                actor: { selector: 'currentActor' },
               },
             },
           },
-        },
-      ],
-      scope,
-      expectSuccess: {
-        operations: [],
-        renderMessages: [
-          {
-            type: 'broadcast',
-            audience: 'areaExceptTargets',
-            message: 'Hello.',
-            targetSelector: 'roomByRef',
-            targetRoomRef: 'test:start',
-            exceptSelector: 'targetsByRoomRef',
-            exceptRoomRef: 'test:start',
-          },
-          {
-            type: 'semanticEvent',
-            template: '{actor.You} nod{verb}.',
-            audiencePolicy: 'self',
-            participants: {
-              actor: {
-                selector: 'currentActor',
+          { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            { type: 'setWorldMetadata', key: 'phase', value: 1 },
+            { type: 'deleteWorldMetadata', key: 'phase', force: true },
+            { type: 'transferItem', item: widget, from: inventory, to: player },
+          ],
+          renderMessages: [
+            { type: 'broadcast', audience: 'room', message: 'First render.' },
+            {
+              type: 'semanticEvent',
+              template: '{actor.You} nod{verb}.',
+              audiencePolicy: 'self',
+              participants: {
+                actor: { selector: 'currentActor' },
               },
             },
-          },
+          ],
+        },
+      });
+    });
+
+    it('does not reorder several effects within the same output bucket', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          { broadcast: { audience: 'room', message: 'One.' } },
+          { broadcast: { audience: 'area', message: 'Two.' } },
+          { broadcast: { audience: 'player', message: 'Three.' } },
         ],
-      },
+        scope: createHarnessScope(),
+        expectSuccess: {
+          operations: [],
+          renderMessages: [
+            { type: 'broadcast', audience: 'room', message: 'One.' },
+            { type: 'broadcast', audience: 'area', message: 'Two.' },
+            { type: 'broadcast', audience: 'player', message: 'Three.' },
+          ],
+        },
+      });
     });
   });
 
-  it('fails when broadcast room-target selectors reference an unresolved room', function () {
-    runHarnessCase({
-      adapter: transposeAuthoredEffects,
-      effects: [
-        {
-          broadcast: {
-            audience: 'room',
-            message: 'Hello.',
-            targetSelector: 'roomByRef',
-            targetRoomRef: 'missing',
-          },
+  describe('failure behavior', function () {
+    it('returns the first structured failure when a later effect is bad', function () {
+      const widget = createItem('test:widget');
+      const inventory = createContainer('inventory');
+      const player = createContainer('player');
+
+      const result = runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
+          { movePlayer: { toRoom: 'missing' } },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+          refs: { widget },
+        }),
+        expectFailure: {
+          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
         },
-      ],
-      scope: createHarnessScope(),
-      expectFailure: {
-        code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
-      },
+      });
+
+      assert.strictEqual(result.ok, false);
+      assert.deepStrictEqual(result.details, {
+        effectName: 'movePlayer',
+        field: 'toRoom',
+        value: 'missing',
+      });
+    });
+
+    it('does not emit partial lowered output after a failure', function () {
+      const widget = createItem('test:widget');
+      const inventory = createContainer('inventory');
+      const player = createContainer('player');
+
+      const result = transposeAuthoredEffects({
+        effects: [
+          { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
+          { movePlayer: { toRoom: 'missing' } },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+          refs: { widget },
+        }),
+      });
+
+      assert.strictEqual(result.ok, false);
+      assert.ok(!Object.prototype.hasOwnProperty.call(result, 'operations'));
+      assert.ok(!Object.prototype.hasOwnProperty.call(result, 'renderMessages'));
+    });
+
+    it('does not return successful output when required fields are omitted', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          { transferItem: { item: 'widget', from: 'inventory' } },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_EFFECTS_INVALID',
+        },
+      });
     });
   });
 });
