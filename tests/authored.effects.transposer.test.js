@@ -20,13 +20,21 @@ function createRoom(entityReference) {
   };
 }
 
-function createItem(entityReference) {
-  return { entityReference };
+function createItem(entityReference, overrides = {}) {
+  const itemId = String(entityReference).split(':').pop();
+  return {
+    entityReference,
+    name: itemId,
+    keywords: [itemId],
+    ...overrides,
+  };
 }
 
-function createContainer(name) {
+function createContainer(name, items = []) {
+  const inventory = new Set(items);
   return {
     name,
+    inventory,
     addItem() {},
     removeItem() {},
   };
@@ -88,7 +96,7 @@ describe('authored effects transposer', function () {
   describe('transferItem', function () {
     it('lowers a happy-path transferItem effect through explicit scope resolution', function () {
       const widget = createItem('test:widget');
-      const inventory = createContainer('inventory');
+      const inventory = createContainer('inventory', [widget]);
       const player = createContainer('player');
 
       runHarnessCase({
@@ -105,7 +113,6 @@ describe('authored effects transposer', function () {
         scope: createHarnessScope({
           inventory,
           player,
-          refs: { widget },
         }),
         expectSuccess: {
           operations: [
@@ -121,8 +128,118 @@ describe('authored effects transposer', function () {
       });
     });
 
+    it('resolves transferItem.item by current-area-relative item ref within from', function () {
+      const widget = createItem('test:widget', { name: 'Iron Widget' });
+      const inventory = createContainer('inventory', [widget]);
+      const player = createContainer('player');
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            transferItem: {
+              item: 'widget',
+              from: 'inventory',
+              to: 'player',
+            },
+          },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+        }),
+        expectSuccess: {
+          operations: [
+            {
+              type: 'transferItem',
+              item: widget,
+              from: inventory,
+              to: player,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('resolves transferItem.item by fully qualified item ref within from', function () {
+      const widget = createItem('codex:widget', { name: 'Iron Widget' });
+      const inventory = createContainer('inventory', [widget]);
+      const player = createContainer('player');
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            transferItem: {
+              item: 'codex:widget',
+              from: 'inventory',
+              to: 'player',
+            },
+          },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+        }),
+        expectSuccess: {
+          operations: [
+            {
+              type: 'transferItem',
+              item: widget,
+              from: inventory,
+              to: player,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
+    it('takes the first matching transferItem.item from the from container', function () {
+      const firstWidget = createItem('test:widgetOne', {
+        name: 'iron widget',
+        keywords: ['widget'],
+      });
+      const secondWidget = createItem('test:widgetTwo', {
+        name: 'iron widget',
+        keywords: ['widget'],
+      });
+      const inventory = createContainer('inventory', [firstWidget, secondWidget]);
+      const player = createContainer('player');
+
+      runHarnessCase({
+        adapter: transposeAuthoredEffects,
+        effects: [
+          {
+            transferItem: {
+              item: 'widget',
+              from: 'inventory',
+              to: 'player',
+            },
+          },
+        ],
+        scope: createHarnessScope({
+          inventory,
+          player,
+        }),
+        expectSuccess: {
+          operations: [
+            {
+              type: 'transferItem',
+              item: firstWidget,
+              from: inventory,
+              to: player,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     for (const field of ['item', 'from', 'to']) {
       it(`fails when transferItem.${field} is unresolved`, function () {
+        const widget = createItem('test:widget');
         runHarnessCase({
           adapter: transposeAuthoredEffects,
           effects: [
@@ -135,9 +252,8 @@ describe('authored effects transposer', function () {
             },
           ],
           scope: createHarnessScope({
-            inventory: createContainer('inventory'),
+            inventory: createContainer('inventory', field === 'item' ? [] : [widget]),
             player: createContainer('player'),
-            refs: { widget: createItem('test:widget') },
           }),
           expectFailure: {
             code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
@@ -1121,12 +1237,11 @@ describe('authored effects transposer', function () {
   describe('mixed ordering', function () {
     it('preserves authored order within operation and render buckets', function () {
       const widget = createItem('test:widget');
-      const inventory = createContainer('inventory');
+      const inventory = createContainer('inventory', [widget]);
       const player = createContainer('player');
       const scope = createHarnessScope({
         inventory,
         player,
-        refs: { widget },
       });
 
       runHarnessCase({
@@ -1192,7 +1307,7 @@ describe('authored effects transposer', function () {
   describe('failure behavior', function () {
     it('returns the first structured failure when a later effect is bad', function () {
       const widget = createItem('test:widget');
-      const inventory = createContainer('inventory');
+      const inventory = createContainer('inventory', [widget]);
       const player = createContainer('player');
 
       const result = runHarnessCase({
@@ -1204,7 +1319,6 @@ describe('authored effects transposer', function () {
         scope: createHarnessScope({
           inventory,
           player,
-          refs: { widget },
         }),
         expectFailure: {
           code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
@@ -1221,7 +1335,7 @@ describe('authored effects transposer', function () {
 
     it('does not emit partial lowered output after a failure', function () {
       const widget = createItem('test:widget');
-      const inventory = createContainer('inventory');
+      const inventory = createContainer('inventory', [widget]);
       const player = createContainer('player');
 
       const result = transposeAuthoredEffects({
@@ -1232,7 +1346,6 @@ describe('authored effects transposer', function () {
         scope: createHarnessScope({
           inventory,
           player,
-          refs: { widget },
         }),
       });
 
