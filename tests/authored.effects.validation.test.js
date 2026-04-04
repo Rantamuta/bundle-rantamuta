@@ -175,4 +175,96 @@ describe('authored effects validator', function () {
       'AUTHORED_EFFECT_FIELD_REQUIRED',
     ]);
   });
+
+  it('accepts explicit targeting fields for metadata effects when they are structurally valid', function () {
+    const result = validateAuthoredEffects([
+      { setPlayerMetadata: { player: 'player', key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: 'npc', key: 'bells.rung', value: true } },
+      { setAreaMetadata: { actor: 'npc', key: 'story.phase', value: 2 } },
+      { deleteRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', force: true } },
+      { deleteRoomMetadata: { actor: 'npc', key: 'bells.rung', force: false } },
+      { deleteAreaMetadata: { actor: 'npc', key: 'story.phase', force: true } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      errors: [],
+    });
+  });
+
+  it('rejects malformed optional targeting fields for metadata set effects', function () {
+    const result = validateAuthoredEffects([
+      { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { player: '   ', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { player: 7, key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { roomRef: '', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { roomRef: '   ', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { roomRef: 7, key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: '', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: '   ', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: 7, key: 'bells.rung', value: true } },
+      { setAreaMetadata: { actor: '', key: 'story.phase', value: 2 } },
+      { setAreaMetadata: { actor: '   ', key: 'story.phase', value: 2 } },
+      { setAreaMetadata: { actor: 7, key: 'story.phase', value: 2 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed optional targeting fields for metadata delete effects', function () {
+    const result = validateAuthoredEffects([
+      { deleteRoomMetadata: { roomRef: '', key: 'bells.rung' } },
+      { deleteRoomMetadata: { roomRef: '   ', key: 'bells.rung' } },
+      { deleteRoomMetadata: { roomRef: 7, key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: '', key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: '   ', key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: 7, key: 'bells.rung' } },
+      { deleteAreaMetadata: { actor: '', key: 'story.phase' } },
+      { deleteAreaMetadata: { actor: '   ', key: 'story.phase' } },
+      { deleteAreaMetadata: { actor: 7, key: 'story.phase' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed metadata delete force values even when optional targeting fields are present', function () {
+    const result = validateAuthoredEffects([
+      { deleteRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', force: 'yes' } },
+      { deleteRoomMetadata: { actor: 'npc', key: 'bells.rung', force: 1 } },
+      { deleteAreaMetadata: { actor: 'npc', key: 'story.phase', force: 'true' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
+    ]);
+  });
 });
