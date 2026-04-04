@@ -297,6 +297,11 @@ describe('scenario runner', function () {
     assert.match(result.stdout, /take reliquary/);
     assert.match(result.stdout, /The reliquary is set into the stonework\./);
 
+    // pull rope is expected to succeed
+    assert.match(result.stdout, /You haul down on the bell rope, but from above comes only a distant, mournful clack/);
+    assert.match(result.stdout, /You pull down on the bell rope, and the bell tolls cheerfully\./);
+    assert.match(result.stdout, /A resonant chime rolls out from the bell tower\./);
+
 
     // Puzzle completion and guidance lines.
     assert.equal(result.status, 0, result.stderr || result.stdout);

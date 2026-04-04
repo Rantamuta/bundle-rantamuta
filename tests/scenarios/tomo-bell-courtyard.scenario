@@ -21,6 +21,7 @@ command: put prayer stone in stone basin
 
 # Finish ritual at belfry
 command: up
+command: pull rope
 command: up
 command: up
 command: take bell
@@ -29,6 +30,7 @@ command: put bronze clapper in cracked bell
 # Return to Tomo for completion + gallery redirect
 command: down
 command: down
+command: pull rope
 command: south
 command: south
 command: north

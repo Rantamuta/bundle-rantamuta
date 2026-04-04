@@ -50,9 +50,9 @@
   type: OBJECT  
   script: bellRopeScript
   metadata:
-    pullable: true
     verbs:
       take: "The bell rope is securely attached, somewhere far above in the darkness."
+      pull: true
   
 
 - id: reliquary
