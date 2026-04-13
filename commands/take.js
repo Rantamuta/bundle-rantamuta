@@ -17,8 +17,20 @@ function fail(code, details) {
 }
 
 /**
+ * Read the item's explicit authored `take` verb policy from
+ * `metadata.verbs.take`, if present.
+ *
+ * This helper only returns the direct authored override for `take`. It does
+ * not apply default takeability rules or inspect legacy metadata fields.
+ *
+ * Return contract:
+ * - `true`: explicitly allow taking the item
+ * - `false`: explicitly deny taking the item
+ * - `string`: explicitly deny taking the item with authored feedback
+ * - `undefined`: no explicit `take` verb policy is authored
+ *
  * @param {*} item
- * @returns {*}
+ * @returns {true | false | string | undefined}
  */
 function takeVerbPolicy(item) {
   if (!item || typeof item !== 'object') {
