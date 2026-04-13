@@ -173,7 +173,7 @@ describe('bundle-rantamuta conversation definition validation', function () {
     ]);
   });
 
-  it('delegates authored effect validation for onEntry, event, default, and transition effects', function () {
+  it('delegates authored instruction validation for onEntry, event, default, and transition effects', function () {
     const result = validateConversationDefinition({
       id: 'actor_planner',
       initial: 'greeting',
@@ -213,10 +213,10 @@ describe('bundle-rantamuta conversation definition validation', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECTS_ARRAY_REQUIRED',
-      'AUTHORED_EFFECT_UNSUPPORTED',
-      'AUTHORED_EFFECT_FIELD_ENUM_INVALID',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTIONS_ARRAY_REQUIRED',
+      'AUTHORED_INSTRUCTION_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
     assert.ok(result.errors.every(error => error.source === 'test:effects'));
   });

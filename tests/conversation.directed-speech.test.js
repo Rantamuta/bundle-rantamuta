@@ -169,7 +169,7 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  it('lowers canonical authored effects into command operations and render instructions', function () {
+  it('lowers canonical authored instructions into command operations and render instructions', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
       'id: actor_planner',
@@ -233,7 +233,7 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(errors, []);
   });
 
-  it('logs and falls through when matched authored effects cannot be resolved at runtime', function () {
+  it('logs and falls through when matched authored instructions cannot be resolved at runtime', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
       'id: actor_planner',
@@ -264,6 +264,6 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
 
     assert.strictEqual(result, null);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0], /CONVERSATION_DIRECTED_SPEECH AUTHORED_EFFECT_REFERENCE_UNRESOLVED/);
+    assert.match(errors[0], /CONVERSATION_DIRECTED_SPEECH AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED/);
   });
 });

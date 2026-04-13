@@ -25,7 +25,7 @@ const assert = require('assert');
  */
 
 /**
- * Create a minimal explicit scope object for authored-effects tests.
+ * Create a minimal explicit scope object for authored-instructions tests.
  *
  * The harness keeps scope construction boring on purpose so later tests can
  * focus on transposition behavior rather than fixture plumbing.
@@ -88,7 +88,7 @@ function createHarnessScope(overrides = {}) {
 }
 
 /**
- * Assert the canonical success shape expected from the authored-effects
+ * Assert the canonical success shape expected from the authored-instructions
  * transposer entrypoint.
  *
  * @param {*} result
@@ -102,7 +102,7 @@ function assertSuccessResult(result) {
 }
 
 /**
- * Assert the canonical failure shape expected from the authored-effects
+ * Assert the canonical failure shape expected from the authored-instructions
  * transposer entrypoint.
  *
  * @param {*} result

@@ -3,10 +3,10 @@
 
 const assert = require('assert');
 
-const { validateAuthoredEffects } = require('../lib/runtime/authored-effects');
+const { validateAuthoredEffects } = require('../lib/runtime/authored-instructions');
 
-describe('authored effects validator', function () {
-  it('accepts an empty authored-effects array', function () {
+describe('authored instructions validator', function () {
+  it('accepts an empty authored-instructions array', function () {
     const result = validateAuthoredEffects([]);
 
     assert.deepStrictEqual(result, {
@@ -15,12 +15,12 @@ describe('authored effects validator', function () {
     });
   });
 
-  it('rejects a non-array authored-effects root', function () {
+  it('rejects a non-array authored-instructions root', function () {
     const result = validateAuthoredEffects(null);
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECTS_ARRAY_REQUIRED',
+      'AUTHORED_INSTRUCTIONS_ARRAY_REQUIRED',
     ]);
   });
 
@@ -32,8 +32,8 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_ENTRY_OBJECT_REQUIRED',
-      'AUTHORED_EFFECT_ENTRY_SINGLE_KEY_REQUIRED',
+      'AUTHORED_INSTRUCTION_ENTRY_OBJECT_REQUIRED',
+      'AUTHORED_INSTRUCTION_ENTRY_SINGLE_KEY_REQUIRED',
     ]);
     assert.strictEqual(result.errors[0].source, 'test-source');
     assert.strictEqual(result.errors[1].source, 'test-source');
@@ -46,7 +46,7 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_UNSUPPORTED',
     ]);
   });
 
@@ -102,20 +102,20 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -133,14 +133,14 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_ENUM_INVALID',
-      'AUTHORED_EFFECT_FIELD_ENUM_INVALID',
-      'AUTHORED_EFFECT_FIELD_ENUM_INVALID',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_PAYLOAD_OBJECT_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_PAYLOAD_OBJECT_REQUIRED',
     ]);
   });
 
@@ -155,7 +155,7 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -169,10 +169,10 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -211,18 +211,18 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -241,15 +241,15 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -262,9 +262,9 @@ describe('authored effects validator', function () {
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
-      'AUTHORED_EFFECT_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
     ]);
   });
 });

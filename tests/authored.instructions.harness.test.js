@@ -8,10 +8,10 @@ const {
   assertSuccessResult,
   assertFailureResult,
   runHarnessCase,
-} = require('./helpers/authored-effects-harness');
+} = require('./helpers/authored-instructions-harness');
 
-describe('authored effects harness', function () {
-  it('creates a minimal explicit authored-effects scope fixture', function () {
+describe('authored instructions harness', function () {
+  it('creates a minimal explicit authored-instructions scope fixture', function () {
     const scope = createHarnessScope();
 
     assert.ok(scope.state);

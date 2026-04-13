@@ -3,11 +3,11 @@
 
 const assert = require('assert');
 
-const { transposeAuthoredEffects } = require('../lib/runtime/authored-effects');
+const { transposeAuthoredEffects } = require('../lib/runtime/authored-instructions');
 const {
   createHarnessScope,
   runHarnessCase,
-} = require('./helpers/authored-effects-harness');
+} = require('./helpers/authored-instructions-harness');
 
 function createRoom(entityReference) {
   const [areaRef] = String(entityReference).split(':');
@@ -35,8 +35,8 @@ function createContainer(name, items = []) {
   return {
     name,
     inventory,
-    addItem() {},
-    removeItem() {},
+    addItem() { },
+    removeItem() { },
   };
 }
 
@@ -62,8 +62,8 @@ function createScopeWithRooms(roomRefs, overrides = {}) {
   return { scope, rooms };
 }
 
-describe('authored effects transposer', function () {
-  it('returns a canonical empty success envelope for an empty authored-effects array', function () {
+describe('authored instructions transposer', function () {
+  it('returns a canonical empty success envelope for an empty authored-instructions array', function () {
     runHarnessCase({
       adapter: transposeAuthoredEffects,
       effects: [],
@@ -74,7 +74,7 @@ describe('authored effects transposer', function () {
     });
   });
 
-  it('returns one structured failure when authored effects fail shared validation', function () {
+  it('returns one structured failure when authored instructions fail shared validation', function () {
     const result = runHarnessCase({
       adapter: transposeAuthoredEffects,
       effects: [
@@ -82,14 +82,14 @@ describe('authored effects transposer', function () {
       ],
       scope: createHarnessScope(),
       expectFailure: {
-        code: 'AUTHORED_EFFECTS_INVALID',
+        code: 'AUTHORED_INSTRUCTIONS_INVALID',
       },
     });
 
     assert.ok(result.details);
     assert.ok(Array.isArray(result.details.errors));
     assert.deepStrictEqual(result.details.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
   });
 
@@ -256,7 +256,7 @@ describe('authored effects transposer', function () {
             player: createContainer('player'),
           }),
           expectFailure: {
-            code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+            code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
           },
         });
       });
@@ -293,7 +293,7 @@ describe('authored effects transposer', function () {
     it('lowers movePlayer with an explicit player reference when provided', function () {
       const explicitPlayer = {
         name: 'Explicit Tester',
-        moveTo() {},
+        moveTo() { },
       };
       const { scope, rooms } = createScopeWithRooms(['test:forge'], {
         refs: { explicitPlayer },
@@ -387,7 +387,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -708,7 +708,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -727,7 +727,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -937,7 +937,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -1064,7 +1064,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -1084,7 +1084,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
     });
@@ -1321,7 +1321,7 @@ describe('authored effects transposer', function () {
           player,
         }),
         expectFailure: {
-          code: 'AUTHORED_EFFECT_REFERENCE_UNRESOLVED',
+          code: 'AUTHORED_INSTRUCTION_REFERENCE_UNRESOLVED',
         },
       });
 
@@ -1362,7 +1362,7 @@ describe('authored effects transposer', function () {
         ],
         scope: createHarnessScope(),
         expectFailure: {
-          code: 'AUTHORED_EFFECTS_INVALID',
+          code: 'AUTHORED_INSTRUCTIONS_INVALID',
         },
       });
     });

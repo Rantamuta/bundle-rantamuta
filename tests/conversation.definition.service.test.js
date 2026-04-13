@@ -414,7 +414,7 @@ describe('bundle-rantamuta conversation definition service', function () {
     disposeConversationDefinitionService(state);
   });
 
-  it('surfaces shared authored-effects validation failures during bundle validation', function () {
+  it('surfaces shared authored-instructions validation failures during bundle validation', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-service-'));
     const areaRoot = path.join(tempRoot, 'bundle-test', 'areas', 'test');
     const conversationPath = path.join(areaRoot, 'conversations', 'actorPlanner.conversation.yml');
@@ -447,7 +447,7 @@ describe('bundle-rantamuta conversation definition service', function () {
     assert.strictEqual(findings[0].area, 'test');
     assert.strictEqual(findings[0].path, 'conversations/actorPlanner.conversation.yml');
     assert.deepStrictEqual(findings[0].detail.errors.map(error => error.code), [
-      'AUTHORED_EFFECT_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_UNSUPPORTED',
     ]);
 
     disposeConversationDefinitionService(state);
