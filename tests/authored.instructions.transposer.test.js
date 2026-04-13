@@ -3,7 +3,7 @@
 
 const assert = require('assert');
 
-const { transposeAuthoredEffects } = require('../lib/runtime/authored-instructions');
+const { transposeAuthoredInstructions } = require('../lib/runtime/authored-instructions');
 const {
   createHarnessScope,
   runHarnessCase,
@@ -65,7 +65,7 @@ function createScopeWithRooms(roomRefs, overrides = {}) {
 describe('authored instructions transposer', function () {
   it('returns a canonical empty success envelope for an empty authored-instructions array', function () {
     runHarnessCase({
-      adapter: transposeAuthoredEffects,
+      adapter: transposeAuthoredInstructions,
       effects: [],
       expectSuccess: {
         operations: [],
@@ -76,7 +76,7 @@ describe('authored instructions transposer', function () {
 
   it('returns one structured failure when authored instructions fail shared validation', function () {
     const result = runHarnessCase({
-      adapter: transposeAuthoredEffects,
+      adapter: transposeAuthoredInstructions,
       effects: [
         { transferItem: { from: 'inventory', to: 'player' } },
       ],
@@ -100,7 +100,7 @@ describe('authored instructions transposer', function () {
       const player = createContainer('player');
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             transferItem: {
@@ -134,7 +134,7 @@ describe('authored instructions transposer', function () {
       const player = createContainer('player');
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             transferItem: {
@@ -168,7 +168,7 @@ describe('authored instructions transposer', function () {
       const player = createContainer('player');
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             transferItem: {
@@ -209,7 +209,7 @@ describe('authored instructions transposer', function () {
       const player = createContainer('player');
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             transferItem: {
@@ -241,7 +241,7 @@ describe('authored instructions transposer', function () {
       it(`fails when transferItem.${field} is unresolved`, function () {
         const widget = createItem('test:widget');
         runHarnessCase({
-          adapter: transposeAuthoredEffects,
+          adapter: transposeAuthoredInstructions,
           effects: [
             {
               transferItem: {
@@ -268,7 +268,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -300,7 +300,7 @@ describe('authored instructions transposer', function () {
       });
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -327,7 +327,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -353,7 +353,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['codex:start']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -377,7 +377,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when movePlayer.toRoom cannot be resolved', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -396,7 +396,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -424,7 +424,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             movePlayer: {
@@ -454,7 +454,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             operateDoor: {
@@ -482,7 +482,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             operateDoor: {
@@ -510,7 +510,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             operateDoor: {
@@ -540,7 +540,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             openDoor: {
@@ -566,7 +566,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             openDoor: {
@@ -592,7 +592,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             openDoor: {
@@ -620,7 +620,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             closeAndLockDoor: {
@@ -646,7 +646,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             closeAndLockDoor: {
@@ -672,7 +672,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             closeAndLockDoor: {
@@ -698,7 +698,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when a door effect uses an unresolved current-area-relative roomRef', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             openDoor: {
@@ -715,7 +715,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when a door effect uses an unresolved fromRoomRef', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             operateDoor: {
@@ -738,7 +738,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setPlayerMetadata: {
@@ -766,7 +766,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setRoomMetadata: {
@@ -794,7 +794,7 @@ describe('authored instructions transposer', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setRoomMetadata: {
@@ -823,7 +823,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setAreaMetadata: {
@@ -849,7 +849,7 @@ describe('authored instructions transposer', function () {
 
     it('lowers setWorldMetadata', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setWorldMetadata: {
@@ -876,7 +876,7 @@ describe('authored instructions transposer', function () {
       const scope = createHarnessScope();
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             deleteRoomMetadata: {
@@ -925,7 +925,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when an explicit metadata room target cannot be resolved', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             setRoomMetadata: {
@@ -946,7 +946,7 @@ describe('authored instructions transposer', function () {
   describe('broadcast', function () {
     it('lowers a plain room broadcast', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             broadcast: {
@@ -971,7 +971,7 @@ describe('authored instructions transposer', function () {
 
     it('lowers each currently supported broadcast audience', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           { broadcast: { audience: 'player', message: 'To player.' } },
           { broadcast: { audience: 'room', message: 'To room.' } },
@@ -993,7 +993,7 @@ describe('authored instructions transposer', function () {
 
     it('preserves optional broadcast targeting fields', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             broadcast: {
@@ -1022,7 +1022,7 @@ describe('authored instructions transposer', function () {
 
     it('preserves optional broadcast exclusion fields', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             broadcast: {
@@ -1051,7 +1051,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when broadcast room-target selectors reference an unresolved targetRoomRef', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             broadcast: {
@@ -1071,7 +1071,7 @@ describe('authored instructions transposer', function () {
 
     it('fails when broadcast room-target selectors reference an unresolved exceptRoomRef', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             broadcast: {
@@ -1093,7 +1093,7 @@ describe('authored instructions transposer', function () {
   describe('semanticEvent', function () {
     it('lowers a minimal valid semanticEvent unchanged', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             semanticEvent: {
@@ -1128,7 +1128,7 @@ describe('authored instructions transposer', function () {
 
     it('lowers semanticEvent payloads with additional participants unchanged', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             semanticEvent: {
@@ -1165,7 +1165,7 @@ describe('authored instructions transposer', function () {
 
     it('lowers semanticEvent payloads with objectText unchanged', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             semanticEvent: {
@@ -1202,7 +1202,7 @@ describe('authored instructions transposer', function () {
 
     it('lowers semanticEvent payloads with alternate audience policies unchanged', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           {
             semanticEvent: {
@@ -1245,7 +1245,7 @@ describe('authored instructions transposer', function () {
       });
 
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           { setWorldMetadata: { key: 'phase', value: 1 } },
           { deleteWorldMetadata: { key: 'phase', force: true } },
@@ -1285,7 +1285,7 @@ describe('authored instructions transposer', function () {
 
     it('does not reorder several effects within the same output bucket', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           { broadcast: { audience: 'room', message: 'One.' } },
           { broadcast: { audience: 'area', message: 'Two.' } },
@@ -1311,7 +1311,7 @@ describe('authored instructions transposer', function () {
       const player = createContainer('player');
 
       const result = runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
           { movePlayer: { toRoom: 'missing' } },
@@ -1338,7 +1338,7 @@ describe('authored instructions transposer', function () {
       const inventory = createContainer('inventory', [widget]);
       const player = createContainer('player');
 
-      const result = transposeAuthoredEffects({
+      const result = transposeAuthoredInstructions({
         effects: [
           { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
           { movePlayer: { toRoom: 'missing' } },
@@ -1356,7 +1356,7 @@ describe('authored instructions transposer', function () {
 
     it('does not return successful output when required fields are omitted', function () {
       runHarnessCase({
-        adapter: transposeAuthoredEffects,
+        adapter: transposeAuthoredInstructions,
         effects: [
           { transferItem: { item: 'widget', from: 'inventory' } },
         ],

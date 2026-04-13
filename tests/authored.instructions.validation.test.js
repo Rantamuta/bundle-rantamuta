@@ -3,11 +3,11 @@
 
 const assert = require('assert');
 
-const { validateAuthoredEffects } = require('../lib/runtime/authored-instructions');
+const { validateAuthoredInstructions } = require('../lib/runtime/authored-instructions');
 
 describe('authored instructions validator', function () {
   it('accepts an empty authored-instructions array', function () {
-    const result = validateAuthoredEffects([]);
+    const result = validateAuthoredInstructions([]);
 
     assert.deepStrictEqual(result, {
       ok: true,
@@ -16,7 +16,7 @@ describe('authored instructions validator', function () {
   });
 
   it('rejects a non-array authored-instructions root', function () {
-    const result = validateAuthoredEffects(null);
+    const result = validateAuthoredInstructions(null);
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
@@ -25,7 +25,7 @@ describe('authored instructions validator', function () {
   });
 
   it('requires each effect entry to be a single-key object', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       'broadcast',
       { broadcast: { audience: 'room', message: 'Hello.' }, transferItem: {} },
     ], { source: 'test-source' });
@@ -40,7 +40,7 @@ describe('authored instructions validator', function () {
   });
 
   it('requires each effect name to be known', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { messageRoom: 'Hello.' },
     ]);
 
@@ -51,7 +51,7 @@ describe('authored instructions validator', function () {
   });
 
   it('accepts one structurally valid payload for each currently supported effect', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
       { movePlayer: { toRoom: 'start' } },
       { operateDoor: { mutation: 'open', direction: 'north' } },
@@ -83,7 +83,7 @@ describe('authored instructions validator', function () {
   });
 
   it('enforces required fields for the currently supported effect contracts', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { transferItem: { from: 'inventory', to: 'player' } },
       { movePlayer: {} },
       { operateDoor: { mutation: 'open' } },
@@ -120,7 +120,7 @@ describe('authored instructions validator', function () {
   });
 
   it('enforces field types and enum contracts where supported', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { deleteRoomMetadata: { key: 'bells.rung', force: 'yes' } },
       { deleteAreaMetadata: { key: 'story.phase', force: 1 } },
       { deleteWorldMetadata: { key: 'world.phase', force: 'true' } },
@@ -145,7 +145,7 @@ describe('authored instructions validator', function () {
   });
 
   it('allows omission only where the effect contract defines safe implicit values', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { movePlayer: { toRoom: 'start' } },
       { setPlayerMetadata: { key: 'story.phase', value: 2 } },
       { setRoomMetadata: { key: 'bells.rung', value: true } },
@@ -160,7 +160,7 @@ describe('authored instructions validator', function () {
   });
 
   it('rejects malformed refs structurally where the contract can do so', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { movePlayer: { toRoom: '' } },
       { openDoor: { roomRef: '' } },
       { broadcast: { audience: 'room', message: 'Hello.', targetSelector: 'roomByRef' } },
@@ -177,7 +177,7 @@ describe('authored instructions validator', function () {
   });
 
   it('accepts explicit targeting fields for metadata effects when they are structurally valid', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: 'player', key: 'story.phase', value: 2 } },
       { setRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', value: true } },
       { setRoomMetadata: { actor: 'npc', key: 'bells.rung', value: true } },
@@ -194,7 +194,7 @@ describe('authored instructions validator', function () {
   });
 
   it('rejects malformed optional targeting fields for metadata set effects', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
       { setPlayerMetadata: { player: '   ', key: 'story.phase', value: 2 } },
       { setPlayerMetadata: { player: 7, key: 'story.phase', value: 2 } },
@@ -227,7 +227,7 @@ describe('authored instructions validator', function () {
   });
 
   it('rejects malformed optional targeting fields for metadata delete effects', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { deleteRoomMetadata: { roomRef: '', key: 'bells.rung' } },
       { deleteRoomMetadata: { roomRef: '   ', key: 'bells.rung' } },
       { deleteRoomMetadata: { roomRef: 7, key: 'bells.rung' } },
@@ -254,7 +254,7 @@ describe('authored instructions validator', function () {
   });
 
   it('rejects malformed metadata delete force values even when optional targeting fields are present', function () {
-    const result = validateAuthoredEffects([
+    const result = validateAuthoredInstructions([
       { deleteRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', force: 'yes' } },
       { deleteRoomMetadata: { actor: 'npc', key: 'bells.rung', force: 1 } },
       { deleteAreaMetadata: { actor: 'npc', key: 'story.phase', force: 'true' } },
