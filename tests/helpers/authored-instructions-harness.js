@@ -121,8 +121,8 @@ function assertFailureResult(result) {
  * Run one table-driven harness case against an adapter.
  *
  * @param {{
- *   adapter: ({ effects: Array<*>, scope: Record<string, *> }) => HarnessResult,
- *   effects: Array<*>,
+ *   adapter: ({ instructions: Array<*>, scope: Record<string, *> }) => HarnessResult,
+ *   instructions: Array<*>,
  *   scope?: Record<string, *>,
  *   expectSuccess?: { operations?: Array<*>, renderMessages?: Array<*> },
  *   expectFailure?: { code: string, message?: string },
@@ -132,7 +132,7 @@ function assertFailureResult(result) {
 function runHarnessCase(input) {
   const scope = input.scope || createHarnessScope();
   const result = input.adapter({
-    effects: input.effects,
+    instructions: input.instructions,
     scope,
   });
 

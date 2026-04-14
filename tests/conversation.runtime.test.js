@@ -226,8 +226,8 @@ describe('bundle-rantamuta conversation runtime', function () {
       'settledState',
       'final',
       'visibleEvents',
-      'transitionEffects',
-      'stateEntryEffects',
+      'transitionActions',
+      'stateEntryActions',
       'trace',
     ]);
     assert.strictEqual(result.sourceState, 'greeting');
@@ -777,21 +777,21 @@ describe('bundle-rantamuta conversation runtime', function () {
     assert.strictEqual(result.settledState, 'greeting');
   });
 
-  it('collects destination state onEntry effects after entering the destination state', function () {
+  it('collects destination state entry actions after entering the destination state', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
         states: {
           greeting: {
             events: {
               continue: {
-                effects: [{ op: 'transition', id: 't1' }],
+                actions: [{ op: 'transition', id: 't1' }],
                 target: 'done',
               },
             },
           },
           done: {
             onEntry: {
-              effects: [{ op: 'entry', id: 's1' }],
+              actions: [{ op: 'entry', id: 's1' }],
             },
             final: true,
           },
@@ -803,11 +803,11 @@ describe('bundle-rantamuta conversation runtime', function () {
     });
 
     assert.strictEqual(result.ok, true);
-    assert.deepStrictEqual(result.transitionEffects, [{ op: 'transition', id: 't1' }]);
-    assert.deepStrictEqual(result.stateEntryEffects, [{ op: 'entry', id: 's1' }]);
+    assert.deepStrictEqual(result.transitionActions, [{ op: 'transition', id: 't1' }]);
+    assert.deepStrictEqual(result.stateEntryActions, [{ op: 'entry', id: 's1' }]);
   });
 
-  it('does not execute returned onEntry effects', function () {
+  it('does not execute returned entry actions', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
         states: {
@@ -818,7 +818,7 @@ describe('bundle-rantamuta conversation runtime', function () {
           },
           done: {
             onEntry: {
-              effects: [{ type: 'setPlayerMetadata', key: 'x', value: 'y' }],
+              actions: [{ type: 'setPlayerMetadata', key: 'x', value: 'y' }],
             },
             final: true,
           },
@@ -831,10 +831,10 @@ describe('bundle-rantamuta conversation runtime', function () {
 
     assert.strictEqual(result.ok, true);
     assert.strictEqual(result.player, undefined);
-    assert.deepStrictEqual(result.stateEntryEffects, [{ type: 'setPlayerMetadata', key: 'x', value: 'y' }]);
+    assert.deepStrictEqual(result.stateEntryActions, [{ type: 'setPlayerMetadata', key: 'x', value: 'y' }]);
   });
 
-  it('does not execute returned transition effects', function () {
+  it('does not execute returned transition actions', function () {
     let effectExecuted = false;
     const transitionEffect = {
       type: 'emitMessage',
@@ -849,7 +849,7 @@ describe('bundle-rantamuta conversation runtime', function () {
           greeting: {
             events: {
               continue: {
-                effects: [transitionEffect],
+                actions: [transitionEffect],
                 target: 'done',
               },
             },
@@ -864,24 +864,24 @@ describe('bundle-rantamuta conversation runtime', function () {
 
     assert.strictEqual(result.ok, true);
     assert.strictEqual(effectExecuted, false);
-    assert.deepStrictEqual(result.transitionEffects, [transitionEffect]);
+    assert.deepStrictEqual(result.transitionActions, [transitionEffect]);
   });
 
-  it('keeps transition effects and state-entry effects separately identifiable in the result or trace', function () {
+  it('keeps transition actions and state-entry actions separately identifiable in the result or trace', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
         states: {
           greeting: {
             events: {
               continue: {
-                effects: [{ id: 'transition-effect' }],
+                actions: [{ id: 'transition-effect' }],
                 target: 'done',
               },
             },
           },
           done: {
             onEntry: {
-              effects: [{ id: 'entry-effect' }],
+              actions: [{ id: 'entry-effect' }],
             },
             final: true,
           },
@@ -893,11 +893,11 @@ describe('bundle-rantamuta conversation runtime', function () {
     });
 
     assert.strictEqual(result.ok, true);
-    assert.deepStrictEqual(result.transitionEffects, [{ id: 'transition-effect' }]);
-    assert.deepStrictEqual(result.stateEntryEffects, [{ id: 'entry-effect' }]);
+    assert.deepStrictEqual(result.transitionActions, [{ id: 'transition-effect' }]);
+    assert.deepStrictEqual(result.stateEntryActions, [{ id: 'entry-effect' }]);
   });
 
-  it('evaluates auto routes only after collecting onEntry effects', function () {
+  it('evaluates auto routes only after collecting entry actions', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
         states: {
@@ -908,7 +908,7 @@ describe('bundle-rantamuta conversation runtime', function () {
           },
           routing: {
             onEntry: {
-              effects: [{ id: 'routing-entry' }],
+              actions: [{ id: 'routing-entry' }],
             },
             auto: [
               { target: 'done' },
@@ -923,7 +923,7 @@ describe('bundle-rantamuta conversation runtime', function () {
     });
 
     assert.strictEqual(result.ok, true);
-    assert.deepStrictEqual(result.stateEntryEffects, [{ id: 'routing-entry' }]);
+    assert.deepStrictEqual(result.stateEntryActions, [{ id: 'routing-entry' }]);
     assert.deepStrictEqual(result.trace.enteredStates, ['routing', 'done']);
   });
 
@@ -1214,7 +1214,7 @@ describe('bundle-rantamuta conversation runtime', function () {
     assert.deepStrictEqual(result.visibleEvents, []);
   });
 
-  it('still reports state-entry effects for a final state when authored', function () {
+  it('still reports state-entry actions for a final state when authored', function () {
     const result = evaluateConversationRuntime({
       definition: createDefinition({
         states: {
@@ -1225,7 +1225,7 @@ describe('bundle-rantamuta conversation runtime', function () {
           },
           done: {
             onEntry: {
-              effects: [{ id: 'final-entry' }],
+              actions: [{ id: 'final-entry' }],
             },
             final: true,
           },
@@ -1237,7 +1237,7 @@ describe('bundle-rantamuta conversation runtime', function () {
     });
 
     assert.strictEqual(result.ok, true);
-    assert.deepStrictEqual(result.stateEntryEffects, [{ id: 'final-entry' }]);
+    assert.deepStrictEqual(result.stateEntryActions, [{ id: 'final-entry' }]);
   });
 
   it('fails explicitly when stored player progress points at a missing state', function () {

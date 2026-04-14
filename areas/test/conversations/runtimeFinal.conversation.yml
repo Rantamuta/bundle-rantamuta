@@ -9,7 +9,7 @@ states:
 
   done:
     onEntry:
-      effects:
+      actions:
         - type: note
           value: final-entry
     final: true

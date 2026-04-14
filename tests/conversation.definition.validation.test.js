@@ -173,19 +173,19 @@ describe('bundle-rantamuta conversation definition validation', function () {
     ]);
   });
 
-  it('delegates authored instruction validation for onEntry, event, default, and transition effects', function () {
+  it('delegates authored instruction validation for onEntry, event, default, and transition actions', function () {
     const result = validateConversationDefinition({
       id: 'actor_planner',
       initial: 'greeting',
       states: {
         greeting: {
           onEntry: {
-            effects: null,
+            actions: null,
           },
           events: {
             continue: {
               target: 'done',
-              effects: [
+              actions: [
                 { messageRoom: 'Hello.' },
               ],
             },
@@ -193,7 +193,7 @@ describe('bundle-rantamuta conversation definition validation', function () {
               transitions: [
                 {
                   target: 'done',
-                  effects: [
+                  actions: [
                     { broadcast: { audience: 'nowhere', message: 'Hello.' } },
                   ],
                 },
@@ -201,7 +201,7 @@ describe('bundle-rantamuta conversation definition validation', function () {
             },
             default: {
               target: 'done',
-              effects: [
+              actions: [
                 { semanticEvent: { template: '', audiencePolicy: 'self', participants: {} } },
               ],
             },
@@ -209,7 +209,7 @@ describe('bundle-rantamuta conversation definition validation', function () {
         },
         done: { final: true },
       },
-    }, 'test:effects');
+    }, 'test:actions');
 
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.errors.map(error => error.code), [
@@ -218,6 +218,6 @@ describe('bundle-rantamuta conversation definition validation', function () {
       'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
       'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
     ]);
-    assert.ok(result.errors.every(error => error.source === 'test:effects'));
+    assert.ok(result.errors.every(error => error.source === 'test:actions'));
   });
 });

@@ -49,11 +49,11 @@ describe('authored instructions harness', function () {
   });
 
   it('runs a success case against an adapter and checks expected output', function () {
-    const adapter = ({ effects, scope }) => ({
+    const adapter = ({ instructions, scope }) => ({
       ok: true,
       operations: [{
         type: 'seenEffects',
-        count: effects.length,
+        count: instructions.length,
         actor: scope.actor.name,
       }],
       renderMessages: [],
@@ -61,7 +61,7 @@ describe('authored instructions harness', function () {
 
     const result = runHarnessCase({
       adapter,
-      effects: [{ broadcast: { audience: 'room', message: 'Hello.' } }],
+      instructions: [{ broadcast: { audience: 'room', message: 'Hello.' } }],
       expectSuccess: {
         operations: [{
           type: 'seenEffects',
@@ -84,7 +84,7 @@ describe('authored instructions harness', function () {
 
     const result = runHarnessCase({
       adapter,
-      effects: [{ unsupportedEffect: true }],
+      instructions: [{ unsupportedEffect: true }],
       expectFailure: {
         code: 'AUTHOR_EFFECT_UNSUPPORTED',
         message: 'Unsupported effect.',

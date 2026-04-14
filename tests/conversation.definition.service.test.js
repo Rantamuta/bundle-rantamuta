@@ -426,7 +426,7 @@ describe('bundle-rantamuta conversation definition service', function () {
       '  greeting:',
       '    events:',
       '      continue:',
-      '        effects:',
+      '        actions:',
       '          - messageRoom: "Hello."',
       '        target: done',
       '  done:',
