@@ -283,6 +283,47 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(player.metadata, {});
   });
 
+  it('uses authored default when an exact guarded event is unavailable', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
+    writeConversation(tempRoot, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        condition:',
+      '          actorHasItem: test:brassKey',
+      '        target: done',
+      '      default:',
+      '        target: fallback',
+      '  fallback:',
+      '    final: true',
+      '  done:',
+      '    final: true',
+    ]);
+    const errors = [];
+    const state = createState(tempRoot, errors);
+    this.state = state;
+    const player = createPlayer();
+
+    const result = tryDirectedConversation(
+      state,
+      player,
+      'continue',
+      createNpc({ conversation: 'conversations/actorPlanner.conversation.yml' })
+    );
+
+    assert.strictEqual(result.plan.operations.length, 1);
+    assert.deepStrictEqual(result.plan.operations[0], {
+      type: 'setPlayerMetadata',
+      player,
+      key: 'conversations.test.actorPlanner.state',
+      value: 'fallback',
+    });
+    assert.deepStrictEqual(errors, []);
+  });
+
   it('lowers canonical authored instructions into command operations and render instructions', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
