@@ -57,4 +57,36 @@ describe('bundle-rantamuta conversation condition evaluator', function () {
     assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => 1 } }), false);
     assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => undefined } }), false);
   });
+
+  it('throws for malformed condition shapes instead of treating them as false', function () {
+    const conditionEvaluator = createConversationConditionEvaluator();
+
+    assert.throws(() => conditionEvaluator(null, { q: {} }), /query object/);
+    assert.throws(() => conditionEvaluator([], { q: {} }), /query object/);
+    assert.throws(() => conditionEvaluator({}, { q: {} }), /exactly one query key/);
+    assert.throws(() => conditionEvaluator({ actorHasItem: 'test:key', actorHasEffect: 'focus' }, { q: {} }), /exactly one query key/);
+  });
+
+  it('throws when the requested q facade method is missing', function () {
+    const conditionEvaluator = createConversationConditionEvaluator();
+
+    assert.throws(
+      () => conditionEvaluator({ actorHasItem: 'test:key' }, { q: {} }),
+      /q\.actorHasItem/
+    );
+  });
+
+  it('lets q facade exceptions escape for runtime integration failure handling', function () {
+    const conditionEvaluator = createConversationConditionEvaluator();
+    const q = {
+      actorHasItem() {
+        throw new Error('inventory unavailable');
+      },
+    };
+
+    assert.throws(
+      () => conditionEvaluator({ actorHasItem: 'test:key' }, { q }),
+      /inventory unavailable/
+    );
+  });
 });

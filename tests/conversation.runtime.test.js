@@ -5,6 +5,7 @@ const path = require('path');
 
 const { deepFreeze } = require('../lib/helpers/deep-freeze');
 const { ensureConversationDefinitionService, disposeConversationDefinitionService } = require('../lib/runtime/conversation/conversation-definition-service');
+const { createConversationConditionEvaluator } = require('../lib/runtime/conversation/conversation-condition-evaluator');
 const { evaluateConversationRuntime, AUTO_HOP_LIMIT } = require('../lib/runtime/conversation/conversation-runtime');
 
 function createPlayer(metadata = {}) {
@@ -531,6 +532,33 @@ describe('bundle-rantamuta conversation runtime', function () {
 
     assert.strictEqual(result.ok, true);
     assert.strictEqual(result.destinationState, 'done');
+  });
+
+  it('surfaces live adapter condition errors as integration failures', function () {
+    const result = evaluateConversationRuntime({
+      definition: createDefinition({
+        states: {
+          greeting: {
+            events: {
+              continue: {
+                condition: { unsupportedCondition: 'test:key' },
+                target: 'done',
+              },
+            },
+          },
+          done: { final: true },
+        },
+      }),
+      player: createPlayer(),
+      npcRef: 'test:actorPlanner',
+      eventId: 'continue',
+      conditionEvaluator: createConversationConditionEvaluator(),
+      q: {},
+    });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'CONVERSATION_RUNTIME_CONDITION_EVALUATION_FAILED');
+    assert.match(result.message, /q\.unsupportedCondition/);
   });
 
   it('returns no selected transition when a conditioned single-transition event fails and no default applies', function () {
