@@ -362,6 +362,50 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  it('uses guarded auto settling and persists the settled state', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
+    writeConversation(tempRoot, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        target: routing',
+      '  routing:',
+      '    auto:',
+      '      - condition:',
+      '          actorHasItem: test:brassKey',
+      '        target: first',
+      '      - target: second',
+      '  first:',
+      '    final: true',
+      '  second:',
+      '    final: true',
+    ]);
+    const errors = [];
+    const state = createState(tempRoot, errors);
+    this.state = state;
+    const player = createPlayer();
+    player.inventory = [{ entityReference: 'test:brassKey' }];
+
+    const result = tryDirectedConversation(
+      state,
+      player,
+      'continue',
+      createNpc({ conversation: 'conversations/actorPlanner.conversation.yml' })
+    );
+
+    assert.strictEqual(result.plan.operations.length, 1);
+    assert.deepStrictEqual(result.plan.operations[0], {
+      type: 'setPlayerMetadata',
+      player,
+      key: 'conversations.test.actorPlanner.state',
+      value: 'first',
+    });
+    assert.deepStrictEqual(errors, []);
+  });
+
   it('lowers canonical authored instructions into command operations and render instructions', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
