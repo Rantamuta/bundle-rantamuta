@@ -29,4 +29,32 @@ describe('bundle-rantamuta conversation condition evaluator', function () {
       args: ['test:start', 'test:apple'],
     });
   });
+
+  it('calls the same-named q facade method with the condition value as arguments', function () {
+    const conditionEvaluator = createConversationConditionEvaluator();
+    const calls = [];
+    const q = {
+      roomHasItem(roomRef, itemRef) {
+        calls.push({ roomRef, itemRef });
+        return true;
+      },
+    };
+
+    const result = conditionEvaluator({ roomHasItem: ['test:start', 'test:apple'] }, { q });
+
+    assert.strictEqual(result, true);
+    assert.deepStrictEqual(calls, [
+      { roomRef: 'test:start', itemRef: 'test:apple' },
+    ]);
+  });
+
+  it('returns true only for exact true query results', function () {
+    const conditionEvaluator = createConversationConditionEvaluator();
+
+    assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => true } }), true);
+    assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => false } }), false);
+    assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => 'true' } }), false);
+    assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => 1 } }), false);
+    assert.strictEqual(conditionEvaluator({ actorHasItem: 'test:key' }, { q: { actorHasItem: () => undefined } }), false);
+  });
 });
