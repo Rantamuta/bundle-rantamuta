@@ -251,6 +251,38 @@ describe('bundle-rantamuta conversation directed speech facade', function () {
     assert.match(errors[0], /q\.unsupportedCondition/);
   });
 
+  it('falls through quietly when a well-formed live guard is false', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
+    writeConversation(tempRoot, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        condition:',
+      '          actorHasItem: test:brassKey',
+      '        target: done',
+      '  done:',
+      '    final: true',
+    ]);
+    const errors = [];
+    const state = createState(tempRoot, errors);
+    this.state = state;
+    const player = createPlayer();
+
+    const result = tryDirectedConversation(
+      state,
+      player,
+      'continue',
+      createNpc({ conversation: 'conversations/actorPlanner.conversation.yml' })
+    );
+
+    assert.strictEqual(result, null);
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(player.metadata, {});
+  });
+
   it('lowers canonical authored instructions into command operations and render instructions', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'conversation-directed-speech-'));
     writeConversation(tempRoot, [
