@@ -201,6 +201,27 @@ describe('authored instructions validator', function () {
     ]);
   });
 
+  it('rejects malformed optional door targeting fields when provided', function () {
+    const result = validateAuthoredInstructions([
+      { operateDoor: { mutation: 'open', direction: 7 } },
+      { operateDoor: { mutation: 'open', roomRef: '' } },
+      { openDoor: { direction: 'north', fromRoomRef: '' } },
+      { openDoor: { direction: 'north', fromRoomRef: 7 } },
+      { closeAndLockDoor: { roomRef: 'start', direction: '   ' } },
+      { closeAndLockDoor: { direction: 'north', roomRef: 7 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
   it('accepts explicit targeting fields for metadata effects when they are structurally valid', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: 'player', key: 'story.phase', value: 2 } },
