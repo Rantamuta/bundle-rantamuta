@@ -320,6 +320,79 @@ describe('bundle-rantamuta say command', function () {
     assert.deepStrictEqual(errors, []);
   });
 
+  it('routes addressed speech through conversation handling regardless of spoken event casing', function () {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'say-command-conversation-'));
+    writeConversation(tempRoot, [
+      'id: actor_planner',
+      'initial: greeting',
+      'states:',
+      '  greeting:',
+      '    events:',
+      '      continue:',
+      '        target: done',
+      '  done:',
+      '    final: true',
+    ]);
+    const errors = [];
+    const state = createState(tempRoot, errors);
+    this.state = state;
+    const execute = sayCommand.command(state);
+    const player = createPlayer({
+      room: { title: 'Room', description: 'Desc' },
+    });
+    const tomo = createConversationNpc({
+      conversation: 'conversations/actorPlanner.conversation.yml',
+    });
+
+    const result = execute('Continue to tomo', player, null, {
+      entityResolution: {
+        matchedRuleText: 'TEXT to LIVING',
+        indirectTarget: tomo,
+        relationTokenCanonical: 'to',
+        slots: [
+          {
+            kind: 'TEXT',
+            role: null,
+            start: 0,
+            end: 1,
+            tokens: ['Continue'],
+            surface: 'Continue',
+            status: 'resolved',
+          },
+          {
+            kind: 'LIVING',
+            role: 'indirect',
+            start: 2,
+            end: 3,
+            tokens: ['tomo'],
+            surface: 'tomo',
+            status: 'resolved',
+            selected: tomo,
+            candidates: [tomo],
+          },
+        ],
+      },
+    });
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      plan: {
+        operations: [
+          {
+            type: 'setPlayerMetadata',
+            player,
+            key: 'conversations.test.actorPlanner.state',
+            value: 'done',
+          },
+        ],
+      },
+      render: {
+        messages: [],
+      },
+    });
+    assert.deepStrictEqual(errors, []);
+  });
+
   it('falls through to ordinary addressed speech when no conversation route matches', function () {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'say-command-conversation-'));
     writeConversation(tempRoot, [
