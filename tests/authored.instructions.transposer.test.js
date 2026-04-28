@@ -1134,6 +1134,31 @@ describe('authored instructions transposer', function () {
         },
       });
     });
+
+    it('does not emit lowered output for unsupported metadata targeting', function () {
+      const result = transposeAuthoredInstructions({
+        instructions: [
+          {
+            setRoomMetadata: {
+              player: 'player',
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+          {
+            broadcast: {
+              audience: 'room',
+              message: 'Should not be reached.',
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+      });
+
+      assert.strictEqual(result.ok, false);
+      assert.ok(!Object.prototype.hasOwnProperty.call(result, 'operations'));
+      assert.ok(!Object.prototype.hasOwnProperty.call(result, 'renderMessages'));
+    });
   });
 
   describe('broadcast', function () {
