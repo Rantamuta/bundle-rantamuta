@@ -905,6 +905,35 @@ describe('authored instructions transposer', function () {
       });
     });
 
+    it('lowers setAreaMetadata with explicit actor', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            setAreaMetadata: {
+              actor: 'npc',
+              key: 'story.phase',
+              value: 2,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setAreaMetadata',
+              actor: scope.npc,
+              key: 'story.phase',
+              value: 2,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     it('lowers setWorldMetadata', function () {
       runHarnessCase({
         adapter: transposeAuthoredInstructions,
