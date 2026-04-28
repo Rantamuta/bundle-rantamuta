@@ -284,6 +284,15 @@ describe('authored instructions validator', function () {
     assert.strictEqual(result.ok, false);
   });
 
+  it('rejects unsupported roomRef targeting for world metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setWorldMetadata: { roomRef: 'codex:start', key: 'world.phase', value: 2 } },
+      { deleteWorldMetadata: { roomRef: 'codex:start', key: 'world.phase' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+  });
+
   it('rejects malformed optional targeting fields for metadata set effects', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
