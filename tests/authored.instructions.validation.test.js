@@ -257,6 +257,15 @@ describe('authored instructions validator', function () {
     assert.strictEqual(result.ok, false);
   });
 
+  it('rejects unsupported roomRef targeting for area metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setAreaMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+      { deleteAreaMetadata: { roomRef: 'codex:start', key: 'story.phase' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+  });
+
   it('rejects malformed optional targeting fields for metadata set effects', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
