@@ -239,6 +239,15 @@ describe('authored instructions validator', function () {
     });
   });
 
+  it('rejects unsupported player targeting for room metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setRoomMetadata: { player: 'player', key: 'bells.rung', value: true } },
+      { deleteRoomMetadata: { player: 'player', key: 'bells.rung' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+  });
+
   it('rejects malformed optional targeting fields for metadata set effects', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
