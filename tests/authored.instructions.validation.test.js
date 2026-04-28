@@ -293,6 +293,26 @@ describe('authored instructions validator', function () {
     assert.strictEqual(result.ok, false);
   });
 
+  it('uses one deterministic unsupported-field finding path for metadata targeting rejections', function () {
+    const result = validateAuthoredInstructions([
+      { setRoomMetadata: { player: 'player', key: 'bells.rung', value: true } },
+      { setAreaMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+      { setWorldMetadata: { actor: 'npc', key: 'world.phase', value: 2 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.details.field), [
+      'player',
+      'roomRef',
+      'actor',
+    ]);
+  });
+
   it('rejects malformed optional targeting fields for metadata set effects', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
