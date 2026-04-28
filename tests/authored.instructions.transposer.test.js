@@ -1068,6 +1068,35 @@ describe('authored instructions transposer', function () {
       });
     });
 
+    it('lowers deleteAreaMetadata with explicit actor', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            deleteAreaMetadata: {
+              actor: 'npc',
+              key: 'story.phase',
+              force: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'deleteAreaMetadata',
+              actor: scope.npc,
+              key: 'story.phase',
+              force: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     it('fails when an explicit metadata room target cannot be resolved', function () {
       runHarnessCase({
         adapter: transposeAuthoredInstructions,
