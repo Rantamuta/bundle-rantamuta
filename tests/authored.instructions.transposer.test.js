@@ -1115,6 +1115,25 @@ describe('authored instructions transposer', function () {
         },
       });
     });
+
+    it('fails with AUTHORED_INSTRUCTIONS_INVALID for unsupported metadata targeting', function () {
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            setRoomMetadata: {
+              player: 'player',
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+        ],
+        scope: createHarnessScope(),
+        expectFailure: {
+          code: 'AUTHORED_INSTRUCTIONS_INVALID',
+        },
+      });
+    });
   });
 
   describe('broadcast', function () {
