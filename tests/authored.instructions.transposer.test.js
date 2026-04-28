@@ -819,6 +819,35 @@ describe('authored instructions transposer', function () {
       });
     });
 
+    it('lowers setRoomMetadata with explicit actor', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            setRoomMetadata: {
+              actor: 'npc',
+              key: 'bells.rung',
+              value: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setRoomMetadata',
+              actor: scope.npc,
+              key: 'bells.rung',
+              value: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     it('lowers setRoomMetadata with explicit roomRef', function () {
       const { scope, rooms } = createScopeWithRooms(['test:forge']);
 
