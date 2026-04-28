@@ -762,6 +762,35 @@ describe('authored instructions transposer', function () {
       });
     });
 
+    it('lowers setPlayerMetadata with explicit player', function () {
+      const scope = createHarnessScope();
+
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            setPlayerMetadata: {
+              player: 'player',
+              key: 'story.phase',
+              value: 2,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'setPlayerMetadata',
+              player: scope.player,
+              key: 'story.phase',
+              value: 2,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     it('lowers setRoomMetadata with implicit current room', function () {
       const scope = createHarnessScope();
 
