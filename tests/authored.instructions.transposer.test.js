@@ -1039,6 +1039,35 @@ describe('authored instructions transposer', function () {
       });
     });
 
+    it('lowers deleteRoomMetadata with explicit roomRef', function () {
+      const { scope, rooms } = createScopeWithRooms(['test:forge']);
+
+      runHarnessCase({
+        adapter: transposeAuthoredInstructions,
+        instructions: [
+          {
+            deleteRoomMetadata: {
+              roomRef: 'forge',
+              key: 'bells.rung',
+              force: true,
+            },
+          },
+        ],
+        scope,
+        expectSuccess: {
+          operations: [
+            {
+              type: 'deleteRoomMetadata',
+              actor: { room: rooms['test:forge'] },
+              key: 'bells.rung',
+              force: true,
+            },
+          ],
+          renderMessages: [],
+        },
+      });
+    });
+
     it('fails when an explicit metadata room target cannot be resolved', function () {
       runHarnessCase({
         adapter: transposeAuthoredInstructions,
