@@ -248,6 +248,15 @@ describe('authored instructions validator', function () {
     assert.strictEqual(result.ok, false);
   });
 
+  it('rejects unsupported player targeting for area metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setAreaMetadata: { player: 'player', key: 'story.phase', value: 2 } },
+      { deleteAreaMetadata: { player: 'player', key: 'story.phase' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+  });
+
   it('rejects malformed optional targeting fields for metadata set effects', function () {
     const result = validateAuthoredInstructions([
       { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
