@@ -172,4 +172,52 @@ describe('bundle-rantamuta conversation definition validation', function () {
       'CONVERSATION_AUTO_TARGET_REQUIRED',
     ]);
   });
+
+  it('delegates authored instruction validation for onEntry, event, default, and transition actions', function () {
+    const result = validateConversationDefinition({
+      id: 'actor_planner',
+      initial: 'greeting',
+      states: {
+        greeting: {
+          onEntry: {
+            actions: null,
+          },
+          events: {
+            continue: {
+              target: 'done',
+              actions: [
+                { messageRoom: 'Hello.' },
+              ],
+            },
+            branching: {
+              transitions: [
+                {
+                  target: 'done',
+                  actions: [
+                    { broadcast: { audience: 'nowhere', message: 'Hello.' } },
+                  ],
+                },
+              ],
+            },
+            default: {
+              target: 'done',
+              actions: [
+                { semanticEvent: { template: '', audiencePolicy: 'self', participants: {} } },
+              ],
+            },
+          },
+        },
+        done: { final: true },
+      },
+    }, 'test:actions');
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTIONS_ARRAY_REQUIRED',
+      'AUTHORED_INSTRUCTION_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+    assert.ok(result.errors.every(error => error.source === 'test:actions'));
+  });
 });

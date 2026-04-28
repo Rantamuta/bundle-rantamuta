@@ -147,22 +147,22 @@ describe('bundle-rantamuta mutator', function () {
 
   it('throws for unsupported instruction types', function () {
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({ type: 'unknown-op' }));
+      applyMutationInstruction({}, /** @type {*} */({ type: 'unknown-op' }));
     }, /Unsupported mutation instruction type/);
   });
 
   it('rejects transferItem when endpoints are not reversible', function () {
     const item = { id: 'test:coin' };
     const from = {
-      removeItem: () => {},
+      removeItem: () => { },
     };
     const to = {
-      addItem: () => {},
-      removeItem: () => {},
+      addItem: () => { },
+      removeItem: () => { },
     };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'transferItem',
         item,
         from,
@@ -178,11 +178,11 @@ describe('bundle-rantamuta mutator', function () {
       addItem: () => {
         throw new Error('Destination full.');
       },
-      removeItem: () => {},
+      removeItem: () => { },
     };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'transferItem',
         item,
         from,
@@ -198,7 +198,7 @@ describe('bundle-rantamuta mutator', function () {
     const from = createContainer([item]);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'transferItem',
         item,
         from,
@@ -214,7 +214,7 @@ describe('bundle-rantamuta mutator', function () {
     item.carriedBy = from;
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'transferItem',
         item,
         from,
@@ -233,7 +233,7 @@ describe('bundle-rantamuta mutator', function () {
     inner.carriedBy = item;
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'transferItem',
         item,
         from,
@@ -264,7 +264,7 @@ describe('bundle-rantamuta mutator', function () {
     const item = { id: 'test:emerald' };
     const from = createContainer([item]);
     const to = {
-      addItem() {},
+      addItem() { },
       removeItem() {
         throw new Error('Rollback remove failed.');
       },
@@ -347,7 +347,7 @@ describe('bundle-rantamuta mutator', function () {
 
   it('rejects setPlayerMetadata when target is not a player object with metadata', function () {
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setPlayerMetadata',
         player: null,
         key: 'tomo.introShown',
@@ -358,7 +358,7 @@ describe('bundle-rantamuta mutator', function () {
 
   it('rejects setPlayerMetadata for invalid or unsafe key segments', function () {
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setPlayerMetadata',
         player: { metadata: {} },
         key: 'foo..bar',
@@ -367,7 +367,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setPlayerMetadata\.key/);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setPlayerMetadata',
         player: { metadata: {} },
         key: 'foo.__proto__.bar',
@@ -384,7 +384,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setPlayerMetadata',
         player,
         key: 'tomo.progress.lastHintAt',
@@ -470,7 +470,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setRoomMetadata',
         actor,
         key: 'buttonPushed',
@@ -530,7 +530,7 @@ describe('bundle-rantamuta mutator', function () {
     };
     const actor = { room };
 
-    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */({
       type: 'setRoomMetadata',
       actor,
       key: 'puzzle.phase',
@@ -557,7 +557,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setRoomMetadata',
         actor: null,
         key: 'buttonPushed',
@@ -566,7 +566,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setRoomMetadata\.actor/);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setRoomMetadata',
         actor,
         key: 'bad-key',
@@ -575,7 +575,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setRoomMetadata\.key/);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setRoomMetadata',
         actor,
         key: 'buttonPushed',
@@ -584,7 +584,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setRoomMetadata\.value/);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setRoomMetadata',
         actor,
         key: 'buttonPushed',
@@ -639,7 +639,7 @@ describe('bundle-rantamuta mutator', function () {
 
   it('rejects setAreaMetadata for missing actor room area context', function () {
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor: null,
         key: 'questProgress.stage1',
@@ -653,7 +653,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress.bad-key',
@@ -662,7 +662,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setAreaMetadata\.key/);
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress.bad key',
@@ -681,7 +681,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress.stage1',
@@ -704,7 +704,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress',
@@ -718,7 +718,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress.stage1',
@@ -727,7 +727,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setAreaMetadata\.value/);
 
     assert.doesNotThrow(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'setAreaMetadata',
         actor,
         key: 'questProgress.stage1',
@@ -744,7 +744,7 @@ describe('bundle-rantamuta mutator', function () {
       nested: { done: false },
     };
 
-    applyMutationInstruction({}, /** @type {*} */ ({
+    applyMutationInstruction({}, /** @type {*} */({
       type: 'setAreaMetadata',
       actor,
       key: 'questProgress.snapshot',
@@ -763,7 +763,7 @@ describe('bundle-rantamuta mutator', function () {
   it('applies setWorldMetadata and returns inverse operation', function () {
     const state = {};
 
-    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+    const undo = applyMutationInstruction(state, /** @type {*} */({
       type: 'setWorldMetadata',
       key: 'story.phase',
       value: 2,
@@ -827,7 +827,7 @@ describe('bundle-rantamuta mutator', function () {
     const state = {};
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'setWorldMetadata',
         key: 'story.bad-key',
         value: 2,
@@ -835,7 +835,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setWorldMetadata\.key/);
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'setWorldMetadata',
         key: 'story.bad key',
         value: 2,
@@ -847,7 +847,7 @@ describe('bundle-rantamuta mutator', function () {
     const state = {};
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'setWorldMetadata',
         key: 'story.phase',
         value: undefined,
@@ -855,7 +855,7 @@ describe('bundle-rantamuta mutator', function () {
     }, /setWorldMetadata\.value/);
 
     assert.doesNotThrow(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'setWorldMetadata',
         key: 'story.phase',
         value: null,
@@ -876,7 +876,7 @@ describe('bundle-rantamuta mutator', function () {
       },
     };
 
-    applyMutationInstruction(state, /** @type {*} */ ({
+    applyMutationInstruction(state, /** @type {*} */({
       type: 'setWorldMetadata',
       key: 'story.snapshot',
       value: payload,
@@ -905,7 +905,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'setWorldMetadata',
         key: 'story',
         value: 5,
@@ -963,7 +963,7 @@ describe('bundle-rantamuta mutator', function () {
     };
     const actor = { room };
 
-    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */({
       type: 'deleteRoomMetadata',
       actor,
       key: 'puzzle.phase',
@@ -996,7 +996,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
     const before = JSON.parse(JSON.stringify(area.metadata));
 
-    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */({
       type: 'deleteAreaMetadata',
       actor,
       key: 'missing.path',
@@ -1021,7 +1021,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'deleteAreaMetadata',
         actor,
         key: 'storyArc',
@@ -1043,7 +1043,7 @@ describe('bundle-rantamuta mutator', function () {
     };
     const actor = { room: { area } };
 
-    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */({
       type: 'deleteAreaMetadata',
       actor,
       key: 'storyArc',
@@ -1078,7 +1078,7 @@ describe('bundle-rantamuta mutator', function () {
     const actor = { room: { area } };
 
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'deleteAreaMetadata',
         actor,
         key: 'storyArc',
@@ -1193,7 +1193,7 @@ describe('bundle-rantamuta mutator', function () {
 
   it('rejects deleteRoomMetadata for missing actor room context', function () {
     assert.throws(() => {
-      applyMutationInstruction({}, /** @type {*} */ ({
+      applyMutationInstruction({}, /** @type {*} */({
         type: 'deleteRoomMetadata',
         actor: null,
         key: 'puzzle.phase',
@@ -1208,7 +1208,7 @@ describe('bundle-rantamuta mutator', function () {
     };
     const actor = { room };
 
-    applyMutationInstruction({}, /** @type {*} */ ({
+    applyMutationInstruction({}, /** @type {*} */({
       type: 'setRoomMetadata',
       actor,
       key: '1phase',
@@ -1216,7 +1216,7 @@ describe('bundle-rantamuta mutator', function () {
     }));
     assert.strictEqual(room.metadata.values['1phase'], true);
 
-    const undo = applyMutationInstruction({}, /** @type {*} */ ({
+    const undo = applyMutationInstruction({}, /** @type {*} */({
       type: 'deleteRoomMetadata',
       actor,
       key: '1phase',
@@ -1231,7 +1231,7 @@ describe('bundle-rantamuta mutator', function () {
   it('treats missing deleteWorldMetadata root/path as idempotent no-op', function () {
     const state = {};
 
-    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+    const undo = applyMutationInstruction(state, /** @type {*} */({
       type: 'deleteWorldMetadata',
       key: 'story.phase',
     }));
@@ -1253,7 +1253,7 @@ describe('bundle-rantamuta mutator', function () {
       },
     };
 
-    const undo = applyMutationInstruction(state, /** @type {*} */ ({
+    const undo = applyMutationInstruction(state, /** @type {*} */({
       type: 'deleteWorldMetadata',
       key: 'story.phase',
     }));
@@ -1285,7 +1285,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     assert.throws(() => {
-      applyMutationInstruction(state, /** @type {*} */ ({
+      applyMutationInstruction(state, /** @type {*} */({
         type: 'deleteWorldMetadata',
         key: 'story',
       }));
@@ -1343,8 +1343,8 @@ describe('bundle-rantamuta mutator', function () {
       const runtime = createPredicateRuntime({
         bundlesRootPath: tempRoot,
         logger: {
-          warn: () => {},
-          error: () => {},
+          warn: () => { },
+          error: () => { },
         },
       });
 
@@ -1694,7 +1694,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, false);
   });
 
-  it('applies canonical doorMutation open instruction by roomRef and returns inverse operation', function () {
+  it('applies canonical operateDoor open instruction by roomRef and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -1712,7 +1712,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     const undo = applyMutationInstruction(state, {
-      type: 'doorMutation',
+      type: 'operateDoor',
       mutation: 'open',
       actor,
       roomRef: destination.entityReference,
@@ -1727,7 +1727,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, true);
   });
 
-  it('applies canonical doorMutation unlock instruction by roomRef and returns inverse operation', function () {
+  it('applies canonical operateDoor unlock instruction by roomRef and returns inverse operation', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -1745,7 +1745,7 @@ describe('bundle-rantamuta mutator', function () {
     };
 
     const undo = applyMutationInstruction(state, {
-      type: 'doorMutation',
+      type: 'operateDoor',
       mutation: 'unlock',
       actor,
       roomRef: destination.entityReference,
@@ -1760,7 +1760,7 @@ describe('bundle-rantamuta mutator', function () {
     assert.strictEqual(destination.getDoor(fromRoom).locked, true);
   });
 
-  it('warns and noops when canonical doorMutation target cannot be resolved', function () {
+  it('warns and noops when canonical operateDoor target cannot be resolved', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -1781,7 +1781,7 @@ describe('bundle-rantamuta mutator', function () {
     try {
       assert.doesNotThrow(() => {
         const undo = applyMutationInstruction(state, {
-          type: 'doorMutation',
+          type: 'operateDoor',
           mutation: 'open',
           actor,
           roomRef: 'test:missing',
@@ -1792,10 +1792,10 @@ describe('bundle-rantamuta mutator', function () {
       ranvier.Logger.warn = originalWarn;
     }
 
-    assert.ok(warnings.some(message => message.includes('doorMutation(open): destination_missing')));
+    assert.ok(warnings.some(message => message.includes('operateDoor(open): destination_missing')));
   });
 
-  it('treats idempotent canonical doorMutation success as no-op without warnings', function () {
+  it('treats idempotent canonical operateDoor success as no-op without warnings', function () {
     const fromRoom = {
       entityReference: 'test:start',
     };
@@ -1819,7 +1819,7 @@ describe('bundle-rantamuta mutator', function () {
 
     try {
       const undo = applyMutationInstruction(state, {
-        type: 'doorMutation',
+        type: 'operateDoor',
         mutation: 'close',
         actor,
         roomRef: destination.entityReference,

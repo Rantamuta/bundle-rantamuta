@@ -17,7 +17,7 @@ function fail(code, details) {
 }
 
 /**
- * Only entities explicitly marked with `metadata.pushable: true` are pushable.
+ * Only entities explicitly marked with `metadata.verbs.push === true` are pushable.
  *
  * @param {*} entity
  * @returns {boolean}
@@ -30,8 +30,11 @@ function isPushable(entity) {
   const metadata = entity.metadata && typeof entity.metadata === 'object'
     ? /** @type {Record<string, *>} */ (entity.metadata)
     : {};
+  const verbs = metadata.verbs && typeof metadata.verbs === 'object'
+    ? /** @type {Record<string, *>} */ (metadata.verbs)
+    : null;
 
-  return metadata.pushable === true;
+  return !!verbs && verbs.push === true;
 }
 
 /**

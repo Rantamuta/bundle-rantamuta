@@ -1,0 +1,577 @@
+// @ts-check
+'use strict';
+
+const assert = require('assert');
+
+const { validateAuthoredInstructions } = require('../lib/runtime/authored-instructions');
+
+describe('authored instructions validator', function () {
+  it('accepts an empty authored-instructions array', function () {
+    const result = validateAuthoredInstructions([]);
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      errors: [],
+    });
+  });
+
+  it('rejects a non-array authored-instructions root', function () {
+    const result = validateAuthoredInstructions(null);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTIONS_ARRAY_REQUIRED',
+    ]);
+  });
+
+  it('requires each effect entry to be a single-key object', function () {
+    const result = validateAuthoredInstructions([
+      'broadcast',
+      { broadcast: { audience: 'room', message: 'Hello.' }, transferItem: {} },
+    ], { source: 'test-source' });
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_ENTRY_OBJECT_REQUIRED',
+      'AUTHORED_INSTRUCTION_ENTRY_SINGLE_KEY_REQUIRED',
+    ]);
+    assert.strictEqual(result.errors[0].source, 'test-source');
+    assert.strictEqual(result.errors[1].source, 'test-source');
+  });
+
+  it('requires each effect name to be known', function () {
+    const result = validateAuthoredInstructions([
+      { messageRoom: 'Hello.' },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_UNSUPPORTED',
+    ]);
+  });
+
+  it('accepts one structurally valid payload for each currently supported effect', function () {
+    const result = validateAuthoredInstructions([
+      { transferItem: { item: 'widget', from: 'inventory', to: 'player' } },
+      { movePlayer: { toRoom: 'start' } },
+      { operateDoor: { mutation: 'open', direction: 'north' } },
+      { openDoor: { direction: 'north' } },
+      { closeAndLockDoor: { direction: 'north' } },
+      { setPlayerMetadata: { key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { key: 'bells.rung', value: true } },
+      { setAreaMetadata: { key: 'story.phase', value: 2 } },
+      { setWorldMetadata: { key: 'world.phase', value: 2 } },
+      { deleteRoomMetadata: { key: 'bells.rung' } },
+      { deleteAreaMetadata: { key: 'story.phase' } },
+      { deleteWorldMetadata: { key: 'world.phase' } },
+      { broadcast: { audience: 'room', message: 'Hello.' } },
+      {
+        semanticEvent: {
+          template: '{actor.You} nod{verb}.',
+          audiencePolicy: 'self',
+          participants: {
+            actor: { selector: 'currentActor' },
+          },
+        },
+      },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      errors: [],
+    });
+  });
+
+  it('enforces required fields for the currently supported effect contracts', function () {
+    const result = validateAuthoredInstructions([
+      { transferItem: { from: 'inventory', to: 'player' } },
+      { movePlayer: {} },
+      { operateDoor: { mutation: 'open' } },
+      { openDoor: {} },
+      { closeAndLockDoor: {} },
+      { setPlayerMetadata: { value: 2 } },
+      { setRoomMetadata: { key: 'bells.rung' } },
+      { setAreaMetadata: { value: 2 } },
+      { setWorldMetadata: { key: 'world.phase' } },
+      { deleteRoomMetadata: {} },
+      { deleteAreaMetadata: {} },
+      { deleteWorldMetadata: {} },
+      { broadcast: { audience: 'room' } },
+      { semanticEvent: { audiencePolicy: 'self', participants: { actor: { selector: 'currentActor' } } } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('enforces field types and enum contracts where supported', function () {
+    const result = validateAuthoredInstructions([
+      { deleteRoomMetadata: { key: 'bells.rung', force: 'yes' } },
+      { deleteAreaMetadata: { key: 'story.phase', force: 1 } },
+      { deleteWorldMetadata: { key: 'world.phase', force: 'true' } },
+      { broadcast: { audience: 'nowhere', message: 'Hello.' } },
+      { operateDoor: { mutation: 'explode', direction: 'north' } },
+      { semanticEvent: { template: '{actor.You} nod{verb}.', audiencePolicy: 'nobody', participants: { actor: { selector: 'currentActor' } } } },
+      { semanticEvent: { template: '{actor.You} nod{verb}.', audiencePolicy: 'self', participants: { actor: 'currentActor' } } },
+      { transferItem: 'widget' },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_ENUM_INVALID',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_PAYLOAD_OBJECT_REQUIRED',
+    ]);
+  });
+
+  it('allows omission only where the effect contract defines safe implicit values', function () {
+    const result = validateAuthoredInstructions([
+      { movePlayer: { toRoom: 'start' } },
+      { setPlayerMetadata: { key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { key: 'bells.rung', value: true } },
+      { setAreaMetadata: { key: 'story.phase', value: 2 } },
+      { transferItem: { item: 'widget', from: 'inventory' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed refs structurally where the contract can do so', function () {
+    const result = validateAuthoredInstructions([
+      { movePlayer: { toRoom: '' } },
+      { openDoor: { roomRef: '' } },
+      { broadcast: { audience: 'room', message: 'Hello.', targetSelector: 'roomByRef' } },
+      { broadcast: { audience: 'areaExceptTargets', message: 'Hello.', exceptSelector: 'targetsByRoomRef' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed optional movePlayer targeting and broadcast fields', function () {
+    const result = validateAuthoredInstructions([
+      { movePlayer: { toRoom: 'start', player: '' } },
+      { movePlayer: { toRoom: 'start', player: '   ' } },
+      { movePlayer: { toRoom: 'start', player: 7 } },
+      { movePlayer: { toRoom: 'start', direction: '' } },
+      { movePlayer: { toRoom: 'start', direction: '   ' } },
+      { movePlayer: { toRoom: 'start', direction: 7 } },
+      { movePlayer: { toRoom: 'start', suppressRoomBroadcast: 'yes' } },
+      { movePlayer: { toRoom: 'start', suppressRoomBroadcast: 1 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed optional door targeting fields when provided', function () {
+    const result = validateAuthoredInstructions([
+      { operateDoor: { mutation: 'open', direction: 7 } },
+      { operateDoor: { mutation: 'open', roomRef: '' } },
+      { openDoor: { direction: 'north', fromRoomRef: '' } },
+      { openDoor: { direction: 'north', fromRoomRef: 7 } },
+      { closeAndLockDoor: { roomRef: 'start', direction: '   ' } },
+      { closeAndLockDoor: { direction: 'north', roomRef: 7 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('accepts explicit targeting fields for metadata effects when they are structurally valid', function () {
+    const result = validateAuthoredInstructions([
+      { setPlayerMetadata: { player: 'player', key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: 'npc', key: 'bells.rung', value: true } },
+      { setAreaMetadata: { actor: 'npc', key: 'story.phase', value: 2 } },
+      { deleteRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', force: true } },
+      { deleteRoomMetadata: { actor: 'npc', key: 'bells.rung', force: false } },
+      { deleteAreaMetadata: { actor: 'npc', key: 'story.phase', force: true } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      errors: [],
+    });
+  });
+
+  it('rejects unsupported actor and roomRef targeting for player metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setPlayerMetadata: { actor: 'npc', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setPlayerMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'setPlayerMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: ['player'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setPlayerMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setPlayerMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['player'],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported player targeting for room metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setRoomMetadata: { player: 'player', key: 'bells.rung', value: true } },
+      { deleteRoomMetadata: { player: 'player', key: 'bells.rung' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setRoomMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setRoomMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor', 'roomRef'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteRoomMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteRoomMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor', 'roomRef'],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported player targeting for area metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setAreaMetadata: { player: 'player', key: 'story.phase', value: 2 } },
+      { deleteAreaMetadata: { player: 'player', key: 'story.phase' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setAreaMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setAreaMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteAreaMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteAreaMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor'],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported roomRef targeting for area metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setAreaMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+      { deleteAreaMetadata: { roomRef: 'codex:start', key: 'story.phase' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setAreaMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setAreaMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['actor'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteAreaMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteAreaMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['actor'],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported actor targeting for world metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setWorldMetadata: { actor: 'npc', key: 'world.phase', value: 2 } },
+      { deleteWorldMetadata: { actor: 'npc', key: 'world.phase' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported player targeting for world metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setWorldMetadata: { player: 'player', key: 'world.phase', value: 2 } },
+      { deleteWorldMetadata: { player: 'player', key: 'world.phase' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
+  });
+
+  it('rejects unsupported roomRef targeting for world metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setWorldMetadata: { roomRef: 'codex:start', key: 'world.phase', value: 2 } },
+      { deleteWorldMetadata: { roomRef: 'codex:start', key: 'world.phase' } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
+  });
+
+  it('uses one deterministic unsupported-field finding path for metadata targeting rejections', function () {
+    const result = validateAuthoredInstructions([
+      { setRoomMetadata: { player: 'player', key: 'bells.rung', value: true } },
+      { setAreaMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+      { setWorldMetadata: { actor: 'npc', key: 'world.phase', value: 2 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+      'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.details.field), [
+      'player',
+      'roomRef',
+      'actor',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.message), [
+      'setRoomMetadata.player is not supported for this instruction.',
+      'setAreaMetadata.roomRef is not supported for this instruction.',
+      'setWorldMetadata.actor is not supported for this instruction.',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.details.supportedFields), [
+      ['actor', 'roomRef'],
+      ['actor'],
+      [],
+    ]);
+  });
+
+  it('rejects malformed optional targeting fields for metadata set effects', function () {
+    const result = validateAuthoredInstructions([
+      { setPlayerMetadata: { player: '', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { player: '   ', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { player: 7, key: 'story.phase', value: 2 } },
+      { setRoomMetadata: { roomRef: '', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { roomRef: '   ', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { roomRef: 7, key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: '', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: '   ', key: 'bells.rung', value: true } },
+      { setRoomMetadata: { actor: 7, key: 'bells.rung', value: true } },
+      { setAreaMetadata: { actor: '', key: 'story.phase', value: 2 } },
+      { setAreaMetadata: { actor: '   ', key: 'story.phase', value: 2 } },
+      { setAreaMetadata: { actor: 7, key: 'story.phase', value: 2 } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed optional targeting fields for metadata delete effects', function () {
+    const result = validateAuthoredInstructions([
+      { deleteRoomMetadata: { roomRef: '', key: 'bells.rung' } },
+      { deleteRoomMetadata: { roomRef: '   ', key: 'bells.rung' } },
+      { deleteRoomMetadata: { roomRef: 7, key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: '', key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: '   ', key: 'bells.rung' } },
+      { deleteRoomMetadata: { actor: 7, key: 'bells.rung' } },
+      { deleteAreaMetadata: { actor: '', key: 'story.phase' } },
+      { deleteAreaMetadata: { actor: '   ', key: 'story.phase' } },
+      { deleteAreaMetadata: { actor: 7, key: 'story.phase' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_REQUIRED',
+    ]);
+  });
+
+  it('rejects malformed metadata delete force values even when optional targeting fields are present', function () {
+    const result = validateAuthoredInstructions([
+      { deleteRoomMetadata: { roomRef: 'codex:start', key: 'bells.rung', force: 'yes' } },
+      { deleteRoomMetadata: { actor: 'npc', key: 'bells.rung', force: 1 } },
+      { deleteAreaMetadata: { actor: 'npc', key: 'story.phase', force: 'true' } },
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.errors.map(error => error.code), [
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+      'AUTHORED_INSTRUCTION_FIELD_BOOLEAN_REQUIRED',
+    ]);
+  });
+});

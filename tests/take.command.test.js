@@ -182,6 +182,76 @@ describe('bundle-rantamuta take command', function () {
     });
   });
 
+  it('allows container items when metadata.verbs.take is true', function () {
+    const room = createRoom();
+    const chest = createItem({
+      uuid: 'chest-verb-allow',
+      name: 'old chest',
+      keywords: ['old', 'chest'],
+      type: 'CONTAINER',
+      room,
+      metadata: {
+        verbs: {
+          take: true,
+        },
+      },
+    });
+    room.items.add(chest);
+    const player = createPlayer({ room });
+
+    const result = executeTake(player, chest);
+
+    assert.strictEqual(result.ok, true);
+  });
+
+  it('returns TAKE_NOT_TAKEABLE when metadata.verbs.take is false on a non-container item', function () {
+    const room = createRoom();
+    const seal = createItem({
+      uuid: 'seal-verb-deny',
+      name: 'wax seal',
+      keywords: ['wax', 'seal'],
+      type: 'OBJECT',
+      room,
+      metadata: {
+        verbs: {
+          take: false,
+        },
+      },
+    });
+    room.items.add(seal);
+    const player = createPlayer({ room });
+
+    const result = executeTake(player, seal);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'TAKE_NOT_TAKEABLE', details: undefined },
+    });
+  });
+
+  it('ignores legacy metadata.takeable overrides for container items', function () {
+    const room = createRoom();
+    const chest = createItem({
+      uuid: 'chest-legacy-allow',
+      name: 'old chest',
+      keywords: ['old', 'chest'],
+      type: 'CONTAINER',
+      room,
+      metadata: {
+        takeable: true,
+      },
+    });
+    room.items.add(chest);
+    const player = createPlayer({ room });
+
+    const result = executeTake(player, chest);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      error: { code: 'TAKE_NOT_TAKEABLE', details: undefined },
+    });
+  });
+
   it('returns TAKE_INVALID_SOURCE when source cannot transfer items', function () {
     const room = createRoom();
     const brokenHolder = { closed: false, room, carriedBy: null };

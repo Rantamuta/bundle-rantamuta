@@ -31,9 +31,8 @@
   script: ritualPutTarget
   maxItems: 1
   metadata:
-    permissions:
-      verbs:
-        take: "The bell is fixed to the ancient frame."
+    verbs:
+      take: "The bell is fixed to the ancient frame."
     puzzle:
       putPolicy:
         acceptedItemRef: "codex:bronzeClapper"
@@ -51,10 +50,9 @@
   type: OBJECT  
   script: bellRopeScript
   metadata:
-    pullable: true
-    permissions:
-      verbs:
-        take: "The bell rope is securely attached, somewhere far above in the darkness."
+    verbs:
+      take: "The bell rope is securely attached, somewhere far above in the darkness."
+      pull: true
   
 
 - id: reliquary
@@ -66,9 +64,8 @@
   script: ritualPutTarget
   maxItems: 1
   metadata:
-    permissions:
-      verbs:
-        take: "The reliquary is set into the stonework."
+    verbs:
+      take: "The reliquary is set into the stonework."
     puzzle:
       putPolicy:
         acceptedItemRef: "codex:waxSeal"
@@ -88,9 +85,8 @@
   script: ritualPutTarget
   maxItems: 1
   metadata:
-    permissions:
-      verbs:
-        take: "The basin is far too heavy to move."
+    verbs:
+      take: "The basin is far too heavy to move."
     puzzle:
       putPolicy:
         acceptedItemRef: "codex:prayerStone"
@@ -119,9 +115,8 @@
   type: "OBJECT"
   script: facadeDoor
   metadata:
-    permissions:
-      verbs:
-        take: "The gate is bolted into the stone ring."
+    verbs:
+      take: "The gate is bolted into the stone ring."
     facadeDoor:
       roomId: codex:observatory_inner
       direction: north
@@ -149,9 +144,8 @@
   type: "OBJECT"
   script: facadeDoor
   metadata:
-    permissions:
-      verbs:
-        take: "The shutter is anchored to a ring of counterweights."
+    verbs:
+      take: "The shutter is anchored to a ring of counterweights."
     facadeDoor:
       roomId: codex:observatory_foyer
       direction: south

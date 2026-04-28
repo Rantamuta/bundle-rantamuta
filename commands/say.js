@@ -2,6 +2,7 @@
 'use strict';
 
 const { compileCommandSyntaxMetadata } = require('../lib/runtime/command/verb-local-syntax');
+const { tryDirectedConversation } = require('../lib/runtime/conversation/directed-speech');
 
 const MAX_SAY_LENGTH = 256;
 
@@ -73,6 +74,79 @@ function extractSpeechFromContext(context) {
   return extractRawSpeechFromParsedInput(context && context.parsedInput);
 }
 
+/**
+ * @param {*} context
+ * @returns {string}
+ */
+function requireMatchedRuleText(context) {
+  const matchedRuleText = context && context.entityResolution
+    ? context.entityResolution.matchedRuleText
+    : null;
+
+  if (typeof matchedRuleText !== 'string' || !matchedRuleText.trim()) {
+    throw new TypeError('say command requires entityResolution.matchedRuleText; legacy ruleKey dispatch is forbidden.');
+  }
+
+  return matchedRuleText;
+}
+
+/**
+ * @param {string} text
+ * @returns {{ ok: true, plan: { operations: Array<*> }, render: { messages: Array<*> } }}
+ */
+function createOrdinarySayResult(text) {
+  return {
+    ok: true,
+    plan: {
+      operations: [{ type: 'noop' }],
+    },
+    render: {
+      messages: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.you} {verb:say}, "{object.direct}"',
+          audiencePolicy: 'self_and_others',
+          participants: {
+            actor: { selector: 'currentActor' },
+          },
+          objectText: {
+            direct: text,
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * @param {string} text
+ * @returns {{ ok: true, plan: { operations: Array<*> }, render: { messages: Array<*> } }}
+ */
+function createAddressedSayResult(text) {
+  return {
+    ok: true,
+    plan: {
+      operations: [{ type: 'noop' }],
+    },
+    render: {
+      messages: [
+        {
+          type: 'semanticEvent',
+          template: '{actor.you} {verb:say}, "{object.direct}" to {target.you}.',
+          audiencePolicy: 'self_target_and_others',
+          participants: {
+            actor: { selector: 'currentActor' },
+            target: { selector: 'entityByContextRole', role: 'indirectTarget' },
+          },
+          objectText: {
+            direct: text,
+          },
+        },
+      ],
+    },
+  };
+}
+
 module.exports = {
   aliases: [],
   metadata: compileCommandSyntaxMetadata('say', {
@@ -113,26 +187,27 @@ module.exports = {
       return fail('SAY_TOO_LONG');
     }
 
-    return {
-      ok: true,
-      plan: {
-        operations: [{ type: 'noop' }],
-      },
-      render: {
-        messages: [
-          {
-            type: 'semanticEvent',
-            template: '{actor.you} {verb:say}, "{object.direct}"',
-            audiencePolicy: 'self_and_others',
-            participants: {
-              actor: { selector: 'currentActor' },
-            },
-            objectText: {
-              direct: text,
-            },
-          },
-        ],
-      },
-    };
+    const matchedRuleText = requireMatchedRuleText(context);
+
+    switch (matchedRuleText) {
+      case 'TEXT to LIVING': {
+        const conversationResult = tryDirectedConversation(
+          state,
+          player,
+          text,
+          context && context.entityResolution ? context.entityResolution.indirectTarget : null
+        );
+        return conversationResult || createAddressedSayResult(text);
+      }
+
+      case 'TEXT':
+        return createOrdinarySayResult(text);
+
+      case '(empty)':
+        return fail('SAY_EMPTY');
+
+      default:
+        throw new TypeError(`say command received unsupported matchedRuleText "${matchedRuleText}".`);
+    }
   },
 };

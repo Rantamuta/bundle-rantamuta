@@ -17,7 +17,7 @@ function fail(code, details) {
 }
 
 /**
- * Only entities explicitly marked with `metadata.pullable: true` are pullable.
+ * Only entities explicitly marked with `metadata.verbs.pull === true` are pullable.
  *
  * @param {*} entity
  * @returns {boolean}
@@ -30,8 +30,11 @@ function isPullable(entity) {
   const metadata = entity.metadata && typeof entity.metadata === 'object'
     ? /** @type {Record<string, *>} */ (entity.metadata)
     : {};
+  const verbs = metadata.verbs && typeof metadata.verbs === 'object'
+    ? /** @type {Record<string, *>} */ (metadata.verbs)
+    : null;
 
-  return metadata.pullable === true;
+  return !!verbs && verbs.pull === true;
 }
 
 /**
