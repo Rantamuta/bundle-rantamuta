@@ -1117,7 +1117,7 @@ describe('authored instructions transposer', function () {
     });
 
     it('fails with AUTHORED_INSTRUCTIONS_INVALID for unsupported metadata targeting', function () {
-      runHarnessCase({
+      const result = runHarnessCase({
         adapter: transposeAuthoredInstructions,
         instructions: [
           {
@@ -1131,7 +1131,23 @@ describe('authored instructions transposer', function () {
         scope: createHarnessScope(),
         expectFailure: {
           code: 'AUTHORED_INSTRUCTIONS_INVALID',
+          message: 'Authored instructions failed validation.',
         },
+      });
+
+      assert.deepStrictEqual(result.details, {
+        errors: [
+          {
+            code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+            message: 'setRoomMetadata.player is not supported for this instruction.',
+            details: {
+              instructionName: 'setRoomMetadata',
+              field: 'player',
+              value: 'player',
+              supportedFields: ['actor', 'roomRef'],
+            },
+          },
+        ],
       });
     });
 
@@ -1155,7 +1171,25 @@ describe('authored instructions transposer', function () {
         scope: createHarnessScope(),
       });
 
-      assert.strictEqual(result.ok, false);
+      assert.deepStrictEqual(result, {
+        ok: false,
+        code: 'AUTHORED_INSTRUCTIONS_INVALID',
+        message: 'Authored instructions failed validation.',
+        details: {
+          errors: [
+            {
+              code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+              message: 'setRoomMetadata.player is not supported for this instruction.',
+              details: {
+                instructionName: 'setRoomMetadata',
+                field: 'player',
+                value: 'player',
+                supportedFields: ['actor', 'roomRef'],
+              },
+            },
+          ],
+        },
+      });
       assert.ok(!Object.prototype.hasOwnProperty.call(result, 'operations'));
       assert.ok(!Object.prototype.hasOwnProperty.call(result, 'renderMessages'));
     });

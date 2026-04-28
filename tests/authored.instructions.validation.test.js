@@ -239,13 +239,70 @@ describe('authored instructions validator', function () {
     });
   });
 
+  it('rejects unsupported actor and roomRef targeting for player metadata ops', function () {
+    const result = validateAuthoredInstructions([
+      { setPlayerMetadata: { actor: 'npc', key: 'story.phase', value: 2 } },
+      { setPlayerMetadata: { roomRef: 'codex:start', key: 'story.phase', value: 2 } },
+    ]);
+
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setPlayerMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'setPlayerMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: ['player'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setPlayerMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setPlayerMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['player'],
+          },
+        },
+      ],
+    });
+  });
+
   it('rejects unsupported player targeting for room metadata ops', function () {
     const result = validateAuthoredInstructions([
       { setRoomMetadata: { player: 'player', key: 'bells.rung', value: true } },
       { deleteRoomMetadata: { player: 'player', key: 'bells.rung' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setRoomMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setRoomMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor', 'roomRef'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteRoomMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteRoomMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor', 'roomRef'],
+          },
+        },
+      ],
+    });
   });
 
   it('rejects unsupported player targeting for area metadata ops', function () {
@@ -254,7 +311,31 @@ describe('authored instructions validator', function () {
       { deleteAreaMetadata: { player: 'player', key: 'story.phase' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setAreaMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setAreaMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteAreaMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteAreaMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: ['actor'],
+          },
+        },
+      ],
+    });
   });
 
   it('rejects unsupported roomRef targeting for area metadata ops', function () {
@@ -263,7 +344,31 @@ describe('authored instructions validator', function () {
       { deleteAreaMetadata: { roomRef: 'codex:start', key: 'story.phase' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setAreaMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setAreaMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['actor'],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteAreaMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteAreaMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: ['actor'],
+          },
+        },
+      ],
+    });
   });
 
   it('rejects unsupported actor targeting for world metadata ops', function () {
@@ -272,7 +377,31 @@ describe('authored instructions validator', function () {
       { deleteWorldMetadata: { actor: 'npc', key: 'world.phase' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.actor is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'actor',
+            value: 'npc',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
   });
 
   it('rejects unsupported player targeting for world metadata ops', function () {
@@ -281,7 +410,31 @@ describe('authored instructions validator', function () {
       { deleteWorldMetadata: { player: 'player', key: 'world.phase' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.player is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'player',
+            value: 'player',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
   });
 
   it('rejects unsupported roomRef targeting for world metadata ops', function () {
@@ -290,7 +443,31 @@ describe('authored instructions validator', function () {
       { deleteWorldMetadata: { roomRef: 'codex:start', key: 'world.phase' } },
     ]);
 
-    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result, {
+      ok: false,
+      errors: [
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'setWorldMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'setWorldMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: [],
+          },
+        },
+        {
+          code: 'AUTHORED_INSTRUCTION_FIELD_UNSUPPORTED',
+          message: 'deleteWorldMetadata.roomRef is not supported for this instruction.',
+          details: {
+            instructionName: 'deleteWorldMetadata',
+            field: 'roomRef',
+            value: 'codex:start',
+            supportedFields: [],
+          },
+        },
+      ],
+    });
   });
 
   it('uses one deterministic unsupported-field finding path for metadata targeting rejections', function () {
@@ -310,6 +487,16 @@ describe('authored instructions validator', function () {
       'player',
       'roomRef',
       'actor',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.message), [
+      'setRoomMetadata.player is not supported for this instruction.',
+      'setAreaMetadata.roomRef is not supported for this instruction.',
+      'setWorldMetadata.actor is not supported for this instruction.',
+    ]);
+    assert.deepStrictEqual(result.errors.map(error => error.details.supportedFields), [
+      ['actor', 'roomRef'],
+      ['actor'],
+      [],
     ]);
   });
 
