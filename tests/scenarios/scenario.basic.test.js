@@ -144,6 +144,28 @@ describe('scenario runner', function () {
     assert.equal(result.status, 0);
   });
 
+  test("rejecting `matches:` before `command:`", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
+    const scenarioPath = path.join(tmpDir, 'invalid-matches.scenario');
+    fs.writeFileSync(scenarioPath, 'matches:value\ncommand:look\n', 'utf8');
+
+    const result = runScenarioCliSmoke(['--scenario', scenarioPath]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Scenario assertion directive "matches" must follow a command/);
+  });
+
+  test("rejecting `notMatches:` before `command:`", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
+    const scenarioPath = path.join(tmpDir, 'invalid-matches.scenario');
+    fs.writeFileSync(scenarioPath, 'notMatches:value\ncommand:look\n', 'utf8');
+
+    const result = runScenarioCliSmoke(['--scenario', scenarioPath]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Scenario assertion directive "notMatches" must follow a command/);
+  });
+
   test('scenario runner rejects legacy --commandsFile flag', () => {
     const result = runScenarioCliSmoke(['--commandsFile', 'legacy.commands']);
 
