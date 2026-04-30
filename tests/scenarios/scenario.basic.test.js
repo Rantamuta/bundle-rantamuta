@@ -132,6 +132,18 @@ describe('scenario runner', function () {
     assert.match(result.stderr, /Unknown scenario directive "unknownDirective"/);
   });
 
+  test('scenario runner ignores "matches" and "notMatches" directives', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ranvier-scenario-'));
+    const scenarioPath = path.join(tmpDir, 'matches.scenario');
+    fs.writeFileSync(scenarioPath, 'command:look\nmatches:value\nnotMatches:value\n', 'utf8');
+
+    const result = runScenarioCliSmoke(['--scenario', scenarioPath]);
+
+    assert.doesNotMatch(result.stderr, /Unknown scenario directive "matches"/);
+    assert.doesNotMatch(result.stderr, /Unknown scenario directive "notMatches"/);
+    assert.equal(result.status, 0);
+  });
+
   test('scenario runner rejects legacy --commandsFile flag', () => {
     const result = runScenarioCliSmoke(['--commandsFile', 'legacy.commands']);
 
