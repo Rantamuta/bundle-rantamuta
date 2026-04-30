@@ -4,13 +4,10 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { after, describe, it } = require('mocha');
+const { after, describe, it, test } = require('mocha');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('child_process');
 const { createScenarioHarness } = require('../../../../util/scenario-test-harness');
-
-const test = it;
-test.after = after;
 
 describe('scenario runner', function () {
   this.timeout(30000);
